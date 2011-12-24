@@ -1,0 +1,4 @@
+Package managment library for PND files.
+
+Heavily work in progress.
+Will include CLI and ncurses frontend.
