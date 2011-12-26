@@ -94,7 +94,38 @@ typedef struct pxml_parse
    PXML_STATE           state;
    pndman_package       *pnd;
    pndman_application   *app;
+   void                 *elem;
 } pxml_parse;
+
+/* \brief
+ * Convert string to uppercase
+ * Returns allocated string, so remember free it */
+static char *upstr(char *s)
+{
+   int i; char* p = malloc(strlen(s) + 1);
+   if (!p) return NULL;
+
+   strcpy( p, s ); i = 0;
+
+   for (; i != strlen(p); i++)
+      p[i] = (char)toupper(p[i]);
+
+   return p;
+}
+
+/* \brief
+ * Strcmp without case sensitivity */
+static int _pxml_strcmp(char *s1, char *s2)
+{
+   int ret; char *u1, *u2;
+   u1 = upstr(s1); if (!u1) return 1;
+   u2 = upstr(s2); if (!u2) { free(u1); return 1; }
+
+   ret = strcmp(u1, u2);
+   free(u1); free(u2);
+
+   return ret;
+}
 
 /* \brief
  * Get PXML out of PND
@@ -206,22 +237,31 @@ static void _pxml_pnd_exec_tag(pndman_exec *exec, char **attrs)
    {
       /* <exec background= */
       if (!strncmp(attrs[i], PXML_BACKGROUND_ATTR, strlen(PXML_BACKGROUND_ATTR)))
-         ;
+      {
+         if (!_pxml_strcmp(attrs[++i], PND_TRUE)) exec->background = 1;
+      }
       /* <exec startdir= */
       else if (!strncmp(attrs[i], PXML_STARTDIR_ATTR, strlen(PXML_STARTDIR_ATTR)))
-         ;
+         strncpy(exec->startdir, attrs[++i], PND_PATH);
       /* <exec standalone= */
       else if (!strncmp(attrs[i], PXML_STANDALONE_ATTR, strlen(PXML_STANDALONE_ATTR)))
-         ;
+      {
+         if (!strcmp(attrs[++i], PND_FALSE)) exec->standalone = 0;
+      }
       /* <exec command= */
       else if (!strncmp(attrs[i], PXML_COMMAND_ATTR, strlen(PXML_COMMAND_ATTR)))
-         ;
+         strncpy(exec->command, attrs[++i], PND_STR);
       /* <exec arguments= */
       else if (!strncmp(attrs[i], PXML_ARGUMENTS_ATTR, strlen(PXML_ARGUMENTS_ATTR)))
-         ;
+         strncpy(exec->arguments, attrs[++i], PND_STR);
       /* <exec x11= */
       else if (!strncmp(attrs[i], PXML_X11_ATTR, strlen(PXML_X11_ATTR)))
-         ;
+      {
+         ++i;
+         if (!_pxml_strcmp(attrs[i], PND_X11_REQ))          exec->x11 = PND_EXEC_REQ;
+         else if (!_pxml_strcmp(attrs[i], PND_X11_STOP))    exec->x11 = PND_EXEC_STOP;
+         else if (!_pxml_strcmp(attrs[i], PND_X11_IGNORE))  exec->x11 = PND_EXEC_IGNORE;
+      }
 
    }
 }
@@ -234,13 +274,13 @@ static void _pxml_pnd_info_tag(pndman_info *info, char **attrs)
    {
       /* <info name= */
       if (!strncmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
-         ;
+         strncpy(info->name, attrs[++i], PND_NAME);
       /* <info type= */
       else if (!strncmp(attrs[i], PXML_TYPE_ATTR, strlen(PXML_TYPE_ATTR)))
-         ;
+         strncpy(info->type, attrs[++i], PND_SHRT_STR);
       /* <info src= */
       else if (!strncmp(attrs[i], PXML_SRC_ATTR, strlen(PXML_SRC_ATTR)))
-         ;
+         strncpy(info->src, attrs[++i], PND_PATH);
    }
 }
 
@@ -373,7 +413,12 @@ static void _pxml_pnd_version_tag(pndman_version *ver, char **attrs)
       else if (!strncmp(attrs[i], PXML_BUILD_ATTR, strlen(PXML_BUILD_ATTR)))
          strncpy(ver->build, attrs[++i], PND_VER);
       else if (!strncmp(attrs[i], PXML_TYPE_ATTR, strlen(PXML_TYPE_ATTR)))
-         strncpy(ver->type, attrs[++i], PND_SHRT_STR);
+      {
+         ++i;
+         if (!_pxml_strcmp(PND_TYPE_RELEASE, attrs[i]))    ver->type = PND_VERSION_RELEASE;
+         else if (!_pxml_strcmp(PND_TYPE_BETA, attrs[i]))  ver->type = PND_VERSION_BETA;
+         else if (!_pxml_strcmp(PND_TYPE_ALPHA, attrs[i])) ver->type = PND_VERSION_ALPHA;
+      }
    }
 }
 
@@ -705,8 +750,6 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
       strcpy(pnd->version.release, pnd->app->version.release);
    if (!strlen(pnd->version.build) && strlen(pnd->app->version.build))
       strcpy(pnd->version.build, pnd->app->version.build);
-   if (!strlen(pnd->version.type) && strlen(pnd->app->version.type))
-      strcpy(pnd->version.type, pnd->app->version.type);
 }
 
 /* \brief
@@ -714,14 +757,11 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
 int pnd_do_something(char *pnd_file)
 {
    char PXML[PXML_MAX_SIZE];
-   size_t size = 0;
+   char *type, *x11; size_t size = 0;
+   pndman_package       *test;
+   pndman_application   *app;
 
    _fetch_pxml_from_pnd(pnd_file, PXML, &size);
-
-   puts(PXML);
-   puts("======");
-
-   pndman_package *test;
    test = _pndman_new_pnd();
 
    pxml_parse data;
@@ -733,15 +773,49 @@ int pnd_do_something(char *pnd_file)
    _pxml_pnd_parse(&data, PXML, size);
    _pxml_pnd_post_process(test);
 
-   puts("======");
-
    /* debug filled PND */
+   if (test->version.type == PND_VERSION_RELEASE)     type = PND_TYPE_RELEASE;
+   else if (test->version.type == PND_VERSION_BETA)   type = PND_TYPE_BETA;
+   else if (test->version.type == PND_VERSION_ALPHA)  type = PND_TYPE_ALPHA;
+
+   puts("");
    printf("ID:       %s\n", test->id);
    printf("ICON:     %s\n", test->icon);
    printf("AUTHOR:   %s\n", test->author.name);
    printf("WEBSITE:  %s\n", test->author.website);
    printf("VERSION:  %s.%s.%s.%s %s\n", test->version.major, test->version.minor,
-         test->version.release, test->version.build, test->version.type);
+         test->version.release, test->version.build, type);
+
+   app = test->app;
+   for (; app; app = app->next)
+   {
+      if (app->exec.x11 == PND_EXEC_REQ)          x11 = PND_X11_REQ;
+      else if (app->exec.x11 == PND_EXEC_STOP)    x11 = PND_X11_STOP;
+      else if (app->exec.x11 == PND_EXEC_IGNORE)  x11 = PND_X11_IGNORE;
+
+      if (app->version.type == PND_VERSION_RELEASE)     type = PND_TYPE_RELEASE;
+      else if (app->version.type == PND_VERSION_BETA)   type = PND_TYPE_BETA;
+      else if (app->version.type == PND_VERSION_ALPHA)  type = PND_TYPE_ALPHA;
+
+      puts("");
+      printf("ID:       %s\n", app->id);
+      printf("ICON:     %s\n", app->icon);
+      printf("AUTHOR:   %s\n", app->author.name);
+      printf("WEBSITE:  %s\n", app->author.website);
+      printf("VERSION:  %s.%s.%s.%s %s\n", app->version.major, app->version.minor,
+            app->version.release, app->version.build, type);
+      printf("OSVER:    %s.%s.%s.%s\n", app->osversion.major, app->osversion.minor,
+            app->osversion.release, app->osversion.build);
+
+      printf("BKGRND:   %s\n", app->exec.background ? PND_TRUE : PND_FALSE);
+      printf("STARTDIR: %s\n", app->exec.startdir);
+      printf("STNDLONE: %s\n", app->exec.standalone ? PND_TRUE : PND_FALSE);
+      printf("COMMAND:  %s\n", app->exec.command);
+      printf("ARGS:     %s\n", app->exec.arguments);
+      printf("X11:      %s\n", x11);
+
+   }
+   puts("");
 
 
    _pndman_free_pnd(test);

@@ -9,9 +9,34 @@
 #define PND_STR      256
 #define PND_SHRT_STR 24
 #define PND_PATH     PATH_MAX
-#define PND_BOOL     6
 
 #define PND_DEFAULT_ICON "icon.png"
+
+/* arguments */
+#define PND_TRUE           "true"
+#define PND_FALSE          "false"
+#define PND_TYPE_RELEASE   "release"
+#define PND_TYPE_BETA      "beta"
+#define PND_TYPE_ALPHA     "alpha"
+#define PND_X11_REQ        "req"
+#define PND_X11_STOP       "stop"
+#define PND_X11_IGNORE     "ignore"
+
+/* type enum for version struct */
+typedef enum pndman_version_type
+{
+   PND_VERSION_RELEASE,
+   PND_VERSION_BETA,
+   PND_VERSION_ALPHA
+} pndman_version_type;
+
+/* x11 enum for exec struct */
+typedef enum pndman_exec_x11
+{
+   PND_EXEC_REQ,
+   PND_EXEC_STOP,
+   PND_EXEC_IGNORE
+} pndman_exec_x11;
 
 /* \brief Struct holding version information */
 typedef struct pndman_version
@@ -20,18 +45,18 @@ typedef struct pndman_version
    char minor[PND_VER];
    char release[PND_VER];
    char build[PND_VER];
-   char type[PND_STR];
+   pndman_version_type type;
 } pndman_version;
 
 /* \brief Struct holding execution information */
 typedef struct pndman_exec
 {
-   char background[PND_BOOL];
+   int background;
    char startdir[PND_PATH];
-   char standalone[PND_BOOL];
+   int standalone;
    char command[PND_STR];
    char arguments[PND_STR];
-   char x11[PND_SHRT_STR];
+   pndman_exec_x11 x11;
 } pndman_exec;
 
 /* \brief Struct holding author information */

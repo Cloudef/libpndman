@@ -12,18 +12,20 @@ static void _pndman_init_version(pndman_version *ver)
    memset(ver->minor,   0, PND_VER);
    memset(ver->release, 0, PND_VER);
    memset(ver->build,   0, PND_VER);
-   memset(ver->type,    0, PND_SHRT_STR);
+   ver->type = PND_VERSION_RELEASE;
 }
 
 /* \brief Init exec struct */
 static void _pndman_init_exec(pndman_exec *exec)
 {
-   memset(exec->background, 0, PND_BOOL);
+
    memset(exec->startdir,   0, PND_PATH);
-   memset(exec->standalone, 0, PND_BOOL);
    memset(exec->command,    0, PND_STR);
    memset(exec->arguments,  0, PND_STR);
-   memset(exec->x11,        0, PND_SHRT_STR);
+
+   exec->standalone  = 1;
+   exec->background  = 0;
+   exec->x11         = PND_EXEC_IGNORE;
 }
 
 /* \brief Init author struct */
