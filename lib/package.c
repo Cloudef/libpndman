@@ -8,10 +8,10 @@
 /* \brief Init version struct */
 static void _pndman_init_version(pndman_version *ver)
 {
-   memset(ver->major,   0, PND_VER);
-   memset(ver->minor,   0, PND_VER);
-   memset(ver->release, 0, PND_VER);
-   memset(ver->build,   0, PND_VER);
+   strncpy(ver->major,   "0", PND_VER);
+   strncpy(ver->minor,   "0", PND_VER);
+   strncpy(ver->release, "0", PND_VER);
+   strncpy(ver->build,   "0", PND_VER);
    ver->type = PND_VERSION_RELEASE;
 }
 
@@ -69,8 +69,10 @@ static pndman_application* _pndman_new_application(void)
    app->title        = NULL;
    app->description  = NULL;
    app->category     = NULL;
+   app->previewpic   = NULL;
    app->license      = NULL;
    app->association  = NULL;
+   app->frequency    = 0;
 
    app->next = NULL;
 
@@ -115,6 +117,7 @@ static void _pndman_free_application(pndman_application *app)
    pndman_translated  *t, *tn;
    pndman_category    *c, *cn;
    pndman_license     *l, *ln;
+   pndman_previewpic  *p, *pn;
    pndman_association *a, *an;
 
    /* should never be null */
@@ -139,6 +142,11 @@ static void _pndman_free_application(pndman_application *app)
    l = app->license;
    for (; l; l = ln)
    { ln = l->next; free(l); }
+
+   /* free previewpics */
+   p = app->previewpic;
+   for (; p; p = pn)
+   { pn = p->next; free(p); }
 
    /* free associations */
    a = app->association;
@@ -201,8 +209,78 @@ static pndman_translated* _pndman_translated_new(void)
    /* init */
    memset(t->lang,   0, PND_SHRT_STR);
    memset(t->string, 0, PND_STR);
+   t->next = NULL;
 
    return t;
+}
+
+/* \brief Internal allocation of pndman_license */
+static pndman_license* _pndman_license_new(void)
+{
+   pndman_license *l;
+
+   l = malloc(sizeof(pndman_license));
+   if (!l)
+      return NULL;
+
+   /* init */
+   memset(l->name,            0, PND_SHRT_STR);
+   memset(l->url,             0, PND_STR);
+   memset(l->sourcecodeurl,   0, PND_STR);
+   l->next = NULL;
+
+   return l;
+}
+
+/* \brief Internal allocation of pndman_previewpic */
+static pndman_previewpic* _pndman_previewpic_new(void)
+{
+   pndman_previewpic *p;
+
+   p = malloc(sizeof(pndman_previewpic));
+   if (!p)
+      return NULL;
+
+   /* init */
+   memset(p->src,   0, PND_PATH);
+   p->next = NULL;
+
+   return p;
+}
+
+/* \brief Internal allocation of pndman_association */
+static pndman_association* _pndman_association_new(void)
+{
+   pndman_association *a;
+
+   a = malloc(sizeof(pndman_association));
+   if (!a)
+      return NULL;
+
+   /* init */
+   memset(a->name,            0, PND_STR);
+   memset(a->filetype,        0, PND_SHRT_STR);
+   memset(a->exec,            0, PND_STR);
+   a->next = NULL;
+
+   return a;
+}
+
+/* \brief Internal allocation of pndman_category */
+static pndman_category* _pndman_category_new(void)
+{
+   pndman_category *c;
+
+   c = malloc(sizeof(pndman_category));
+   if (!c)
+      return NULL;
+
+   /* init */
+   memset(c->main,   0, PND_SHRT_STR);
+   memset(c->sub,    0, PND_SHRT_STR);
+   c->next = NULL;
+
+   return c;
 }
 
 /* \brief Internal allocation of title for pndman_package */
@@ -214,11 +292,11 @@ pndman_translated* _pndman_package_new_title(pndman_package *pnd)
    assert(pnd);
 
    /* how to allocate? */
-   if (!pnd->description) t = pnd->description = _pndman_translated_new();
+   if (!pnd->title) t = pnd->title = _pndman_translated_new();
    else
    {
       /* find last */
-      t = pnd->description;
+      t = pnd->title;
       for (; t->next; t = t->next);
       t->next = _pndman_translated_new();
       t = t->next;
@@ -269,4 +347,136 @@ pndman_application* _pndman_package_new_application(pndman_package *pnd)
    }
 
    return app;
+}
+
+/* \brief Internal allocation of title for pndman_application */
+pndman_translated* _pndman_application_new_title(pndman_application *app)
+{
+   pndman_translated *t;
+
+   /* should not be null */
+   assert(app);
+
+   /* how to allocate? */
+   if (!app->title) t = app->title = _pndman_translated_new();
+   else
+   {
+      /* find last */
+      t = app->title;
+      for (; t->next; t = t->next);
+      t->next = _pndman_translated_new();
+      t = t->next;
+   }
+
+   return t;
+}
+
+/* \brief Internal allocation of description for pndman_application */
+pndman_translated* _pndman_application_new_description(pndman_application *app)
+{
+   pndman_translated *t;
+
+   /* should not be null */
+   assert(app);
+
+   /* how to allocate? */
+   if (!app->description) t = app->description = _pndman_translated_new();
+   else
+   {
+      /* find last */
+      t = app->description;
+      for (; t->next; t = t->next);
+      t->next = _pndman_translated_new();
+      t = t->next;
+   }
+
+   return t;
+}
+
+/* \brief Internal allocation of license for pndman_application */
+pndman_license* _pndman_application_new_license(pndman_application *app)
+{
+   pndman_license *l;
+
+   /* should not be null */
+   assert(app);
+
+   /* how to allocate? */
+   if (!app->license) l = app->license = _pndman_license_new();
+   else
+   {
+      /* find last */
+      l = app->license;
+      for (; l->next; l = l->next);
+      l->next = _pndman_license_new();
+      l = l->next;
+   }
+
+   return l;
+}
+
+/* \brief Internal allocation of previewpic for pndman_application */
+pndman_previewpic* _pndman_application_new_previewpic(pndman_application *app)
+{
+   pndman_previewpic *p;
+
+   /* should not be null */
+   assert(app);
+
+   /* how to allocate? */
+   if (!app->previewpic) p = app->previewpic = _pndman_previewpic_new();
+   else
+   {
+      /* find last */
+      p = app->previewpic;
+      for (; p->next; p = p->next);
+      p->next = _pndman_previewpic_new();
+      p = p->next;
+   }
+
+   return p;
+}
+
+/* \brief Internal allocation of assocation for pndman_application */
+pndman_association* _pndman_application_new_association(pndman_application *app)
+{
+   pndman_association *a;
+
+   /* should not be null */
+   assert(app);
+
+   /* how to allocate? */
+   if (!app->association) a = app->association = _pndman_association_new();
+   else
+   {
+      /* find last */
+      a = app->association;
+      for (; a->next; a = a->next);
+      a->next = _pndman_association_new();
+      a = a->next;
+   }
+
+   return a;
+}
+
+/* \brief Internal allocation of category for pndman_application */
+pndman_category* _pndman_application_new_category(pndman_application *app)
+{
+   pndman_category *c;
+
+   /* should not be null */
+   assert(app);
+
+   /* how to allocate? */
+   if (!app->category) c = app->category = _pndman_category_new();
+   else
+   {
+      /* find last */
+      c = app->category;
+      for (; c->next; c = c->next);
+      c->next = _pndman_category_new();
+      c = c->next;
+   }
+
+   return c;
 }

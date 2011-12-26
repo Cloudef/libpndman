@@ -190,8 +190,8 @@ static int _pndman_device_add_absolute(char *path, pndman_device *device)
       return RETURN_FAIL;
 
    /* fill device struct */
-   strncpy(device->mount,  path, PATH_MAX);
-   strncpy(device->device, path, PATH_MAX);
+   strncpy(device->mount,  path, PATH_MAX-1);
+   strncpy(device->device, path, PATH_MAX-1);
    device->free      = fs.f_bfree  * fs.f_bsize;
    device->size      = fs.f_blocks * fs.f_bsize;
    device->available = fs.f_bavail * fs.f_bsize;
@@ -246,20 +246,20 @@ static int _pndman_device_add(char *path, pndman_device *device)
       return RETURN_FAIL;
 
    /* fill device struct */
-   strncpy(device->mount,  mnt.mnt_dir,    PATH_MAX);
-   strncpy(device->device, mnt.mnt_fsname, PATH_MAX);
+   strncpy(device->mount,  mnt.mnt_dir,    PATH_MAX-1);
+   strncpy(device->device, mnt.mnt_fsname, PATH_MAX-1);
    device->free      = fs.f_bfree  * fs.f_bsize;
    device->size      = fs.f_blocks * fs.f_bsize;
    device->available = fs.f_bavail * fs.f_bsize;
    device->exist     = 1;
 #elif __WIN32__
-   char szName[PATH_MAX];
+   char szName[PATH_MAX-1];
    char szDrive[3] = { ' ', ':', '\0' };
    szDrive[0] = path[0];
    ULARGE_INTEGER bytes_available, bytes_size, bytes_free;
 
-   memset(szName, 0, PATH_MAX);
-   if (!QueryDosDevice(szDrive, szName, PATH_MAX))
+   memset(szName, 0, PATH_MAX-1);
+   if (!QueryDosDevice(szDrive, szName, PATH_MAX-1))
       return RETURN_FAIL;
 
    /* check for read && write perms */
@@ -275,8 +275,8 @@ static int _pndman_device_add(char *path, pndman_device *device)
       return RETURN_FAIL;
 
    /* fill device struct */
-   strncpy(device->mount,  szDrive, PATH_MAX);
-   strncpy(device->device, szName,  PATH_MAX);
+   strncpy(device->mount,  szDrive, PATH_MAX-1);
+   strncpy(device->device, szName,  PATH_MAX-1);
    device->free      = bytes_free.QuadPart;
    device->size      = bytes_size.QuadPart;
    device->available = bytes_available.QuadPart;
@@ -320,8 +320,8 @@ static int _pndman_device_detect(pndman_device *device)
 
             DEBUGP("%s: %d\n", mnt.mnt_dir, device->exist);
 
-            strncpy(device->mount,  mnt.mnt_dir,    PATH_MAX);
-            strncpy(device->device, mnt.mnt_fsname, PATH_MAX);
+            strncpy(device->mount,  mnt.mnt_dir,    PATH_MAX-1);
+            strncpy(device->device, mnt.mnt_fsname, PATH_MAX-1);
             device->free      = fs.f_bfree  * fs.f_bsize;
             device->size      = fs.f_blocks * fs.f_bsize;
             device->available = fs.f_bavail * fs.f_bsize;
@@ -333,7 +333,7 @@ static int _pndman_device_detect(pndman_device *device)
    endmntent(mtab);
 #elif __WIN32__
    char szTemp[512];
-   char szName[PATH_MAX];
+   char szName[PATH_MAX-1];
    char szDrive[3] = { ' ', ':', '\0' };
    char *p;
    ULARGE_INTEGER bytes_free, bytes_available, bytes_size;
@@ -348,7 +348,7 @@ static int _pndman_device_detect(pndman_device *device)
    {
       *szDrive = *p;
 
-      if (QueryDosDevice(szDrive, szName, PATH_MAX))
+      if (QueryDosDevice(szDrive, szName, PATH_MAX-1))
       {
          /* check for read && write perms */
          if (access(szDrive, R_OK | W_OK) == -1)
@@ -363,8 +363,8 @@ static int _pndman_device_detect(pndman_device *device)
 
          DEBUGP("%s : %s\n", szDrive, szName);
 
-         strncpy(device->mount,  szDrive, PATH_MAX);
-         strncpy(device->device, szName,  PATH_MAX);
+         strncpy(device->mount,  szDrive, PATH_MAX-1);
+         strncpy(device->device, szName,  PATH_MAX-1);
          device->free      = bytes_free.QuadPart;
          device->size      = bytes_size.QuadPart;
          device->available = bytes_available.QuadPart;
@@ -393,8 +393,8 @@ int pndman_device_init(pndman_device *device)
    if (!device)
       return RETURN_FAIL;
 
-   memset(device->device, 0, PATH_MAX);
-   memset(device->mount,  0, PATH_MAX);
+   memset(device->device, 0, PATH_MAX-1);
+   memset(device->mount,  0, PATH_MAX-1);
    device->size      = 0;
    device->free      = 0;
    device->available = 0;

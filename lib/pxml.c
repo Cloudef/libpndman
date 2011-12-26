@@ -5,7 +5,7 @@
 #include "pndman.h"
 #include "package.h"
 
-#define PXML_START_TAG "<PXML "
+#define PXML_START_TAG "<PXML"
 #define PXML_END_TAG   "</PXML>"
 #define PXML_TAG_SIZE  7
 #define PXML_MAX_SIZE  1024 * 1024
@@ -94,7 +94,7 @@ typedef struct pxml_parse
    PXML_STATE           state;
    pndman_package       *pnd;
    pndman_application   *app;
-   void                 *elem;
+   char                 *data;
 } pxml_parse;
 
 /* \brief
@@ -128,23 +128,24 @@ static int _pxml_strcmp(char *s1, char *s2)
 }
 
 /* \brief
- * Get PXML out of PND
- * TODO: Make it start seeking the start from bottom, so shit is faster for bigger PNDs */
+ * Get PXML out of PND  */
 static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
 {
-   FILE *pnd;
-   char s[LINE_MAX];
-   char *ret = "\0";
+   FILE     *pnd;
+   char     s[LINE_MAX];
+   size_t   pos;
+   char     *ret;
 
    /* open PND */
    pnd = fopen(pnd_file, "rb");
    if (!pnd)
       return RETURN_FAIL;
 
-   /* set */
-   memset(s, 0, LINE_MAX);
-
-   for (; ret && strncmp(s, PXML_START_TAG, strlen(PXML_START_TAG)); ret = fgets(s, PXML_TAG_SIZE, pnd));
+   /* set && seek to end */
+   memset(s,  0, LINE_MAX);
+   fseek(pnd, 0, SEEK_END); pos = ftell(pnd); fseek(pnd, --pos, SEEK_SET);
+   for (; (ret = fgets(s, PXML_TAG_SIZE, pnd)) && strncmp(s, PXML_START_TAG, strlen(PXML_START_TAG));
+          fseek(pnd, --pos, SEEK_SET));
 
    /* Yatta! PXML start found ^_^ */
    /* PXML does not define standard XML, so add those to not confuse expat */
@@ -225,7 +226,7 @@ static void _pxml_pnd_application_clockspeed_tag(pndman_application *app, char *
    {
       /* <clockspeed frequency= */
       if (!strncmp(attrs[i], PXML_FREQUENCY_ATTR, strlen(PXML_FREQUENCY_ATTR)))
-         ;
+         strtol(attrs[++i], (char **) NULL, 10);
    }
 }
 
@@ -250,7 +251,7 @@ static void _pxml_pnd_exec_tag(pndman_exec *exec, char **attrs)
       }
       /* <exec command= */
       else if (!strncmp(attrs[i], PXML_COMMAND_ATTR, strlen(PXML_COMMAND_ATTR)))
-         strncpy(exec->command, attrs[++i], PND_STR);
+         strncpy(exec->command, attrs[++i], PND_PATH);
       /* <exec arguments= */
       else if (!strncmp(attrs[i], PXML_ARGUMENTS_ATTR, strlen(PXML_ARGUMENTS_ATTR)))
          strncpy(exec->arguments, attrs[++i], PND_STR);
@@ -285,20 +286,20 @@ static void _pxml_pnd_info_tag(pndman_info *info, char **attrs)
 }
 
 /* \brief fills pndman_license's struct */
-static void _pxml_pnd_application_license_tag(pndman_license *lic, char **attrs)
+static void _pxml_pnd_license_tag(pndman_license *lic, char **attrs)
 {
    int i = 0;
    for (; attrs[i]; ++i)
    {
       /* <license name= */
       if (!strncmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
-         ;
+         strncpy(lic->name, attrs[++i], PND_SHRT_STR);
       /* <license url= */
       else if (!strncmp(attrs[i], PXML_URL_ATTR, strlen(PXML_URL_ATTR)))
-         ;
+         strncpy(lic->url, attrs[++i], PND_STR);
       /* <license sourcecodeurl= */
       else if (!strncmp(attrs[i], PXML_SOURCECODE_ATTR, strlen(PXML_SOURCECODE_ATTR)))
-         ;
+         strncpy(lic->sourcecodeurl, attrs[++i], PND_STR);
    }
 }
 
@@ -310,7 +311,7 @@ static void _pxml_pnd_pic_tag(pndman_previewpic *pic, char **attrs)
    {
       /* <pic src= */
       if (!strncmp(attrs[i], PXML_SRC_ATTR, strlen(PXML_SRC_ATTR)))
-         ;
+         strncpy(pic->src, attrs[++i], PND_PATH);
    }
 }
 
@@ -322,7 +323,7 @@ static void _pxml_pnd_category_tag(pndman_category *cat, char **attrs)
    {
       /* <category name= */
       if (!strncmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
-         ;
+         strncpy(cat->main, attrs[++i], PND_SHRT_STR);
    }
 }
 
@@ -334,7 +335,7 @@ static void _pxml_pnd_subcategory_tag(pndman_category *cat, char **attrs)
    {
       /* <subcategory name= */
       if (!strncmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
-         ;
+         strncpy(cat->sub, attrs[++i], PND_SHRT_STR);
    }
 }
 
@@ -346,37 +347,25 @@ static void _pxml_pnd_association_tag(pndman_association *assoc, char **attrs)
    {
       /* <association name= */
       if (!strncmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
-         ;
+         strncpy(assoc->name, attrs[++i], PND_STR);
       /* <association filetype= */
       else if (!strncmp(attrs[i], PXML_FILETYPE_ATTR, strlen(PXML_FILETYPE_ATTR)))
-         ;
+         strncpy(assoc->filetype, attrs[++i], PND_SHRT_STR);
       /* <association exec= */
       else if (!strncmp(attrs[i], PXML_EXEC_ATTR, strlen(PXML_EXEC_ATTR)))
-         ;
+         strncpy(assoc->exec, attrs[++i], PND_PATH);
    }
 }
 
 /* \brief fills pndman_translated's struct */
-static void _pxml_pnd_title_tag(pndman_translated *title, char **attrs)
+static void _pxml_pnd_translated_tag(pndman_translated *title, char **attrs)
 {
    int i = 0;
    for (; attrs[i]; ++i)
    {
-      /* <title lang= */
+      /* <title/description lang= */
       if (!strncmp(attrs[i], PXML_LANG_ATTR, strlen(PXML_LANG_ATTR)))
-         ;
-   }
-}
-
-/* \brief fills pndman_translated's struct */
-static void _pxml_pnd_description_tag(pndman_translated *desc, char **attrs)
-{
-   int i = 0;
-   for (; attrs[i]; ++i)
-   {
-      /* <description lang= */
-      if (!strncmp(attrs[i], PXML_LANG_ATTR, strlen(PXML_LANG_ATTR)))
-         ;
+         strncpy(title->lang, attrs[++i], PND_SHRT_STR);
    }
 }
 
@@ -429,6 +418,13 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
    pndman_package     *pnd          = ((pxml_parse*)data)->pnd;
    pndman_application *app          = ((pxml_parse*)data)->app;
 
+   /* some variables used for parsing */
+   pndman_translated  *title, *desc;
+   pndman_license     *license;
+   pndman_previewpic  *previewpic;
+   pndman_category    *category;
+   pndman_association *association;
+
    //printf("Found start : %s [%s, %s]\n", tag, attrs[0], attrs[1]);
 
    /* check parse state, so we don't parse wrong stuff */
@@ -458,8 +454,11 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
          /* <title */
          if (!strncmp(tag, PXML_TITLE_TAG, strlen(PXML_TITLE_TAG)))
          {
-            /* new title here */
-            // _pxml_pnd_title_tag(pnd, attrs);
+            if ((title = _pndman_package_new_title(pnd)))
+            {
+               _pxml_pnd_translated_tag(title, attrs);
+               ((pxml_parse*)data)->data = title->string;
+            }
          }
       break;
       /* parse <descriptions> inside <package> */
@@ -467,8 +466,11 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
          /* <description */
          if (!strncmp(tag, PXML_DESCRIPTION_TAG, strlen(PXML_DESCRIPTION_TAG)))
          {
-            /* new description here */
-            // _pxml_pnd_description_tag(desc, attrs);
+            if ((desc = _pndman_package_new_description(pnd)))
+            {
+               _pxml_pnd_translated_tag(desc, attrs);
+               ((pxml_parse*)data)->data = desc->string;
+            }
          }
       break;
       /* parse inside <package> */
@@ -495,8 +497,11 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
          /* <title */
          if (!strncmp(tag, PXML_TITLE_TAG, strlen(PXML_TITLE_TAG)))
          {
-            /* create new title here */
-            // _pxml_pnd_title_tag(title, attrs);
+            if ((title = _pndman_application_new_title(app)))
+            {
+               _pxml_pnd_translated_tag(title, attrs);
+               ((pxml_parse*)data)->data = title->string;
+            }
          }
       break;
       /* parse <descriptions> inside <application> */
@@ -505,8 +510,11 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
          /* <description */
          if (!strncmp(tag, PXML_DESCRIPTION_TAG, strlen(PXML_DESCRIPTION_TAG)))
          {
-            /* create new description here */
-            // _pxml_pnd_description_tag(desc, attrs);
+            if ((desc = _pndman_application_new_description(app)))
+            {
+               _pxml_pnd_translated_tag(desc, attrs);
+               ((pxml_parse*)data)->data = desc->string;
+            }
          }
       break;
       /* parse <licenses> inside <application> */
@@ -515,8 +523,8 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
          /* <license */
          if (!strncmp(tag, PXML_LICENSE_TAG, strlen(PXML_LICENSE_TAG)))
          {
-            /* create new license here */
-            // _pxml_pnd_license_tag(license, attrs);
+            if ((license = _pndman_application_new_license(app)))
+               _pxml_pnd_license_tag(license, attrs);
          }
       break;
       /* parse <previewpics> inside <application> */
@@ -525,8 +533,8 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
          /* <pic */
          if (!strncmp(tag, PXML_PIC_TAG, strlen(PXML_PIC_TAG)))
          {
-            /* create new previewpic here */
-            // _pxml_pnd_pic_tag(pic, attrs);
+            if ((previewpic = _pndman_application_new_previewpic(app)))
+               _pxml_pnd_pic_tag(previewpic, attrs);
          }
       break;
       /* parse <categories> inside <application> */
@@ -535,8 +543,8 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
          /* <category */
          if (!strncmp(tag, PXML_CATEGORY_TAG, strlen(PXML_LICENSE_TAG)))
          {
-            /* create new category here */
-            // _pxml_pnd_category_tag(cat, attrs);
+            if ((category = _pndman_application_new_category(app)))
+               _pxml_pnd_category_tag(category, attrs);
             *parse_state = PXML_PARSE_APPLICATION_CATEGORY;
          }
       break;
@@ -545,7 +553,12 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
          assert(app);
          /* <subcategory */
          if (!strncmp(tag, PXML_SUBCATEGORY_TAG, strlen(PXML_SUBCATEGORY_TAG)))
-            // _pxml_pnd_subcategory_tag(cat, attrs);
+         {
+            category = app->category;
+            for (; category && category->next; category = category->next);
+            if (category)
+               _pxml_pnd_subcategory_tag(category, attrs);
+         }
       break;
       /* parse <associations> inside <application> */
       case PXML_PARSE_APPLICATION_ASSOCIATIONS:
@@ -553,8 +566,8 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
          /* <association */
          if (!strncmp(tag, PXML_ASSOCIATION_TAG, strlen(PXML_ASSOCIATION_TAG)))
          {
-            /* create new association here */
-            // _pxml_pnd_association_tag(assoc, attrs);
+            if (app && (association = _pndman_application_new_association(app)))
+               _pxml_pnd_association_tag(association, attrs);
          }
       break;
       /* parse inside <application> */
@@ -599,22 +612,45 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
          /* <associations */
          else if (!strncmp(tag, PXML_ASSOCIATIONS_TAG, strlen(PXML_ASSOCIATIONS_TAG)))
             *parse_state = PXML_PARSE_APPLICATION_ASSOCIATIONS;
+
+         /*                                 */
          /* === BACKWARDS COMPATIBILITY === */
-         /* These are okay to ignore if new methods are used */
+         /* TODO: These are okay to ignore if new methods are used */
          /* <title */
          else if (!strncmp(tag, PXML_TITLE_TAG, strlen(PXML_TITLE_TAG)))
          {
-            /* new title here */
-            // _pxml_pnd_title_tag(title, attrs);
+            if ((title = _pndman_application_new_title(app)))
+            {
+               _pxml_pnd_translated_tag(title, attrs);
+               ((pxml_parse*)data)->data = title->string;
+            }
          }
          /* <description */
          else if (!strncmp(tag, PXML_DESCRIPTION_TAG, strlen(PXML_DESCRIPTION_TAG)))
          {
-            /* new description here */
-            // _pxml_pnd_description_tag(desc, attrs);
+            if ((desc = _pndman_application_new_description(app)))
+            {
+               _pxml_pnd_translated_tag(desc, attrs);
+               ((pxml_parse*)data)->data = desc->string;
+            }
          }
       break;
    }
+}
+
+/* \brief Text data */
+static void _pxml_pnd_data(void *data, char *text, int len)
+{
+   unsigned int          *parse_state  = &((pxml_parse*)data)->state;
+   // pndman_package     *pnd          = ((pxml_parse*)data)->pnd;
+   // pndman_application *app          = ((pxml_parse*)data)->app;
+   char                  *ptr          = ((pxml_parse*)data)->data;
+
+   if (!ptr)
+      return;
+
+   if (len < PND_STR) memcpy(ptr, text, len);
+   ((pxml_parse*)data)->data = NULL;
 }
 
 /* \brief End element tag */
@@ -710,6 +746,8 @@ static int _pxml_pnd_parse(pxml_parse *data, char *PXML, size_t size)
    XML_SetElementHandler(xml,
          (XML_StartElementHandler)&_pxml_pnd_start_tag,
          (XML_EndElementHandler)&_pxml_pnd_end_tag);
+   XML_SetCharacterDataHandler(xml,
+         (XML_CharacterDataHandler)&_pxml_pnd_data);
 
    /* parse XML */
    ret = RETURN_OK;
@@ -722,9 +760,15 @@ static int _pxml_pnd_parse(pxml_parse *data, char *PXML, size_t size)
    return ret;
 }
 
-/* \brief Post-process pndman_package */
+/* \brief Post-process pndman_package
+ * Some PND's including milkyhelper ironically,
+ * don't have a <package> element.
+ *
+ * For these PNDs we need to copy stuff from first application */
 static void _pxml_pnd_post_process(pndman_package *pnd)
 {
+   pndman_translated *t, *tc;
+
    /* no need to do anything */
    if (!pnd->app)
       return;
@@ -750,6 +794,35 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
       strcpy(pnd->version.release, pnd->app->version.release);
    if (!strlen(pnd->version.build) && strlen(pnd->app->version.build))
       strcpy(pnd->version.build, pnd->app->version.build);
+
+   /* titles */
+   if (!pnd->title && pnd->app->title)
+   {
+      t = pnd->app->title;
+      for (; t; t = t->next)
+      {
+         if ((tc = _pndman_package_new_title(pnd)))
+         {
+            strcpy(tc->lang, t->lang);
+            strcpy(tc->string, t->string);
+         }
+      }
+   }
+
+   /* descriptions */
+   if (!pnd->description && pnd->app->description)
+   {
+      t = pnd->app->description;
+      for (; t; t = t->next)
+      {
+         if ((tc = _pndman_package_new_description(pnd)))
+         {
+            strcpy(tc->lang, t->lang);
+            strcpy(tc->string, t->string);
+         }
+      }
+   }
+
 }
 
 /* \brief
@@ -760,13 +833,20 @@ int pnd_do_something(char *pnd_file)
    char *type, *x11; size_t size = 0;
    pndman_package       *test;
    pndman_application   *app;
+   pndman_translated    *t;
+   pndman_license       *l;
+   pndman_category      *c;
+   pndman_previewpic    *p;
+   pndman_association   *a;
 
+   memset(PXML, 0, PXML_MAX_SIZE);
    _fetch_pxml_from_pnd(pnd_file, PXML, &size);
    test = _pndman_new_pnd();
 
    pxml_parse data;
    data.pnd   = test;
    data.app   = NULL;
+   data.data  = NULL;
    data.state = PXML_PARSE_DEFAULT;
 
    /* parse */
@@ -780,6 +860,19 @@ int pnd_do_something(char *pnd_file)
 
    puts("");
    printf("ID:       %s\n", test->id);
+
+   /* titles */
+   puts("TITLE(S):");
+   t = test->title;
+   for (; t; t = t->next)
+      printf("  %s:    %s\n", t->lang, t->string);
+
+   /* descriptions */
+   puts("DESCRIPTION(S):");
+   t = test->description;
+   for (; t; t = t->next)
+      printf("  %s:    %s\n", t->lang, t->string);
+
    printf("ICON:     %s\n", test->icon);
    printf("AUTHOR:   %s\n", test->author.name);
    printf("WEBSITE:  %s\n", test->author.website);
@@ -799,6 +892,19 @@ int pnd_do_something(char *pnd_file)
 
       puts("");
       printf("ID:       %s\n", app->id);
+
+      /* titles */
+      puts("TITLE(S):");
+      t = app->title;
+      for (; t; t = t->next)
+         printf("  %s:    %s\n", t->lang, t->string);
+
+      /* descriptions */
+      puts("DESCRIPTION(S):");
+      t = app->description;
+      for (; t; t = t->next)
+         printf("  %s:    %s\n", t->lang, t->string);
+
       printf("ICON:     %s\n", app->icon);
       printf("AUTHOR:   %s\n", app->author.name);
       printf("WEBSITE:  %s\n", app->author.website);
@@ -813,10 +919,35 @@ int pnd_do_something(char *pnd_file)
       printf("COMMAND:  %s\n", app->exec.command);
       printf("ARGS:     %s\n", app->exec.arguments);
       printf("X11:      %s\n", x11);
+      printf("FREQ:     %d\n", app->frequency);
+
+
+      /* previewpics */
+      puts("LICENSE(S):");
+      l = app->license;
+      for (; l; l = l->next)
+         printf("  %s, %s, %s\n", l->name, l->url, l->sourcecodeurl);
+
+      /* previewpics */
+      puts("ASSOCIATION(S):");
+      a = app->association;
+      for (; a; a = a->next)
+         printf("  %s, %s, %s\n", a->name, a->filetype, a->exec);
+
+      /* categories */
+      puts("CATEGORIE(S):");
+      c = app->category;
+      for (; c; c = c->next)
+         printf("  %s, %s\n", c->main, c->sub);
+
+      /* previewpics */
+      puts("PREVIEWPIC(S):");
+      p = app->previewpic;
+      for (; p; p = p->next)
+         printf("  %s\n", p->src);
 
    }
    puts("");
-
 
    _pndman_free_pnd(test);
 
