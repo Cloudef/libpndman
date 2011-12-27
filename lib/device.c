@@ -19,9 +19,7 @@
 /* used also by internal functions */
 int pndman_device_init(pndman_device *device);
 
-/* \brief
- * Find first device
- */
+/* \brief Find first device */
 static inline pndman_device* _pndman_device_first(pndman_device *device)
 {
    /* find first */
@@ -29,9 +27,7 @@ static inline pndman_device* _pndman_device_first(pndman_device *device)
    return device;
 }
 
-/* \brief
- * Find last device
- */
+/* \brief Find last device */
 static inline pndman_device* _pndman_device_last(pndman_device *device)
 {
    /* find last */
@@ -39,9 +35,7 @@ static inline pndman_device* _pndman_device_last(pndman_device *device)
    return device;
 }
 
-/* \brief
- * Allocate next device
- */
+/* \brief Allocate next device */
 static int _pndman_device_new(pndman_device **device)
 {
    pndman_device *new;
@@ -63,9 +57,7 @@ static int _pndman_device_new(pndman_device **device)
    return RETURN_OK;
 }
 
-/* \brief
- * Allocate new if exists
- */
+/* \brief Allocate new if exists */
 static int _pndman_device_new_if_exist(pndman_device **device, char *check_existing)
 {
    pndman_device *d;
@@ -87,9 +79,7 @@ static int _pndman_device_new_if_exist(pndman_device **device, char *check_exist
    return _pndman_device_new(device);
 }
 
-/* \brief
- * Free one device
- */
+/* \brief Free one device */
 static int _pndman_device_free(pndman_device *device)
 {
    pndman_device *deleted;
@@ -136,9 +126,7 @@ static int _pndman_device_free(pndman_device *device)
    return RETURN_OK;
 }
 
-/* \brief
- * Free all devices
- */
+/* \brief Free all devices */
 static int _pndman_device_free_all(pndman_device *device)
 {
    pndman_device *prev;
@@ -160,9 +148,7 @@ static int _pndman_device_free_all(pndman_device *device)
    return RETURN_OK;
 }
 
-/* \brief
- * Stat absolute path, and fill the device struct according to that.
- */
+/* \brief Stat absolute path, and fill the device struct according to that. */
 static int _pndman_device_add_absolute(char *path, pndman_device *device)
 {
 #ifdef __linux__
@@ -286,9 +272,7 @@ static int _pndman_device_add(char *path, pndman_device *device)
    return RETURN_OK;
 }
 
-/* \brief
- * Detect devices and fill them automatically.
- */
+/* \brief Detect devices and fill them automatically. */
 static int _pndman_device_detect(pndman_device *device)
 {
 #ifdef __linux__
@@ -371,7 +355,7 @@ static int _pndman_device_detect(pndman_device *device)
          device->exist     = 1;
       }
 
-      // Go to the next NULL character.
+      /* go to the next NULL character. */
       while (*p++);
    }
 #else
@@ -383,9 +367,7 @@ static int _pndman_device_detect(pndman_device *device)
 
 /* API */
 
-/*! \brief
- * Initialize device list, call this only once after declaring pndman_device
- */
+/* \brief Initialize device list, call this only once after declaring pndman_device */
 int pndman_device_init(pndman_device *device)
 {
    DEBUG("pndman device init");
@@ -405,9 +387,7 @@ int pndman_device_init(pndman_device *device)
    return RETURN_OK;
 }
 
-/*! \brief
- * Add all found devices
- */
+/* \brief Add all found devices */
 int pndman_device_detect(pndman_device *device)
 {
    DEBUG("pndman device detect");
@@ -418,9 +398,7 @@ int pndman_device_detect(pndman_device *device)
    return _pndman_device_detect(device);
 }
 
-/*! \brief
- * Add new device
- */
+/* \brief Add new device */
 int pndman_device_add(char *path, pndman_device *device)
 {
    DEBUG("pndman device add");
@@ -431,9 +409,7 @@ int pndman_device_add(char *path, pndman_device *device)
    return _pndman_device_add(path, device);
 }
 
-/*! \brief
- * Free one device
- */
+/* \brief Free one device */
 int pndman_device_free(pndman_device *device)
 {
    DEBUG("pndman device free");
@@ -444,9 +420,7 @@ int pndman_device_free(pndman_device *device)
    return _pndman_device_free(device);
 }
 
-/*! \brief
- * Free all devices
- */
+/* \brief Free all devices */
 int pndman_device_free_all(pndman_device *device)
 {
    DEBUG("pndman device free all");

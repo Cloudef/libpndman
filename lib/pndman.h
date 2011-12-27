@@ -19,7 +19,7 @@
 #endif
 
 /*! \brief
- * Default return values.\n
+ * Default return values.
  * Expections will be test functions where true condition returns 1, and false condition 0 */
 typedef enum
 {
