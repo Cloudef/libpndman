@@ -111,6 +111,34 @@ pndman_package* _pndman_new_pnd(void)
    return pnd;
 }
 
+/* \brief Internal free of pndman_application's titles
+ * NOTE: Used by PXML parser */
+void _pndman_application_free_titles(pndman_application *app)
+{
+   pndman_translated  *t, *tn;
+
+   /* free titles */
+   t = app->title;
+   for (; t; t = tn)
+   { tn = t->next; free(t); }
+
+   app->title = NULL;
+}
+
+/* \brief Internal free of pndman_application's descriptions
+ * NOTE: Used by PXML parser */
+void _pndman_application_free_descriptions(pndman_application *app)
+{
+   pndman_translated  *t, *tn;
+
+   /* free titles */
+   t = app->description;
+   for (; t; t = tn)
+   { tn = t->next; free(t); }
+
+   app->description = NULL;
+}
+
 /* \brief Internal free of pndman_application */
 static void _pndman_free_application(pndman_application *app)
 {
