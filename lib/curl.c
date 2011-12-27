@@ -5,6 +5,11 @@
 
 #include "pndman.h"
 
+/* TODO: add download statistics
+ * Actual file download
+ * etc...
+ */
+
 /* \brief curl_multi handle for curl.c */
 static CURLM *_pndman_curlm         = NULL;
 
