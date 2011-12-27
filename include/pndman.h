@@ -62,11 +62,14 @@ typedef struct pndman_device
  */
 typedef struct pndman_handle
 {
-   char name[24];
-   char error_string[LINE_MAX];
+   char           name[25];
+   char           error[LINE_MAX];
+   char           url[LINE_MAX];
    unsigned int   flags;
-   pndman_repository *repository;
-   pndman_package    *pnd;
+
+   /* info */
+   int            done;
+   void*          curl;
 } pndman_handle;
 
 /*! \brief

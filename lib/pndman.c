@@ -3,6 +3,7 @@
 #include "device.h"
 #include "package.h"
 #include "repository.h"
+#include "version.h"
 
 /* API */
 
@@ -22,6 +23,22 @@ int pndman_quit()
 {
    DEBUG("pndman quit");
    return RETURN_OK;
+}
+
+/*! \brief
+ * Get library version (git head)
+ */
+const char* pndman_git_head()
+{
+   return VERSION;
+}
+
+/* \brief
+ * Get library commit (git)
+ */
+const char* pndman_git_commit()
+{
+   return COMMIT;
 }
 
 /*! \brief

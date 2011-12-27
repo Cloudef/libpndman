@@ -20,7 +20,7 @@ MINGW := 0
 X86 := 0
 
 # depencies for pndman
-LIB_LIBS := -lexpat
+LIB_LIBS := -lexpat `pkg-config --libs libcurl`
 
 # git info
 VERSION = `git rev-parse HEAD`
@@ -69,19 +69,17 @@ milkyhelper: ${LIB_TARGET}
 	@echo "Compiling milkyhelper"
 	@echo "Milkyhelper not yet implented"
 
-test: ${LIB_TARGET}
-	@${MAKE} -C test CFLAGS="${CFLAGS}" LIBS="-L.. -l$(basename ${TARGET}) ${LIB_LIBS}"
-
-%.o : %.c
-	@${CC} -fPIC ${CFLAGS} ${LIB_INC} ${LIB_LIBS} -c $^ -o $@
-
-${LIB_TARGET}: version ${LIB_OBJ}
+${LIB_OBJ}: version
+${LIB_TARGET}: ${LIB_OBJ}
 	@echo "Linking"
 ifeq (${STATIC},1)
 	@${AR} rcs ${LIB_TARGET} ${LIB_OBJ}
 else
 	@${CC} -s -shared -Wl,-soname,${LIB_TARGET} -o ${LIB_TARGET} ${LIB_OBJ} -lc
 endif
+
+test: ${LIB_TARGET}
+	@${MAKE} -C test CFLAGS="${CFLAGS}" LIBS="-L.. -l$(basename ${TARGET}) ${LIB_LIBS}"
 
 clean:
 	@${MAKE} -C test clean
@@ -90,7 +88,7 @@ clean:
 	rm -f lib$(addsuffix .a, $(basename ${TARGET}))
 	rm -f lib$(addsuffix .so, $(basename ${TARGET}))
 	@echo "Cleaning objects.."
-	@rm -f ${LIB_OBJ}
+	rm -f ${LIB_OBJ}
 
 install:
 	@echo "Install not yet implented"
