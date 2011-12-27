@@ -145,7 +145,7 @@ static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
 
    /* set && seek to end */
    memset(s,  0, LINE_MAX);
-   fseek(pnd, 0, SEEK_END); pos = ftell(pnd); fseek(pnd, --pos, SEEK_SET);
+   fseek(pnd, 0, SEEK_END); pos = ftell(pnd) - 512; fseek(pnd, pos, SEEK_SET);
 #ifdef __linux__
    for (; (ret = fread(s, PXML_TAG_SIZE, 1, pnd)) && memcmp(s, PXML_START_TAG, strlen(PXML_START_TAG));
           fseek(pnd, --pos, SEEK_SET));
@@ -888,6 +888,11 @@ int pnd_do_something(char *pnd_file)
 
    puts("");
    printf("ID:       %s\n", test->id);
+   if (!strlen(test->id))
+   {
+      puts("Your code sucks, fix it!");
+      exit(0);
+   }
 
    /* titles */
    puts("TITLE(S):");
