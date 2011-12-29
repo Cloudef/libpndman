@@ -1,0 +1,186 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <malloc.h>
+
+#include "pndman.h"
+#include "package.h"
+#include "repository.h"
+
+/* INTERNAL */
+
+/* used also by internal functions */
+int pndman_repository_init(pndman_repository *repo);
+
+/* \brief Find first repo */
+static inline pndman_repository* _pndman_repository_first(pndman_repository *repo)
+{
+   /* find first */
+   for(; repo->prev; repo = repo->prev);
+   return repo;
+}
+
+/* \brief Find last repo */
+static inline pndman_repository* _pndman_repository_last(pndman_repository *repo)
+{
+   /* find last */
+   for(; repo->next; repo = repo->next);
+   return repo;
+}
+
+/* \brief Allocate next repo */
+static int _pndman_repository_new(pndman_repository **repo)
+{
+   pndman_repository *new;
+
+   if (!repo)
+      return RETURN_FAIL;
+
+   /* find last repo */
+   *repo = _pndman_repository_last(*repo);
+   new = calloc(1, sizeof(pndman_repository));
+   if (!new)
+      return RETURN_FAIL;
+
+   /* set defaults */
+   pndman_repository_init(new);
+   new->prev       = *repo;
+   (*repo)->next = new;
+   *repo         = new;
+   return RETURN_OK;
+}
+
+/* \brief Allocate new if exists */
+static int _pndman_repository_new_if_exist(pndman_repository **repo, char *check_existing)
+{
+   pndman_repository *r;
+   if (check_existing)
+   {
+      r = _pndman_repository_first(*repo);
+      for(; r && r->exist; r = r->next)
+      {
+         DEBUGP("%s == %s\n", r->name, check_existing);
+         if (!strcmp(r->name, check_existing))
+            return RETURN_OK;
+      }
+   }
+
+   *repo = _pndman_repository_last(*repo);
+   if (!(*repo)->exist)
+      return RETURN_OK;
+
+   return _pndman_repository_new(repo);
+}
+
+/* \brief Free one repo */
+static int _pndman_repository_free(pndman_repository *repo)
+{
+   pndman_repository *deleted;
+
+   if (!repo)
+      return RETURN_FAIL;
+
+   /* avoid freeing the first repo */
+   if (repo->prev)
+   {
+      /* set previous repo point to the next repo */
+      repo->prev->next    = repo->next;
+
+      /* set next point back to the previous repo */
+      if (repo->next)
+         repo->next->prev = repo->prev;
+
+      free(repo);
+   }
+   else
+   {
+      if (repo->next)
+      {
+         /* copy next to this and free the next */
+         strcpy(repo->url,     repo->next->url);
+         strcpy(repo->name,    repo->next->name);
+         strcpy(repo->updates, repo->next->updates);
+         repo->version  = repo->next->version;
+         repo->exist    = repo->next->exist;
+         repo->pnd      = repo->next->pnd;
+
+         deleted = repo->next;
+         repo->next         = deleted->next;
+
+         if (repo->next)
+            repo->next->prev   = repo;
+
+         free(deleted);
+      }
+      else
+         pndman_repository_init(repo);
+   }
+
+   return RETURN_OK;
+}
+
+/* \brief Free all repos */
+static int _pndman_repository_free_all(pndman_repository *repo)
+{
+   pndman_repository *prev;
+
+   if (!repo)
+      return RETURN_FAIL;
+
+   /* find the last repo */
+   repo = _pndman_repository_last(repo);
+
+   /* free everything */
+   for(; repo->prev; repo = prev)
+   {
+      prev = repo->prev;
+      free(repo);
+   }
+   pndman_repository_init(repo);
+
+   return RETURN_OK;
+}
+
+/* API */
+
+/* \brief Initialize repo list, call this only once after declaring pndman_repository */
+int pndman_repository_init(pndman_repository *repo)
+{
+   DEBUG("pndman repo init");
+
+   if (!repo)
+      return RETURN_FAIL;
+
+   memset(repo->url,       0, REPO_URL);
+   memset(repo->name,      0, REPO_NAME);
+   memset(repo->updates,   0, REPO_URL);
+   repo->version   = 0;
+   repo->exist     = 0;
+   repo->pnd  = NULL;
+   repo->next = NULL;
+   repo->prev = NULL;
+
+   return RETURN_OK;
+}
+
+/* \brief Free one repo */
+int pndman_repository_free(pndman_repository *repo)
+{
+   DEBUG("pndman repo free");
+
+   if (!repo)
+      return RETURN_FAIL;
+
+   return _pndman_repository_free(repo);
+}
+
+/* \brief Free all repos */
+int pndman_repository_free_all(pndman_repository *repo)
+{
+   DEBUG("pndman repo free all");
+
+   if (!repo)
+      return RETURN_FAIL;
+
+   return _pndman_repository_free_all(repo);
+}
