@@ -8,10 +8,10 @@
 /* \brief Init version struct */
 static void _pndman_init_version(pndman_version *ver)
 {
-   strncpy(ver->major,   "0", PND_VER);
-   strncpy(ver->minor,   "0", PND_VER);
-   strncpy(ver->release, "0", PND_VER);
-   strncpy(ver->build,   "0", PND_VER);
+   strncpy(ver->major,   "0", PND_VER-1);
+   strncpy(ver->minor,   "0", PND_VER-1);
+   strncpy(ver->release, "0", PND_VER-1);
+   strncpy(ver->build,   "0", PND_VER-1);
    ver->type = PND_VERSION_RELEASE;
 }
 
@@ -57,7 +57,6 @@ static pndman_application* _pndman_new_application(void)
    memset(app->id,      0, PND_ID);
    memset(app->appdata, 0, PND_PATH);
 
-   //memset(app->icon,    0, PND_PATH);
    strcpy(app->icon, PND_DEFAULT_ICON);
 
    _pndman_init_author(&app->author);
@@ -93,7 +92,7 @@ pndman_package* _pndman_new_pnd(void)
    memset(pnd->path, 0, PND_PATH);
    memset(pnd->id,   0, PND_ID);
 
-   //memset(pnd->icon, 0, PND_PATH);
+   //memset(pnd->icon, 0, PND_PATH-1);
    strcpy(pnd->icon, PND_DEFAULT_ICON);
 
    _pndman_init_author(&pnd->author);

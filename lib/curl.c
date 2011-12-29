@@ -5,6 +5,8 @@
 
 #include "pndman.h"
 
+#define BUFFER_SIZE (1024 * 1024) /* 1024 KB */
+
 /* TODO: add download statistics
  * Actual file download
  * etc...
@@ -13,10 +15,12 @@
 /* \brief curl_multi handle for curl.c */
 static CURLM *_pndman_curlm         = NULL;
 
+#define HANDLE_NAME 24
+
 /* \brief pndman_handle struct */
 typedef struct pndman_handle
 {
-   char           name[25];
+   char           name[HANDLE_NAME];
    char           error[LINE_MAX];
    char           url[LINE_MAX];
    unsigned int   flags;
@@ -24,7 +28,37 @@ typedef struct pndman_handle
    /* info */
    int            done;
    CURL           *curl;
+   FILE           *file;
 } pndman_handle;
+
+/* \brief write to file */
+static size_t curl_write_file(void *data, size_t size, size_t nmemb, pndman_handle *handle)
+{
+   size_t written = fwrite(data, size, nmemb, handle->file);
+   return written;
+}
+
+/* \brief progressbar */
+static int curl_progress_func(void* ptr, double TotalToDownload, double NowDownloaded, double TotalToUpload, double NowUploaded)
+{
+   return 0;
+}
+
+/* \brief write response */
+static size_t curl_write_response(void *ptr, size_t size, size_t nmemb, void *stream)
+{
+#if 0
+   curl_write_result *result = (curl_write_result*)stream;
+
+   if (result->pos + size * nmemb >= BUFFER_SIZE - 1)
+      return 0;
+
+   memcpy(result->data + result->pos, ptr, size * nmemb);
+   result->pos += size * nmemb;
+#endif
+
+   return size * nmemb;
+}
 
 /* \brief Init curl's multi interface
  * NOTE: Does checkup if it's already initialized*/
@@ -44,7 +78,7 @@ static int _pndman_curl_init(void)
 }
 
 /* \brief Free curl's multi interface */
-static int _pndman_curl_free(void)
+int _pndman_curl_free(void)
 {
    DEBUG("pndman_curl_free");
 
@@ -70,8 +104,8 @@ int pndman_handle_init(char *name, pndman_handle *handle)
       return RETURN_FAIL;
 
    handle->curl = NULL;
-   strncpy(handle->name, name, 24);
-   memset(handle->error, 0, LINE_MAX-1);
+   strncpy(handle->name, name, HANDLE_NAME-1);
+   memset(handle->error, 0, LINE_MAX);
    handle->flags = 0;
    handle->done  = 0;
 
@@ -92,6 +126,8 @@ int pndman_handle_free(pndman_handle *handle)
    /* free curl handle */
    if (_pndman_curlm) curl_multi_remove_handle(_pndman_curlm, handle->curl);
    curl_easy_cleanup(handle->curl);
+   if (handle->file) fclose(handle->file);
+
    handle->curl = NULL;
 
    return RETURN_OK;
@@ -105,14 +141,31 @@ int pndman_handle_perform(pndman_handle *handle)
    if (!handle)
       return RETURN_FAIL;
 
-   /* get curl handle */
-   handle->curl  = curl_easy_init();
-   if (!handle->curl)
+   /* open file to write */
+   handle->file = fopen("pndman_temp", "wb");
+   if (!handle->file)
       return RETURN_FAIL;
+
+   /* reset curl */
+   if (handle->curl)
+      curl_easy_reset(handle->curl);
+   else
+      handle->curl = curl_easy_init();
+
+   if (!handle->curl)
+   {
+      fclose(handle->file);
+      return RETURN_FAIL;
+   }
 
    /* set download URL */
    curl_easy_setopt(handle->curl, CURLOPT_URL,     handle->url);
    curl_easy_setopt(handle->curl, CURLOPT_PRIVATE, handle);
+   curl_easy_setopt(handle->curl, CURLOPT_WRITEFUNCTION, curl_write_file);
+   curl_easy_setopt(handle->curl, CURLOPT_CONNECTTIMEOUT, 5L );
+   //curl_easy_setopt(handle->curl, CURLOPT_NOPROGRESS, 0);
+   //curl_easy_setopt(handle->curl, CURLOPT_PROGRESSFUNCTION, curl_progress_func);
+   curl_easy_setopt(handle->curl, CURLOPT_WRITEDATA, handle);
 
    /* add to multi interface */
    curl_multi_add_handle(_pndman_curlm, handle->curl);
@@ -171,7 +224,7 @@ int pndman_download(int *still_running)
       }
    }
 
-   /* it's ok to get rid of this */
+   /* it's okay to get rid of this */
    if (!*still_running)
       _pndman_curl_free();
 

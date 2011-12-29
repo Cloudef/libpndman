@@ -15,15 +15,155 @@
 #  endif
 #endif
 
-/*! \brief
- * COMMON
- * Struct for PND
- */
+/* def */
+#define PND_ID       256
+#define PND_NAME     24
+#define PND_VER      8
+#define PND_STR      256
+#define PND_SHRT_STR 24
+#define PND_PATH     PATH_MAX
+#define REPO_URL     LINE_MAX
+#define REPO_NAME    24
+#define HANDLE_NAME  24
+
+/* type enum for version struct */
+typedef enum pndman_version_type
+{
+   PND_VERSION_RELEASE,
+   PND_VERSION_BETA,
+   PND_VERSION_ALPHA
+} pndman_version_type;
+
+/* x11 enum for exec struct */
+typedef enum pndman_exec_x11
+{
+   PND_EXEC_REQ,
+   PND_EXEC_STOP,
+   PND_EXEC_IGNORE
+} pndman_exec_x11;
+
+/* \brief Struct holding version information */
+typedef struct pndman_version
+{
+   const char major[PND_VER];
+   const char minor[PND_VER];
+   const char release[PND_VER];
+   const char build[PND_VER];
+   const pndman_version_type type;
+} pndman_version;
+
+/* \brief Struct holding execution information */
+typedef struct pndman_exec
+{
+   const int   background;
+   const char  startdir[PND_PATH];
+   const int   standalone;
+   const char  command[PND_PATH];
+   const char  arguments[PND_STR];
+   const pndman_exec_x11 x11;
+} pndman_exec;
+
+/* \brief Struct holding author information */
+typedef struct pndman_author
+{
+   const char name[PND_NAME];
+   const char website[PND_STR];
+} pndman_author;
+
+/* \brief Struct holding documentation information */
+typedef struct pndman_info
+{
+   const char name[PND_NAME];
+   const char type[PND_SHRT_STR];
+   const char src[PND_PATH];
+} pndman_info;
+
+/* \brief Struct holding translated strings */
+typedef struct pndman_translated
+{
+   const char lang[PND_SHRT_STR];
+   const char string[PND_STR];
+
+   struct pndman_translated *next;
+} pndman_translated;
+
+/* \brief Struct holding license information */
+typedef struct pndman_license
+{
+   const char name[PND_SHRT_STR];
+   const char url[PND_STR];
+   const char sourcecodeurl[PND_STR];
+
+   struct pndman_license *next;
+} pndman_license;
+
+/* \brief Struct holding previewpic information */
+typedef struct pndman_previewpic
+{
+   const char src[PND_PATH];
+   struct pndman_previewpic *next;
+} pndman_previewpic;
+
+/* \brief Struct holding association information */
+typedef struct pndman_association
+{
+   const char name[PND_STR];
+   const char filetype[PND_SHRT_STR];
+   const char exec[PND_PATH];
+
+   struct pndman_association *next;
+} pndman_association;
+
+/* \ brief Struct holding category information */
+typedef struct pndman_category
+{
+   const char main[PND_SHRT_STR];
+   const char sub[PND_SHRT_STR];
+
+   struct pndman_category *next;
+} pndman_category;
+
+/* \brief Struct that represents PND application */
+typedef struct pndman_application
+{
+   const char id[PND_ID];
+   const char appdata[PND_PATH];
+   const char icon[PND_PATH];
+   const int  frequency;
+
+   const pndman_author  author;
+   const pndman_version osversion;
+   const pndman_version version;
+   const pndman_exec    exec;
+   const pndman_info    info;
+
+   const pndman_translated    *title;
+   const pndman_translated    *description;
+   const pndman_license       *license;
+   const pndman_previewpic    *previewpic;
+   const pndman_category      *category;
+   const pndman_association   *association;
+
+   struct pndman_application *next;
+} pndman_application;
+
+/* \brief Struct that represents PND */
 typedef struct pndman_package
 {
-   const char path[PATH_MAX];
-   unsigned int flags;
+   const char path[PND_PATH];
+   const char id[PND_ID];
+   const char icon[PND_PATH];
 
+   const pndman_author     author;
+   const pndman_version    version;
+   const pndman_application *app;
+
+   /* bleh, lots of data duplication.. */
+   const pndman_translated *title;
+   const pndman_translated *description;
+   const pndman_category   *category;
+
+   unsigned int flags;
    struct pndman_package *next_installed;
    struct pndman_package *next;
 } pndman_package;
@@ -31,14 +171,15 @@ typedef struct pndman_package
 /*! \brief
  * COMMNON
  * Repository struct, will contain pointer to repository's packages
+ * TODO: fill
  */
 typedef struct pndman_repository
 {
-   const char url[LINE_MAX];
-   const char name[LINE_MAX];
-   const char updates[LINE_MAX];
-   float version;
-   pndman_package *pnd;
+   const char url[REPO_URL];
+   const char name[REPO_NAME];
+   const char updates[REPO_URL];
+   const float version;
+   const pndman_package *pnd;
 
    struct pndman_repository *next, *prev;
 } pndman_repository;
@@ -51,7 +192,7 @@ typedef struct pndman_device
 {
    const char mount[PATH_MAX];
    const char device[PATH_MAX];
-   size_t size, free, available;
+   const size_t size, free, available;
 
    struct pndman_device *next, *prev;
 } pndman_device;
@@ -62,15 +203,27 @@ typedef struct pndman_device
  */
 typedef struct pndman_handle
 {
-   char           name[25];
-   char           error[LINE_MAX];
+   const char     name[HANDLE_NAME];
+   const char     error[LINE_MAX];
    char           url[LINE_MAX];
    unsigned int   flags;
 
    /* info */
    int            done;
-   void*          curl;
+   const void     *curl;
+   const void     *file;
 } pndman_handle;
+
+/* undef */
+#undef PND_ID
+#undef PND_NAME
+#undef PND_VER
+#undef PND_STR
+#undef PND_SHRT_STR
+#undef PND_PATH
+#undef REPO_URL
+#undef REPO_NAME
+#undef HANDLE_NAME
 
 /*! \brief
  * Initializes the library and all the resources
@@ -82,21 +235,25 @@ int pndman_init();
  */
 int pndman_quit();
 
-/*! \brief
- * Return a new handle for transiction
- * */
-pndman_handle* pndman_get_handle(char *name);
+/* Current API functions
+ * These are very likely to change.
+ * I'm just defining them here, since I'm getting sick of implict declaration warnings.
+ * So no need to document these here yet. */
+int pndman_repository_init(pndman_repository *repo);
+int pndman_repository_free(pndman_repository *repo);
+int pndman_repository_free_all(pndman_repository *repo);
+int pndman_device_init(pndman_device *device);
+int pndman_device_add(char *path, pndman_device *device);
+int pndman_device_detect(pndman_device *device);
+int pndman_device_free(pndman_device *device);
+int pndman_device_free_all(pndman_device *device);
+int pndman_handle_init(char *name, pndman_handle *handle);
+int pndman_handle_perform(pndman_handle *handle);
+int pndman_handle_free(pndman_handle *handle);
+int pndman_download(int *still_running);
 
-/*! \brief
- * Use this to reset the handle for reuse.
- * Transiction assigments will be lost, while other data will be intact.
- */
-int pndman_reset_handle(pndman_handle *handle);
-
-/*! \brief
- * Free a transiction handle, when you don't need it anymore
- */
-int pndman_free_handle(pndman_handle *handle);
+/* test thing, for surely */
+int pnd_do_something(char *file);
 
 /* Some design notes here...
  *

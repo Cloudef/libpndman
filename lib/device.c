@@ -239,12 +239,12 @@ static int _pndman_device_add(char *path, pndman_device *device)
    device->available = fs.f_bavail * fs.f_bsize;
    device->exist     = 1;
 #elif __WIN32__
-   char szName[PATH_MAX-1];
+   char szName[PATH_MAX];
    char szDrive[3] = { ' ', ':', '\0' };
    szDrive[0] = path[0];
    ULARGE_INTEGER bytes_available, bytes_size, bytes_free;
 
-   memset(szName, 0, PATH_MAX-1);
+   memset(szName, 0, PATH_MAX);
    if (!QueryDosDevice(szDrive, szName, PATH_MAX-1))
       return RETURN_FAIL;
 
@@ -375,8 +375,8 @@ int pndman_device_init(pndman_device *device)
    if (!device)
       return RETURN_FAIL;
 
-   memset(device->device, 0, PATH_MAX-1);
-   memset(device->mount,  0, PATH_MAX-1);
+   memset(device->device, 0, PATH_MAX);
+   memset(device->mount,  0, PATH_MAX);
    device->size      = 0;
    device->free      = 0;
    device->available = 0;

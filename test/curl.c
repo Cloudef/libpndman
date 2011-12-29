@@ -47,13 +47,19 @@ int main()
 
          /* reset done and free */
          handle[i].done = 0;
-         pndman_handle_free(&handle[i]);
          ++dcount;
 
          if (++again <= D_AGAIN)
             pndman_handle_perform(&handle[i]);
+         else
+            pndman_handle_free(&handle[i]);
       }
    }
+
+   /* make sure that our handles are freed */
+   i = 0;
+   for (; i != H_COUNT; ++i)
+      pndman_handle_free(&handle[i]);
 
    if (pndman_quit() == -1)
       return EXIT_FAILURE;

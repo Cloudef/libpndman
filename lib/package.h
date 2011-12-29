@@ -3,12 +3,12 @@
 
 /* if these limits are exceeded, there are no sane people left alive */
 
-#define PND_ID       255
+#define PND_ID       256
 #define PND_NAME     24
 #define PND_VER      8
-#define PND_STR      255
+#define PND_STR      256
 #define PND_SHRT_STR 24
-#define PND_PATH     PATH_MAX-1
+#define PND_PATH     PATH_MAX
 
 #define PND_DEFAULT_ICON "icon.png"
 
@@ -41,10 +41,10 @@ typedef enum pndman_exec_x11
 /* \brief Struct holding version information */
 typedef struct pndman_version
 {
-   char major[PND_VER+1];
-   char minor[PND_VER+1];
-   char release[PND_VER+1];
-   char build[PND_VER+1];
+   char major[PND_VER];
+   char minor[PND_VER];
+   char release[PND_VER];
+   char build[PND_VER];
    pndman_version_type type;
 } pndman_version;
 
@@ -52,33 +52,33 @@ typedef struct pndman_version
 typedef struct pndman_exec
 {
    int background;
-   char startdir[PND_PATH+1];
+   char startdir[PND_PATH];
    int standalone;
-   char command[PND_PATH+1];
-   char arguments[PND_STR+1];
+   char command[PND_PATH];
+   char arguments[PND_STR];
    pndman_exec_x11 x11;
 } pndman_exec;
 
 /* \brief Struct holding author information */
 typedef struct pndman_author
 {
-   char name[PND_NAME+1];
-   char website[PND_STR+1];
+   char name[PND_NAME];
+   char website[PND_STR];
 } pndman_author;
 
 /* \brief Struct holding documentation information */
 typedef struct pndman_info
 {
-   char name[PND_NAME+1];
-   char type[PND_SHRT_STR+1];
-   char src[PND_PATH+1];
+   char name[PND_NAME];
+   char type[PND_SHRT_STR];
+   char src[PND_PATH];
 } pndman_info;
 
 /* \brief Struct holding translated strings */
 typedef struct pndman_translated
 {
-   char lang[PND_SHRT_STR+1];
-   char string[PND_STR+1];
+   char lang[PND_SHRT_STR];
+   char string[PND_STR];
 
    struct pndman_translated *next;
 } pndman_translated;
@@ -86,9 +86,9 @@ typedef struct pndman_translated
 /* \brief Struct holding license information */
 typedef struct pndman_license
 {
-   char name[PND_SHRT_STR+1];
-   char url[PND_STR+1];
-   char sourcecodeurl[PND_STR+1];
+   char name[PND_SHRT_STR];
+   char url[PND_STR];
+   char sourcecodeurl[PND_STR];
 
    struct pndman_license *next;
 } pndman_license;
@@ -96,16 +96,16 @@ typedef struct pndman_license
 /* \brief Struct holding previewpic information */
 typedef struct pndman_previewpic
 {
-   char src[PND_PATH+1];
+   char src[PND_PATH];
    struct pndman_previewpic *next;
 } pndman_previewpic;
 
 /* \brief Struct holding association information */
 typedef struct pndman_association
 {
-   char name[PND_STR+1];
-   char filetype[PND_SHRT_STR+1];
-   char exec[PND_PATH+1];
+   char name[PND_STR];
+   char filetype[PND_SHRT_STR];
+   char exec[PND_PATH];
 
    struct pndman_association *next;
 } pndman_association;
@@ -113,8 +113,8 @@ typedef struct pndman_association
 /* \ brief Struct holding category information */
 typedef struct pndman_category
 {
-   char main[PND_SHRT_STR+1];
-   char sub[PND_SHRT_STR+1];
+   char main[PND_SHRT_STR];
+   char sub[PND_SHRT_STR];
 
    struct pndman_category *next;
 } pndman_category;
@@ -122,9 +122,9 @@ typedef struct pndman_category
 /* \brief Struct that represents PND application */
 typedef struct pndman_application
 {
-   char id[PND_ID+1];
-   char appdata[PND_PATH+1];
-   char icon[PND_PATH+1];
+   char id[PND_ID];
+   char appdata[PND_PATH];
+   char icon[PND_PATH];
    int frequency;
 
    pndman_author  author;
@@ -146,9 +146,9 @@ typedef struct pndman_application
 /* \brief Struct that represents PND */
 typedef struct pndman_package
 {
-   char path[PND_PATH+1];
-   char id[PND_ID+1];
-   char icon[PND_PATH+1];
+   char path[PND_PATH];
+   char id[PND_ID];
+   char icon[PND_PATH];
 
    pndman_author     author;
    pndman_version    version;
@@ -165,3 +165,46 @@ typedef struct pndman_package
 } pndman_package;
 
 #endif /* PNDMAN_PACKAGE_H */
+
+/* INTERNAL */
+
+/* \brief Allocate new pndman_package */
+pndman_package* _pndman_new_pnd(void);
+
+/* \brief Internal free of pndman_application's titles
+ * NOTE: Used by PXML parser */
+void _pndman_application_free_titles(pndman_application *app);
+
+/* \brief Internal free of pndman_application's descriptions
+ * NOTE: Used by PXML parser */
+void _pndman_application_free_descriptions(pndman_application *app);
+
+/* \brief Internal free of pndman_package */
+void _pndman_free_pnd(pndman_package *pnd);
+
+/* \brief Internal allocation of title for pndman_package */
+pndman_translated* _pndman_package_new_title(pndman_package *pnd);
+
+/* \brief Internal allocation of description for pndman_package */
+pndman_translated* _pndman_package_new_description(pndman_package *pnd);
+
+/* \brief Internal allocation of application for pndman_package */
+pndman_application* _pndman_package_new_application(pndman_package *pnd);
+
+/* \brief Internal allocation of title for pndman_application */
+pndman_translated* _pndman_application_new_title(pndman_application *app);
+
+/* \brief Internal allocation of description for pndman_application */
+pndman_translated* _pndman_application_new_description(pndman_application *app);
+
+/* \brief Internal allocation of license for pndman_application */
+pndman_license* _pndman_application_new_license(pndman_application *app);
+
+/* \brief Internal allocation of previewpic for pndman_application */
+pndman_previewpic* _pndman_application_new_previewpic(pndman_application *app);
+
+/* \brief Internal allocation of assocation for pndman_application */
+pndman_association* _pndman_application_new_association(pndman_application *app);
+
+/* \brief Internal allocation of category for pndman_application */
+pndman_category* _pndman_application_new_category(pndman_application *app);
