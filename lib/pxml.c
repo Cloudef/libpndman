@@ -991,3 +991,5 @@ int pnd_do_something(char *pnd_file)
 
    return RETURN_OK;
 }
+
+/* vim: set ts=8 sw=3 tw=0 :*/

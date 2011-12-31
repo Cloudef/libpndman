@@ -430,3 +430,5 @@ int pndman_device_free_all(pndman_device *device)
 
    return _pndman_device_free_all(device);
 }
+
+/* vim: set ts=8 sw=3 tw=0 :*/

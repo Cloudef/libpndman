@@ -507,3 +507,5 @@ pndman_category* _pndman_application_new_category(pndman_application *app)
 
    return c;
 }
+
+/* vim: set ts=8 sw=3 tw=0 :*/

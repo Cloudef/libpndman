@@ -14,3 +14,5 @@ typedef struct pndman_device
 } pndman_device;
 
 #endif /* PNDMAN_DEVICE_H */
+
+/* vim: set ts=8 sw=3 tw=0 :*/

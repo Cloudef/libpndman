@@ -20,3 +20,5 @@ typedef struct pndman_repository
 } pndman_repository;
 
 #endif /* PNDMAN_REPOSITORY_H */
+
+/* vim: set ts=8 sw=3 tw=0 :*/

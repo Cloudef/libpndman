@@ -39,3 +39,5 @@ int pndman_read_repositories_from(pndman_device *device, pndman_repository *repo
    DEBUG("pndman read repositories from");
    return RETURN_OK;
 }
+
+/* vim: set ts=8 sw=3 tw=0 :*/

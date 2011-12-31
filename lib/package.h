@@ -208,3 +208,5 @@ pndman_association* _pndman_application_new_association(pndman_application *app)
 
 /* \brief Internal allocation of category for pndman_application */
 pndman_category* _pndman_application_new_category(pndman_application *app);
+
+/* vim: set ts=8 sw=3 tw=0 :*/

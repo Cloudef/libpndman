@@ -184,3 +184,5 @@ int pndman_repository_free_all(pndman_repository *repo)
 
    return _pndman_repository_free_all(repo);
 }
+
+/* vim: set ts=8 sw=3 tw=0 :*/
