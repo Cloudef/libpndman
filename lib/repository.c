@@ -5,6 +5,7 @@
 
 #include "pndman.h"
 #include "package.h"
+#include "device.h"
 #include "repository.h"
 
 /* INTERNAL */
@@ -59,8 +60,8 @@ static int _pndman_repository_new_if_exist(pndman_repository **repo, char *check
       r = _pndman_repository_first(*repo);
       for(; r && r->exist; r = r->next)
       {
-         DEBUGP("%s == %s\n", r->name, check_existing);
-         if (!strcmp(r->name, check_existing))
+         DEBUGP("%s == %s\n", r->url, check_existing);
+         if (!strcmp(r->url, check_existing))
             return RETURN_OK;
       }
    }
@@ -70,6 +71,18 @@ static int _pndman_repository_new_if_exist(pndman_repository **repo, char *check
       return RETURN_OK;
 
    return _pndman_repository_new(repo);
+}
+
+/* \brief Add new repo */
+static int _pndman_repository_add(char *url, pndman_repository *repo)
+{
+   if (_pndman_repository_new_if_exist(&repo, url) != RETURN_OK)
+      return RETURN_FAIL;
+
+   strncpy(repo->url, url, REPO_URL-1);
+   repo->exist = 1;
+
+   return RETURN_OK;
 }
 
 /* \brief Free one repo */
@@ -141,6 +154,17 @@ static int _pndman_repository_free_all(pndman_repository *repo)
    return RETURN_OK;
 }
 
+/* \brief Sync repository */
+static int _pndman_repository_sync(pndman_repository *repo, pndman_device *device)
+{
+   /* check against local */
+   if (device)
+      _pndman_query_repository_from_devices(repo, device);
+
+   /* check against remote */
+   return _pndman_query_repository_from_json(repo);
+}
+
 /* API */
 
 /* \brief Initialize repo list, call this only once after declaring pndman_repository */
@@ -159,6 +183,48 @@ int pndman_repository_init(pndman_repository *repo)
    repo->pnd  = NULL;
    repo->next = NULL;
    repo->prev = NULL;
+
+   return RETURN_OK;
+}
+
+/* \brief Add new repository */
+int pndman_repository_add(char *url, pndman_repository *repo)
+{
+   DEBUG("pndman repo add");
+
+   if (!repo)
+      return RETURN_FAIL;
+
+   return _pndman_repository_add(url, repo);
+}
+
+
+/* \brief Sync repositories, takes device argument for synchorizing only changes beetwen remote and local */
+int pndman_repository_sync(pndman_repository *repo, pndman_device *device)
+{
+   DEBUG("pndman repo sync");
+
+   if (!repo)
+      return RETURN_FAIL;
+
+   return _pndman_repository_sync(repo, device);
+}
+
+/* \brief Sync all repositories, takes device argument for synchorizing only changes beetwen remote and local.
+ *
+ * NOTE: It's probably better to manually sync every repo, as you'll get error codes */
+int pndman_repository_sync_all(pndman_repository *repo, pndman_device *device)
+{
+   pndman_repository *r;
+
+   DEBUG("pndman repo sync all");
+
+   if (!repo)
+      return RETURN_FAIL;
+
+   r = _pndman_repository_first(repo);
+   for (; r; r = r->next)
+      pndman_repository_sync(repo, device);
 
    return RETURN_OK;
 }
