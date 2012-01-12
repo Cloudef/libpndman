@@ -48,6 +48,7 @@ static int _pndman_curl_free(void)
       return RETURN_OK;
 
    curl_multi_cleanup(_pndman_curlm);
+   _pndman_curlm = NULL;
    return RETURN_OK;
 }
 
@@ -83,9 +84,9 @@ int pndman_handle_free(pndman_handle *handle)
       return RETURN_FAIL;
 
    /* free curl handle */
-   curl_multi_remove_handle(_pndman_curlm, handle->curl);
+   if (_pndman_curlm) curl_multi_remove_handle(_pndman_curlm, handle->curl);
    curl_easy_cleanup(handle->curl);
-   if (handle->file) fclose(handle->file);
+   if (handle->file)  fclose(handle->file);
 
    handle->curl = NULL;
 

@@ -44,6 +44,9 @@ static _pndman_sync_request* _pndman_new_sync_request(_pndman_sync_request *firs
       return NULL;
    }
 
+   object->request.result.pos = 0;
+   memset(object->request.result.data, 0, MAX_REQUEST-1);
+
    printf("ADD: %s\n", repo->url);
    printf("PRI: %p\n", object);
 
