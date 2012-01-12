@@ -23,7 +23,7 @@ int main()
    pndman_repository_add(REPO_URL, &repository);
 
    /* sync repositories */
-   while (pndman_repository_sync(&repository, NULL));
+   while (pndman_repository_sync(&repository, NULL) == 1);
 
    puts("");
    r = &repository;

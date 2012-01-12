@@ -198,14 +198,11 @@ int pndman_repository_add(char *url, pndman_repository *repo)
    return _pndman_repository_add(url, repo);
 }
 
-
 /* \brief Sync repositories, takes device argument for synchorizing only changes beetwen remote and local
  *  If 0 is returned, call the function again. If 1 returned, everything is complete.
  *  On -1 error. */
 int pndman_repository_sync(pndman_repository *repo, pndman_device *device)
 {
-   DEBUG("pndman repo sync");
-
    if (!repo)
       return RETURN_FAIL;
 

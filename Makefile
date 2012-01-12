@@ -34,8 +34,9 @@ endif
 
 ifeq (${MINGW},1)
    X86 = 1
-   LIB_LIBS += -static-libgcc -mwindows
-   LIB_LIBS += -lmingw32 -lkernel32
+   CFLAGS += -DCURL_STATICLIB
+   LIB_LIBS += -static -static-libgcc -mwindows
+   LIB_LIBS += -lssl -lcrypto -lz -lws2_32 -lmingw32 -lkernel32
 endif
 
 ifeq (${X86},1)

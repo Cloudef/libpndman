@@ -234,7 +234,7 @@ int _pndman_query_repository_from_json(pndman_repository *repo)
    if (!still_running)
       _pndman_query_cleanup();
 
-   //printf("%d : %p\n", still_running, _pndman_internal_request);
+   // printf("%d : %p\n", still_running, _pndman_internal_request);
    return still_running;
 }
 

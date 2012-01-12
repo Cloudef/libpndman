@@ -1,7 +1,8 @@
 #include <assert.h>
-#include "stdio.h"
-#include "string.h"
-#include "malloc.h"
+#include <stdio.h>
+#include <string.h>
+#include <malloc.h>
+
 #include "pndman.h"
 #include "package.h"
 

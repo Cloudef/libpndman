@@ -8,10 +8,10 @@
 #  include <limits.h>
 #endif
 
+/* Currently only mingw */
 #ifdef __WIN32__
-#  define WINVER 0x0500
 #  include <windows.h>
-#  define PATH_MAX MAX_PATH
+#  include <limits.h>
 #  define LINE_MAX 256
 #  ifdef _UNICODE
 #     error "Suck it unicde.."
