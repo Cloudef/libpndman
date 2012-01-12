@@ -14,7 +14,7 @@
 int pndman_repository_init(pndman_repository *repo);
 
 /* \brief Find first repo */
-static inline pndman_repository* _pndman_repository_first(pndman_repository *repo)
+inline pndman_repository* _pndman_repository_first(pndman_repository *repo)
 {
    /* find first */
    for(; repo->prev; repo = repo->prev);
@@ -22,7 +22,7 @@ static inline pndman_repository* _pndman_repository_first(pndman_repository *rep
 }
 
 /* \brief Find last repo */
-static inline pndman_repository* _pndman_repository_last(pndman_repository *repo)
+inline pndman_repository* _pndman_repository_last(pndman_repository *repo)
 {
    /* find last */
    for(; repo->next; repo = repo->next);
@@ -199,7 +199,9 @@ int pndman_repository_add(char *url, pndman_repository *repo)
 }
 
 
-/* \brief Sync repositories, takes device argument for synchorizing only changes beetwen remote and local */
+/* \brief Sync repositories, takes device argument for synchorizing only changes beetwen remote and local
+ *  If 0 is returned, call the function again. If 1 returned, everything is complete.
+ *  On -1 error. */
 int pndman_repository_sync(pndman_repository *repo, pndman_device *device)
 {
    DEBUG("pndman repo sync");
@@ -208,25 +210,6 @@ int pndman_repository_sync(pndman_repository *repo, pndman_device *device)
       return RETURN_FAIL;
 
    return _pndman_repository_sync(repo, device);
-}
-
-/* \brief Sync all repositories, takes device argument for synchorizing only changes beetwen remote and local.
- *
- * NOTE: It's probably better to manually sync every repo, as you'll get error codes */
-int pndman_repository_sync_all(pndman_repository *repo, pndman_device *device)
-{
-   pndman_repository *r;
-
-   DEBUG("pndman repo sync all");
-
-   if (!repo)
-      return RETURN_FAIL;
-
-   r = _pndman_repository_first(repo);
-   for (; r; r = r->next)
-      pndman_repository_sync(repo, device);
-
-   return RETURN_OK;
 }
 
 /* \brief Free one repo */

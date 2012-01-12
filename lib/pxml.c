@@ -165,10 +165,10 @@ static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
 
    /* read until end tag */
 #ifdef __linux__
-   for (; ret && memcmp(s, PXML_END_TAG, strlen(PXML_END_TAG)); ret = fread(s, LINE_MAX, 1, pnd))
+   for (; ret && memcmp(s, PXML_END_TAG, strlen(PXML_END_TAG)); ret = fread(s, LINE_MAX-1, 1, pnd))
       strncat(PXML, s, PXML_MAX_SIZE-1);
 #else
-   for (; ret && memcmp(s, PXML_END_TAG, strlen(PXML_END_TAG)); ret = fgets(s, LINE_MAX, pnd))
+   for (; ret && memcmp(s, PXML_END_TAG, strlen(PXML_END_TAG)); ret = fgets(s, LINE_MAX-1, pnd))
       strncat(PXML, s, PXML_MAX_SIZE-1);
 #endif
 

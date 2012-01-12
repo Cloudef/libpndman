@@ -23,12 +23,18 @@ int main()
    pndman_repository_add(REPO_URL, &repository);
 
    /* sync repositories */
-   pndman_repository_sync_all(&repository, NULL);
+   while (pndman_repository_sync(&repository, NULL));
 
    puts("");
    r = &repository;
    for (; r; r = r->next)
-      printf("%s : %s\n", r->url, r->name);
+   {
+      printf("%s :\n", r->name);
+      printf("   UPD: %s\n", r->updates);
+      printf("   URL: %s\n", r->url);
+      printf("   VER: %f\n", r->version);
+      puts("");
+   }
    puts("");
 
    /* free everything */

@@ -19,6 +19,9 @@ typedef struct pndman_repository
    int exist;
 } pndman_repository;
 
+pndman_repository* _pndman_repository_first(pndman_repository *repo);
+pndman_repository* _pndman_repository_last(pndman_repository *repo);
+
 #endif /* PNDMAN_REPOSITORY_H */
 
 /* vim: set ts=8 sw=3 tw=0 :*/

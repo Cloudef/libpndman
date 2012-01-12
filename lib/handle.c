@@ -27,6 +27,30 @@ typedef struct pndman_handle
    FILE           *file;
 } pndman_handle;
 
+static CURLM *_pndman_curlm;
+
+/* \brief Internal allocation of curl multi handle with checks */
+static int _pndman_curl_init(void)
+{
+   if (_pndman_curlm)
+      return RETURN_OK;
+
+   if (!(_pndman_curlm = curl_multi_init()))
+      return RETURN_FAIL;
+
+   return RETURN_OK;
+}
+
+/* \brief Internal free of curl multi handle with checks */
+static int _pndman_curl_free(void)
+{
+   if (!_pndman_curlm)
+      return RETURN_OK;
+
+   curl_multi_cleanup(_pndman_curlm);
+   return RETURN_OK;
+}
+
 /* \brief Allocate new pndman_handle for transfer */
 int pndman_handle_init(char *name, pndman_handle *handle)
 {
@@ -59,7 +83,7 @@ int pndman_handle_free(pndman_handle *handle)
       return RETURN_FAIL;
 
    /* free curl handle */
-   _pndman_curl_remove_handle(handle->curl);
+   curl_multi_remove_handle(_pndman_curlm, handle->curl);
    curl_easy_cleanup(handle->curl);
    if (handle->file) fclose(handle->file);
 
@@ -103,7 +127,7 @@ int pndman_handle_perform(pndman_handle *handle)
    curl_easy_setopt(handle->curl, CURLOPT_WRITEDATA, handle->file);
 
    /* add to multi interface */
-   _pndman_curl_add_handle(handle->curl);
+   curl_multi_add_handle(_pndman_curlm, handle->curl);
 
    return RETURN_OK;
 }
@@ -123,7 +147,7 @@ int pndman_download(int *still_running)
    pndman_handle *handle;
 
    /* perform download */
-   _pndman_curl_perform(still_running);
+   curl_multi_perform(_pndman_curlm, still_running);
 
    /* zero file descriptions */
    FD_ZERO(&fdread);
@@ -135,7 +159,7 @@ int pndman_download(int *still_running)
    timeout.tv_usec = 0;
 
    /* timeout */
-   _pndman_curl_timeout(&curl_timeout);
+   curl_multi_timeout(_pndman_curlm, &curl_timeout);
    if(curl_timeout >= 0) {
       timeout.tv_sec = curl_timeout / 1000;
       if(timeout.tv_sec > 1) timeout.tv_sec = 1;
@@ -143,14 +167,14 @@ int pndman_download(int *still_running)
    }
 
    /* get file descriptors from the transfers */
-   _pndman_curl_fdset(&fdread, &fdwrite, &fdexcep, &maxfd);
+   curl_multi_fdset(_pndman_curlm, &fdread, &fdwrite, &fdexcep, &maxfd);
 
    /* check that everything is still okay */
    if (select(maxfd+1, &fdread, &fdwrite, &fdexcep, &timeout) == -1)
       return RETURN_FAIL;
 
    /* update status of curl handles */
-   while ((msg = _pndman_curl_info_read(&msgs_left)))
+   while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left)))
    {
       curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &handle);
       if (msg->msg == CURLMSG_DONE)
@@ -165,6 +189,5 @@ int pndman_download(int *still_running)
 
    return RETURN_OK;
 }
-
 
 /* vim: set ts=8 sw=3 tw=0 :*/
