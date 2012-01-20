@@ -37,6 +37,9 @@ int main()
    }
    puts("");
 
+   /* commit */
+   pndman_commit_database(&repository);
+
    /* free everything */
    pndman_repository_free_all(&repository);
 

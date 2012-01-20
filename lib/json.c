@@ -7,6 +7,7 @@
 
 #include "pndman.h"
 #include "package.h"
+#include "device.h"
 #include "repository.h"
 #include "curl.h"
 
@@ -93,25 +94,85 @@ static int _pndman_json_repo_header(json_t *repo_header, pndman_repository *repo
 }
 
 /* \brief process retivied json data */
-static int _pndman_sync_process(_pndman_sync_request *request)
+static int _pndman_sync_process(pndman_repository *repo, char *data)
 {
    json_t *root, *repo_header;
    json_error_t error;
 
-   root = json_loads(request->request.result.data, 0, &error);
+   root = json_loads(data, 0, &error);
    if (!root)
-      return RETURN_FAIL;
+   { puts("WARN: bad json data"); return RETURN_FAIL; }
 
    repo_header = json_object_get(root, "repository");
    if (repo_header)
    {
-      if (_pndman_json_repo_header(repo_header, request->repo))
+      if (_pndman_json_repo_header(repo_header, repo))
       {
-         /* merge shit with local databse here */
+         /* read packages */
       }
    }
 
    json_decref(root);
+   return RETURN_OK;
+}
+
+/* \brief write json data to local database */
+static int _pndman_commit_database(pndman_repository *repo)
+{
+   FILE *f;
+   pndman_repository *r;
+   f = fopen("/tmp/repo.db", "w");
+   if (!f) return RETURN_FAIL;
+
+   /* write repositories */
+   r = repo;
+   for (; r; r = r->next) {
+      if (!r->url) continue;
+      fprintf(f, "[%s]\n", r->url);
+      fprintf(f, "{"); /* start */
+      fprintf(f, "\"repository\":{\"name\":\"%s\",\"version\":%.2f,\"updates\":\"%s\"},",
+              r->name, r->version, r->updates);
+      fprintf(f, "\"packages\":["); /* packages */
+      fprintf(f, "]}\n"); /* end */
+   }
+
+   fclose(f);
+   return RETURN_OK;
+}
+
+/* \brief read repository information from devices */
+int _pndman_query_repository_from_devices(pndman_repository *repo, pndman_device *device)
+{
+   FILE *f;
+   char s[LINE_MAX];
+   char s2[LINE_MAX];
+   char data[MAX_REQUEST];
+   char     *ret;
+   pndman_repository *r, *c = NULL;
+
+   f = fopen("/tmp/repo.db", "r");
+   if (!f) return RETURN_FAIL;
+
+   /* read repositories */
+   memset(s,  0, LINE_MAX);
+   while ((ret = fgets(s, LINE_MAX, f)))
+   {
+      r = repo;
+      for (; r; r = r->next) {
+         if (!r->url) continue;
+         snprintf(s2, LINE_MAX-1, "[%s]", r->url);
+         if (!(memcmp(s, s2, strlen(s2)))) {
+            if (c) _pndman_sync_process(c,data);
+            c = r;
+            memset(data, 0, MAX_REQUEST);
+            memset(s, 0, LINE_MAX);
+         }
+      }
+      if (c && strlen(s)) strncat(data, s, MAX_REQUEST-1);
+   }
+   if (c) _pndman_sync_process(c,data);
+
+   fclose(f);
    return RETURN_OK;
 }
 
@@ -165,7 +226,7 @@ int _pndman_sync_perform(int *still_running)
       if (msg->msg == CURLMSG_DONE)
       {
          /* done */
-         _pndman_sync_process(request);
+         _pndman_sync_process(request->repo, request->request.result.data);
       }
    }
 #endif
@@ -236,6 +297,13 @@ int _pndman_query_repository_from_json(pndman_repository *repo)
 
    // printf("%d : %p\n", still_running, _pndman_internal_request);
    return still_running;
+}
+
+int pndman_commit_database(pndman_repository *repo)
+{
+   DEBUG("pndman_commit_database");
+   if (!repo) return RETURN_FAIL;
+   return _pndman_commit_database(repo);
 }
 
 /* vim: set ts=8 sw=3 tw=0 :*/

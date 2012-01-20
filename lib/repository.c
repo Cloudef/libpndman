@@ -158,8 +158,7 @@ static int _pndman_repository_free_all(pndman_repository *repo)
 static int _pndman_repository_sync(pndman_repository *repo, pndman_device *device)
 {
    /* check against local */
-   if (device)
-      _pndman_query_repository_from_devices(repo, device);
+   if (device) _pndman_query_repository_from_devices(repo, device);
 
    /* check against remote */
    return _pndman_query_repository_from_json(repo);

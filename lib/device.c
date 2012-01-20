@@ -367,12 +367,6 @@ static int _pndman_device_detect(pndman_device *device)
    return ret;
 }
 
-/* \brief check if repository exists @ device's local database, if so query the information from there */
-int _pndman_query_repository_from_devices(pndman_repository *repo, pndman_device *device)
-{
-   return RETURN_OK;
-}
-
 /* API */
 
 /* \brief Initialize device list, call this only once after declaring pndman_device */
