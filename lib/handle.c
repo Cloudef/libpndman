@@ -169,10 +169,8 @@ int pndman_download(int *still_running)
 
    /* get file descriptors from the transfers */
    curl_multi_fdset(_pndman_curlm, &fdread, &fdwrite, &fdexcep, &maxfd);
-
-   /* check that everything is still okay */
-   if (select(maxfd+1, &fdread, &fdwrite, &fdexcep, &timeout) == -1)
-      return RETURN_FAIL;
+   if (maxfd < -1) return RETURN_FAIL;
+   select(maxfd+1, &fdread, &fdwrite, &fdexcep, &timeout);
 
    /* update status of curl handles */
    while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left)))
