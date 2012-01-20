@@ -37,8 +37,8 @@ int main()
    }
    puts("");
 
-   /* commit */
-   pndman_commit_database(&repository);
+   /* commit, needs devices! */
+   // pndman_commit_database(&repository, NULL);
 
    /* free everything */
    pndman_repository_free_all(&repository);

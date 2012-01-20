@@ -101,7 +101,10 @@ static int _pndman_sync_process(pndman_repository *repo, char *data)
 
    root = json_loads(data, 0, &error);
    if (!root)
-   { puts("WARN: bad json data"); return RETURN_FAIL; }
+   {
+      printf("WARN: Bad json data, won't process sync for: %s\n", repo->url);
+      return RETURN_FAIL;
+   }
 
    repo_header = json_object_get(root, "repository");
    if (repo_header)
@@ -117,10 +120,12 @@ static int _pndman_sync_process(pndman_repository *repo, char *data)
 }
 
 /* \brief write json data to local database */
-static int _pndman_commit_database(pndman_repository *repo)
+static int _pndman_commit_database(pndman_repository *repo, pndman_device *device)
 {
    FILE *f;
    pndman_repository *r;
+
+   if (!device) return RETURN_FAIL;
    f = fopen("/tmp/repo.db", "w");
    if (!f) return RETURN_FAIL;
 
@@ -150,6 +155,7 @@ int _pndman_query_repository_from_devices(pndman_repository *repo, pndman_device
    char     *ret;
    pndman_repository *r, *c = NULL;
 
+   if (!device) return RETURN_FAIL;
    f = fopen("/tmp/repo.db", "r");
    if (!f) return RETURN_FAIL;
 
@@ -273,7 +279,7 @@ int _pndman_query_repository_from_json(pndman_repository *repo)
       {
          r2 = _pndman_new_sync_request(_pndman_internal_request, r);
          if (!_pndman_internal_request && r2) _pndman_internal_request = r2;
-         else if (!r2)                        break;
+         else if (!r2) break;
       }
 
       /* failed to create even one request */
@@ -297,11 +303,11 @@ int _pndman_query_repository_from_json(pndman_repository *repo)
    return still_running;
 }
 
-int pndman_commit_database(pndman_repository *repo)
+int pndman_commit_database(pndman_repository *repo, pndman_repository *device)
 {
    DEBUG("pndman_commit_database");
-   if (!repo) return RETURN_FAIL;
-   return _pndman_commit_database(repo);
+   if (!repo || !device) return RETURN_FAIL;
+   return _pndman_commit_database(repo, device);
 }
 
 /* vim: set ts=8 sw=3 tw=0 :*/
