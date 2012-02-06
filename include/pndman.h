@@ -179,7 +179,7 @@ typedef struct pndman_repository
    const char name[REPO_NAME];
    const char updates[REPO_URL];
    const float version;
-   const pndman_package *pnd;
+   pndman_package *pnd;
 
    struct pndman_repository *next, *prev;
 } pndman_repository;
