@@ -22,6 +22,9 @@ typedef struct pndman_repository
 pndman_repository* _pndman_repository_first(pndman_repository *repo);
 pndman_repository* _pndman_repository_last(pndman_repository *repo);
 
+pndman_package* _pndman_repository_new_pnd(pndman_repository *repo);
+int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *r);
+
 #endif /* PNDMAN_REPOSITORY_H */
 
 /* vim: set ts=8 sw=3 tw=0 :*/

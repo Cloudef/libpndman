@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
+#include <assert.h>
 
 #include "pndman.h"
 #include "package.h"
@@ -28,6 +29,47 @@ inline pndman_repository* _pndman_repository_last(pndman_repository *repo)
    for(; repo->next; repo = repo->next);
    return repo;
 }
+
+/* \brief add new pnd to repository */
+pndman_package* _pndman_repository_new_pnd(pndman_repository *repo)
+{
+   pndman_package *p;
+   assert(repo);
+
+   if (repo->pnd) {
+         for (p = repo->pnd; p->next; p = p->next);
+         p = p->next = _pndman_new_pnd();
+   } else repo->pnd = p = _pndman_new_pnd();
+
+   return p;
+}
+
+/* \brief free pnd from repository */
+int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *repo)
+{
+   pndman_package *p;
+   assert(repo);
+   assert(pnd);
+
+   for (p = repo->pnd; p; p = p->next)
+      if (p->next == pnd) {
+         if (p->next->next) p->next = p->next->next;
+         else               p->next = NULL;
+         free(pnd);
+         return RETURN_OK;
+      }
+   return RETURN_FAIL;
+}
+
+/* \brief free all pnds from repository */
+int _pndman_repository_free_pnd_all(pndman_repository *repo)
+{
+   pndman_package *p, *n;
+   for (p = repo->pnd; p; p = n)
+   { n = p->next; _pndman_free_pnd(p); }
+   return RETURN_OK;
+}
+
 
 /* \brief Allocate next repo */
 static int _pndman_repository_new(pndman_repository **repo)
@@ -88,6 +130,7 @@ static int _pndman_repository_add(char *url, pndman_repository *repo)
 /* \brief Free one repo */
 static int _pndman_repository_free(pndman_repository *repo)
 {
+   pndman_package    *p, *n;
    pndman_repository *deleted;
 
    if (!repo)
@@ -103,6 +146,7 @@ static int _pndman_repository_free(pndman_repository *repo)
       if (repo->next)
          repo->next->prev = repo->prev;
 
+      _pndman_repository_free_pnd_all(repo);
       free(repo);
    }
    else
@@ -117,12 +161,13 @@ static int _pndman_repository_free(pndman_repository *repo)
          repo->exist    = repo->next->exist;
          repo->pnd      = repo->next->pnd;
 
-         deleted = repo->next;
-         repo->next         = deleted->next;
+         deleted     = repo->next;
+         repo->next  = deleted->next;
 
          if (repo->next)
-            repo->next->prev   = repo;
+            repo->next->prev = repo;
 
+         _pndman_repository_free_pnd_all(deleted);
          free(deleted);
       }
       else
@@ -147,8 +192,10 @@ static int _pndman_repository_free_all(pndman_repository *repo)
    for(; repo->prev; repo = prev)
    {
       prev = repo->prev;
+      _pndman_repository_free_pnd_all(repo);
       free(repo);
    }
+   _pndman_repository_free_pnd_all(repo);
    pndman_repository_init(repo);
 
    return RETURN_OK;
