@@ -75,7 +75,7 @@ static void _pndman_free_sync_request(_pndman_sync_request *object)
    free(object);
 }
 
-/* \brief json parse repo header */
+/* \brief json parse repository header */
 static int _pndman_json_repo_header(json_t *repo_header, pndman_repository *repo)
 {
    json_t *element;
@@ -93,10 +93,32 @@ static int _pndman_json_repo_header(json_t *repo_header, pndman_repository *repo
    return RETURN_OK;
 }
 
+/* \brief json parse repository packages */
+static int _pndman_json_repo_packages(json_t *packages, pndman_repository *repo)
+{
+   json_t         *package;
+   pndman_package *pnd;
+   unsigned int p;
+
+   p = 0;
+   for (; p != json_array_size(packages); ++p)
+   {
+      package = json_array_get(packages, p);
+      if (!json_is_object(package)) return RETURN_FAIL;
+
+      /* INFO READ HERE */
+      pnd = _pndman_repository_new_pnd(repo);
+      if (!pnd) return RETURN_FAIL;
+      strcpy(pnd->id, json_string_value(json_object_get(package,"id")));
+   }
+   return RETURN_OK;
+}
+
 /* \brief process retivied json data */
 static int _pndman_sync_process(pndman_repository *repo, char *data)
 {
-   json_t *root, *repo_header;
+   pndman_package *pnd;
+   json_t *root, *repo_header, *packages;
    json_error_t error;
 
    root = json_loads(data, 0, &error);
@@ -107,13 +129,16 @@ static int _pndman_sync_process(pndman_repository *repo, char *data)
    }
 
    repo_header = json_object_get(root, "repository");
-   if (repo_header)
+   if (json_is_object(repo_header))
    {
-      if (_pndman_json_repo_header(repo_header, repo))
+      if (_pndman_json_repo_header(repo_header, repo) == RETURN_OK)
       {
-         /* read packages */
+         packages = json_object_get(root, "packages");
+         if (json_is_array(packages))
+            _pndman_json_repo_packages(packages, repo);
+         else printf("WARN: No packages array for: %s\n", repo->url);
       }
-   }
+   } else printf("WARN: Bad repo header for: %s\n", repo->url);
 
    json_decref(root);
    return RETURN_OK;
@@ -124,9 +149,14 @@ static int _pndman_commit_database(pndman_repository *repo, pndman_device *devic
 {
    FILE *f;
    pndman_repository *r;
+   pndman_package    *p;
+   char db_path[PATH_MAX];
 
    if (!device) return RETURN_FAIL;
-   f = fopen("/tmp/repo.db", "w");
+   strncpy(db_path, device->mount, PATH_MAX-1);
+   strncat(db_path, "/repo.db", PATH_MAX-1);
+   printf("-!- writing to %s\n", db_path);
+   f = fopen(db_path, "w");
    if (!f) return RETURN_FAIL;
 
    /* write repositories */
@@ -138,6 +168,12 @@ static int _pndman_commit_database(pndman_repository *repo, pndman_device *devic
       fprintf(f, "\"repository\":{\"name\":\"%s\",\"version\":%.2f,\"updates\":\"%s\"},",
               r->name, r->version, r->updates);
       fprintf(f, "\"packages\":["); /* packages */
+      for (p = r->pnd; p; p = p->next) {
+         fprintf(f, "{");
+         fprintf(f, "\"id\":\"%s\"", p->id);
+         fprintf(f, "}");
+         if (p->next) fprintf(f, ",");
+      }
       fprintf(f, "]}\n"); /* end */
    }
 
@@ -303,7 +339,7 @@ int _pndman_query_repository_from_json(pndman_repository *repo)
    return still_running;
 }
 
-int pndman_commit_database(pndman_repository *repo, pndman_repository *device)
+int pndman_commit_database(pndman_repository *repo, pndman_device *device)
 {
    DEBUG("pndman_commit_database");
    if (!repo || !device) return RETURN_FAIL;
