@@ -1,10 +1,13 @@
+#include <time.h>
+
 #ifndef PNDMAN_REPOSITORY_H
 #define PNDMAN_REPOSITORY_H
 
 #define LOCAL_DB_NAME "libpndman repository"
 
-#define REPO_URL  LINE_MAX
-#define REPO_NAME 24
+#define REPO_URL        LINE_MAX
+#define REPO_NAME       24
+#define REPO_TIMESTAMP  48
 
 /* \brief pndman_repository struct */
 typedef struct pndman_repository
@@ -12,6 +15,8 @@ typedef struct pndman_repository
    char url[REPO_URL];
    char name[REPO_NAME];
    char updates[REPO_URL];
+   time_t timestamp;
+
    float version;
 
    pndman_package *pnd;

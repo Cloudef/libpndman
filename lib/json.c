@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #include <malloc.h>
 #include <assert.h>
 #include <curl/curl.h>
@@ -23,24 +24,42 @@ typedef struct _pndman_sync_request
 static CURLM *_pndman_curlm = NULL;
 static _pndman_sync_request *_pndman_internal_request = NULL;
 
+/* \brief replace substring, precondition: s!=0, old!=0, new!=0 */
+static char *str_replace(const char *s, const char *old, const char *new)
+{
+   size_t slen = strlen(s)+1;
+   char *cout=0, *p=0, *tmp=NULL; cout=malloc(slen); p=cout;
+   if( !p ) return 0;
+   while( *s )
+      if(!strncmp(s, old, strlen(old))) {
+         p  -= (intptr_t)cout;
+         cout= realloc(cout, slen += strlen(new)-strlen(old) );
+         tmp = strcpy(p=cout+(intptr_t)p, new);
+         p  += strlen(tmp);
+         s  += strlen(old);
+      } else *p++=*s++;
+   *p=0;
+   return cout;
+}
+
 /* \brief allocate internal sync request */
 static _pndman_sync_request* _pndman_new_sync_request(_pndman_sync_request *first, pndman_repository *repo)
 {
    _pndman_sync_request *object;
    _pndman_sync_request *r = first;
-   for(; first && r->next; r = r->next);
+   char *url = NULL;
+   char timestamp[REPO_TIMESTAMP];
 
+   for(; first && r->next; r = r->next);
    object = malloc(sizeof(_pndman_sync_request));
-   if (!object)
-      return NULL;
+   if (!object) return NULL;
 
    object->repo = repo;
    object->next = NULL;
 
    /* reset curl */
    object->request.curl = curl_easy_init();
-   if (!object->request.curl)
-   {
+   if (!object->request.curl) {
       free(object);
       return NULL;
    }
@@ -48,11 +67,17 @@ static _pndman_sync_request* _pndman_new_sync_request(_pndman_sync_request *firs
    object->request.result.pos = 0;
    memset(object->request.result.data, 0, MAX_REQUEST-1);
 
-   printf("ADD: %s\n", repo->url);
+   if (strlen(repo->updates) && repo->timestamp) {
+      snprintf(timestamp, REPO_TIMESTAMP-1, "%lu", repo->timestamp);
+      url = str_replace(repo->updates, "%time%", timestamp);
+   } else url = strdup(repo->url);
+   if (!url) return NULL;
+
+   printf("ADD: %s\n", url);
    printf("PRI: %p\n", object);
 
    /* set download URL */
-   curl_easy_setopt(object->request.curl, CURLOPT_URL,     repo->url);
+   curl_easy_setopt(object->request.curl, CURLOPT_URL, url);
    curl_easy_setopt(object->request.curl, CURLOPT_PRIVATE, object);
    curl_easy_setopt(object->request.curl, CURLOPT_WRITEFUNCTION, curl_write_request);
    curl_easy_setopt(object->request.curl, CURLOPT_CONNECTTIMEOUT, 5L );
@@ -63,6 +88,7 @@ static _pndman_sync_request* _pndman_new_sync_request(_pndman_sync_request *firs
    /* add to multi interface */
    curl_multi_add_handle(_pndman_curlm, object->request.curl);
 
+   free(url);
    return object;
 }
 
@@ -156,6 +182,8 @@ static int _pndman_commit(pndman_repository *r, FILE *f)
       if (p->next) fprintf(f, ",");
    }
    fprintf(f, "]}\n"); /* end */
+
+   return RETURN_OK;
 }
 
 /* \brief write json data to local database */
@@ -232,7 +260,7 @@ static int _pndman_query_local_from_devices(pndman_repository *repo, pndman_devi
    if (!f) return RETURN_FAIL;
 
    /* read local database */
-   memset(s, 0, LINE_MAX);
+   memset(s, 0, LINE_MAX); memset(data, 0, MAX_REQUEST);
    while ((ret = fgets(s, LINE_MAX, f))) strncat(data, s, LINE_MAX-1);
    _pndman_sync_process(repo, data);
 
@@ -253,8 +281,6 @@ int _pndman_query_repository_from_devices(pndman_repository *repo, pndman_device
 
    if (_pndman_curlm)               return RETURN_OK;
    if (!device || !device->exist)   return RETURN_FAIL;
-   puts(device->mount);
-   puts(device->device);
 
    /* find local db and read it first */
    r = repo;

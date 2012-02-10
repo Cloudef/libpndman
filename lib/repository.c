@@ -212,6 +212,7 @@ int pndman_repository_init(pndman_repository *repo)
    memset(repo->updates,   0, REPO_URL);
    repo->version   = 0;
    repo->exist     = 1;
+   repo->timestamp = 0;
    repo->pnd  = NULL;
    repo->next = NULL;
    repo->prev = NULL;
