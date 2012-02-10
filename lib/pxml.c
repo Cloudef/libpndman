@@ -189,8 +189,7 @@ static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
 static void _pxml_pnd_package_tag(pndman_package *pnd, char **attrs)
 {
    int i = 0;
-   for (; attrs[i]; ++i)
-   {
+   for (; attrs[i]; ++i) {
       /* <package id= */
       if (!memcmp(attrs[i], PXML_ID_ATTR, strlen(PXML_ID_ATTR)))
          strncpy(pnd->id, attrs[++i], PND_ID-1);
@@ -201,8 +200,7 @@ static void _pxml_pnd_package_tag(pndman_package *pnd, char **attrs)
 static void _pxml_pnd_icon_tag(pndman_package *pnd, char **attrs)
 {
    int i = 0;
-   for (; attrs[i]; ++i)
-   {
+   for (; attrs[i]; ++i) {
       /* <icon src= */
       if (!memcmp(attrs[i], PXML_SRC_ATTR, strlen(PXML_SRC_ATTR)))
          strncpy(pnd->icon, attrs[++i], PND_PATH-1);
@@ -213,8 +211,7 @@ static void _pxml_pnd_icon_tag(pndman_package *pnd, char **attrs)
 static void _pxml_pnd_application_tag(pndman_application *app, char **attrs)
 {
    int i = 0;
-   for (; attrs[i]; ++i)
-   {
+   for (; attrs[i]; ++i) {
       /* <application id= */
       if (!memcmp(attrs[i], PXML_ID_ATTR, strlen(PXML_ID_ATTR)))
          strncpy(app->id, attrs[++i], PND_ID-1);
@@ -228,8 +225,7 @@ static void _pxml_pnd_application_tag(pndman_application *app, char **attrs)
 static void _pxml_pnd_application_icon_tag(pndman_application *app, char **attrs)
 {
    int i = 0;
-   for (; attrs[i]; ++i)
-   {
+   for (; attrs[i]; ++i) {
       /* <icon src= */
       if (!memcmp(attrs[i], PXML_SRC_ATTR, strlen(PXML_SRC_ATTR)))
          strncpy(app->icon, attrs[++i], PND_PATH-1);
@@ -240,8 +236,7 @@ static void _pxml_pnd_application_icon_tag(pndman_application *app, char **attrs
 static void _pxml_pnd_application_clockspeed_tag(pndman_application *app, char **attrs)
 {
    int i = 0;
-   for (; attrs[i]; ++i)
-   {
+   for (; attrs[i]; ++i) {
       /* <clockspeed frequency= */
       if (!memcmp(attrs[i], PXML_FREQUENCY_ATTR, strlen(PXML_FREQUENCY_ATTR)))
          strtol(attrs[++i], (char **) NULL, 10);
@@ -252,8 +247,7 @@ static void _pxml_pnd_application_clockspeed_tag(pndman_application *app, char *
 static void _pxml_pnd_exec_tag(pndman_exec *exec, char **attrs)
 {
    int i = 0;
-   for (; attrs[i]; ++i)
-   {
+   for (; attrs[i]; ++i) {
       /* <exec background= */
       if (!memcmp(attrs[i], PXML_BACKGROUND_ATTR, strlen(PXML_BACKGROUND_ATTR)))
       {
@@ -281,7 +275,6 @@ static void _pxml_pnd_exec_tag(pndman_exec *exec, char **attrs)
          else if (!_pxml_strcmp(attrs[i], PND_X11_STOP))    exec->x11 = PND_EXEC_STOP;
          else if (!_pxml_strcmp(attrs[i], PND_X11_IGNORE))  exec->x11 = PND_EXEC_IGNORE;
       }
-
    }
 }
 
@@ -289,8 +282,7 @@ static void _pxml_pnd_exec_tag(pndman_exec *exec, char **attrs)
 static void _pxml_pnd_info_tag(pndman_info *info, char **attrs)
 {
    int i = 0;
-   for (; attrs[i]; ++i)
-   {
+   for (; attrs[i]; ++i) {
       /* <info name= */
       if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
          strncpy(info->name, attrs[++i], PND_NAME-1);
@@ -307,8 +299,7 @@ static void _pxml_pnd_info_tag(pndman_info *info, char **attrs)
 static void _pxml_pnd_license_tag(pndman_license *lic, char **attrs)
 {
    int i = 0;
-   for (; attrs[i]; ++i)
-   {
+   for (; attrs[i]; ++i) {
       /* <license name= */
       if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
          strncpy(lic->name, attrs[++i], PND_SHRT_STR-1);
@@ -325,8 +316,7 @@ static void _pxml_pnd_license_tag(pndman_license *lic, char **attrs)
 static void _pxml_pnd_pic_tag(pndman_previewpic *pic, char **attrs)
 {
    int i = 0;
-   for (; attrs[i]; ++i)
-   {
+   for (; attrs[i]; ++i) {
       /* <pic src= */
       if (!memcmp(attrs[i], PXML_SRC_ATTR, strlen(PXML_SRC_ATTR)))
          strncpy(pic->src, attrs[++i], PND_PATH-1);
@@ -337,8 +327,7 @@ static void _pxml_pnd_pic_tag(pndman_previewpic *pic, char **attrs)
 static void _pxml_pnd_category_tag(pndman_category *cat, char **attrs)
 {
    int i = 0;
-   for (; attrs[i]; ++i)
-   {
+   for (; attrs[i]; ++i) {
       /* <category name= */
       if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
          strncpy(cat->main, attrs[++i], PND_SHRT_STR-1);
@@ -349,8 +338,7 @@ static void _pxml_pnd_category_tag(pndman_category *cat, char **attrs)
 static void _pxml_pnd_subcategory_tag(pndman_category *cat, char **attrs)
 {
    int i = 0;
-   for (; attrs[i]; ++i)
-   {
+   for (; attrs[i]; ++i) {
       /* <subcategory name= */
       if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
          strncpy(cat->sub, attrs[++i], PND_SHRT_STR-1);
@@ -361,8 +349,7 @@ static void _pxml_pnd_subcategory_tag(pndman_category *cat, char **attrs)
 static void _pxml_pnd_association_tag(pndman_association *assoc, char **attrs)
 {
    int i = 0;
-   for (; attrs[i]; ++i)
-   {
+   for (; attrs[i]; ++i) {
       /* <association name= */
       if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
          strncpy(assoc->name, attrs[++i], PND_STR-1);
@@ -379,8 +366,7 @@ static void _pxml_pnd_association_tag(pndman_association *assoc, char **attrs)
 static void _pxml_pnd_translated_tag(pndman_translated *title, char **attrs)
 {
    int i = 0;
-   for (; attrs[i]; ++i)
-   {
+   for (; attrs[i]; ++i) {
       /* <title/description lang= */
       if (!memcmp(attrs[i], PXML_LANG_ATTR, strlen(PXML_LANG_ATTR)))
          strncpy(title->lang, attrs[++i], PND_SHRT_STR-1);
@@ -391,8 +377,7 @@ static void _pxml_pnd_translated_tag(pndman_translated *title, char **attrs)
 static void _pxml_pnd_author_tag(pndman_author *author, char **attrs)
 {
    int i = 0;
-   for(; attrs[i]; ++i)
-   {
+   for(; attrs[i]; ++i) {
       /* <author name= */
       if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
          strncpy(author->name, attrs[++i], PND_NAME-1);
@@ -405,8 +390,7 @@ static void _pxml_pnd_author_tag(pndman_author *author, char **attrs)
 static void _pxml_pnd_version_tag(pndman_version *ver, char **attrs)
 {
    int i = 0;
-   for (; attrs[i]; ++i)
-   {
+   for (; attrs[i]; ++i) {
       /* <osversion/version major= */
       if (!memcmp(attrs[i], PXML_MAJOR_ATTR, strlen(PXML_MAJOR_ATTR)))
          strncpy(ver->major, attrs[++i], PND_VER-1);
@@ -446,8 +430,7 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
    //printf("Found start : %s [%s, %s]\n", tag, attrs[0], attrs[1]);
 
    /* check parse state, so we don't parse wrong stuff */
-   switch (*parse_state)
-   {
+   switch (*parse_state) {
       /* parse all outer elements */
       case PXML_PARSE_DEFAULT:
          /* <package */
@@ -678,9 +661,7 @@ static void _pxml_pnd_data(void *data, char *text, int len)
    // pndman_application *app          = ((pxml_parse*)data)->app;
    char                  *ptr          = ((pxml_parse*)data)->data;
 
-   if (!ptr)
-      return;
-
+   if (!ptr) return;
    if (len < PND_STR) memcpy(ptr, text, len);
    ((pxml_parse*)data)->data = NULL;
 }
@@ -828,13 +809,10 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
       strcpy(pnd->version.build, pnd->app->version.build);
 
    /* titles */
-   if (!pnd->title && pnd->app->title)
-   {
+   if (!pnd->title && pnd->app->title) {
       t = pnd->app->title;
-      for (; t; t = t->next)
-      {
-         if ((tc = _pndman_package_new_title(pnd)))
-         {
+      for (; t; t = t->next) {
+         if ((tc = _pndman_package_new_title(pnd))) {
             strcpy(tc->lang, t->lang);
             strcpy(tc->string, t->string);
          }
@@ -842,13 +820,10 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
    }
 
    /* descriptions */
-   if (!pnd->description && pnd->app->description)
-   {
+   if (!pnd->description && pnd->app->description) {
       t = pnd->app->description;
-      for (; t; t = t->next)
-      {
-         if ((tc = _pndman_package_new_description(pnd)))
-         {
+      for (; t; t = t->next) {
+         if ((tc = _pndman_package_new_description(pnd))) {
             strcpy(tc->lang, t->lang);
             strcpy(tc->string, t->string);
          }
@@ -894,8 +869,7 @@ int pnd_do_something(char *pnd_file)
 
    puts("");
    printf("ID:       %s\n", test->id);
-   if (!strlen(test->id))
-   {
+   if (!strlen(test->id)) {
       puts("Your code sucks, fix it!");
       exit(0);
    }
@@ -919,8 +893,7 @@ int pnd_do_something(char *pnd_file)
          test->version.release, test->version.build, type);
 
    app = test->app;
-   for (; app; app = app->next)
-   {
+   for (; app; app = app->next) {
       if (app->exec.x11 == PND_EXEC_REQ)          x11 = PND_X11_REQ;
       else if (app->exec.x11 == PND_EXEC_STOP)    x11 = PND_X11_STOP;
       else if (app->exec.x11 == PND_EXEC_IGNORE)  x11 = PND_X11_IGNORE;
@@ -984,10 +957,8 @@ int pnd_do_something(char *pnd_file)
       p = app->previewpic;
       for (; p; p = p->next)
          printf("  %s\n", p->src);
-
    }
    puts("");
-
    _pndman_free_pnd(test);
 
    return RETURN_OK;

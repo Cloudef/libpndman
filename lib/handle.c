@@ -32,9 +32,7 @@ static CURLM *_pndman_curlm;
 /* \brief Internal allocation of curl multi handle with checks */
 static int _pndman_curl_init(void)
 {
-   if (_pndman_curlm)
-      return RETURN_OK;
-
+   if (_pndman_curlm) return RETURN_OK;
    if (!(_pndman_curlm = curl_multi_init()))
       return RETURN_FAIL;
 
@@ -44,9 +42,7 @@ static int _pndman_curl_init(void)
 /* \brief Internal free of curl multi handle with checks */
 static int _pndman_curl_free(void)
 {
-   if (!_pndman_curlm)
-      return RETURN_OK;
-
+   if (!_pndman_curlm) return RETURN_OK;
    curl_multi_cleanup(_pndman_curlm);
    _pndman_curlm = NULL;
    return RETURN_OK;
@@ -56,10 +52,7 @@ static int _pndman_curl_free(void)
 int pndman_handle_init(char *name, pndman_handle *handle)
 {
    DEBUG("pndman_handle_init");
-
-   if (!handle)
-      return RETURN_FAIL;
-
+   if (!handle) return RETURN_FAIL;
    if (_pndman_curl_init() != RETURN_OK)
       return RETURN_FAIL;
 
@@ -76,12 +69,8 @@ int pndman_handle_init(char *name, pndman_handle *handle)
 int pndman_handle_free(pndman_handle *handle)
 {
    DEBUG("pndman_handle_free");
-
-   if (!handle)
-      return RETURN_FAIL;
-
-   if (!handle->curl)
-      return RETURN_FAIL;
+   if (!handle)         return RETURN_FAIL;
+   if (!handle->curl)   return RETURN_FAIL;
 
    /* free curl handle */
    if (_pndman_curlm) curl_multi_remove_handle(_pndman_curlm, handle->curl);
@@ -89,7 +78,6 @@ int pndman_handle_free(pndman_handle *handle)
    if (handle->file)  fclose(handle->file);
 
    handle->curl = NULL;
-
    return RETURN_OK;
 }
 
@@ -97,23 +85,17 @@ int pndman_handle_free(pndman_handle *handle)
 int pndman_handle_perform(pndman_handle *handle)
 {
    DEBUG("pndman_handle_perform");
-
-   if (!handle)
-      return RETURN_FAIL;
+   if (!handle) return RETURN_FAIL;
 
    /* open file to write */
    handle->file = fopen("pndman_temp", "wb");
-   if (!handle->file)
-      return RETURN_FAIL;
+   if (!handle->file) return RETURN_FAIL;
 
    /* reset curl */
-   if (handle->curl)
-      curl_easy_reset(handle->curl);
-   else
-      handle->curl = curl_easy_init();
+   if (handle->curl) curl_easy_reset(handle->curl);
+   else handle->curl = curl_easy_init();
 
-   if (!handle->curl)
-   {
+   if (!handle->curl) {
       fclose(handle->file);
       return RETURN_FAIL;
    }
@@ -173,19 +155,15 @@ int pndman_download(int *still_running)
    select(maxfd+1, &fdread, &fdwrite, &fdexcep, &timeout);
 
    /* update status of curl handles */
-   while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left)))
-   {
+   while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left))) {
       curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &handle);
-      if (msg->msg == CURLMSG_DONE)
-      {
+      if (msg->msg == CURLMSG_DONE) {
          handle->done = 1;
       }
    }
 
    /* it's okay to get rid of this */
-   if (!*still_running)
-      _pndman_curl_free();
-
+   if (!*still_running) _pndman_curl_free();
    return RETURN_OK;
 }
 

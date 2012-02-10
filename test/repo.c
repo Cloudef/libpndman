@@ -49,10 +49,10 @@ int main()
       printf("   URL: %s\n", r->url);
       printf("   VER: %f\n", r->version);
       puts("");
-      pnd = r->pnd;
+      /*pnd = r->pnd;
       for (; pnd; pnd = pnd->next) {
          puts(pnd->id);
-      }
+      }*/
    }
    puts("");
 

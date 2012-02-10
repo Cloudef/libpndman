@@ -231,8 +231,7 @@ static pndman_translated* _pndman_translated_new(void)
    pndman_translated *t;
 
    t = malloc(sizeof(pndman_translated));
-   if (!t)
-      return NULL;
+   if (!t) return NULL;
 
    /* init */
    memset(t->lang,   0, PND_SHRT_STR);
@@ -248,8 +247,7 @@ static pndman_license* _pndman_license_new(void)
    pndman_license *l;
 
    l = malloc(sizeof(pndman_license));
-   if (!l)
-      return NULL;
+   if (!l) return NULL;
 
    /* init */
    memset(l->name,            0, PND_SHRT_STR);
@@ -266,8 +264,7 @@ static pndman_previewpic* _pndman_previewpic_new(void)
    pndman_previewpic *p;
 
    p = malloc(sizeof(pndman_previewpic));
-   if (!p)
-      return NULL;
+   if (!p) return NULL;
 
    /* init */
    memset(p->src,   0, PND_PATH);
@@ -282,8 +279,7 @@ static pndman_association* _pndman_association_new(void)
    pndman_association *a;
 
    a = malloc(sizeof(pndman_association));
-   if (!a)
-      return NULL;
+   if (!a) return NULL;
 
    /* init */
    memset(a->name,            0, PND_STR);
@@ -300,8 +296,7 @@ static pndman_category* _pndman_category_new(void)
    pndman_category *c;
 
    c = malloc(sizeof(pndman_category));
-   if (!c)
-      return NULL;
+   if (!c) return NULL;
 
    /* init */
    memset(c->main,   0, PND_SHRT_STR);
@@ -321,8 +316,7 @@ pndman_translated* _pndman_package_new_title(pndman_package *pnd)
 
    /* how to allocate? */
    if (!pnd->title) t = pnd->title = _pndman_translated_new();
-   else
-   {
+   else {
       /* find last */
       t = pnd->title;
       for (; t->next; t = t->next);
@@ -343,8 +337,7 @@ pndman_translated* _pndman_package_new_description(pndman_package *pnd)
 
    /* how to allocate? */
    if (!pnd->description) t = pnd->description = _pndman_translated_new();
-   else
-   {
+   else {
       /* find last */
       t = pnd->description;
       for (; t->next; t = t->next);
@@ -365,8 +358,7 @@ pndman_application* _pndman_package_new_application(pndman_package *pnd)
 
    /* how to allocate? */
    if (!pnd->app) app = pnd->app = _pndman_new_application();
-   else
-   {
+   else {
       /* find last */
       app = pnd->app;
       for (; app->next; app = app->next);
@@ -387,8 +379,7 @@ pndman_translated* _pndman_application_new_title(pndman_application *app)
 
    /* how to allocate? */
    if (!app->title) t = app->title = _pndman_translated_new();
-   else
-   {
+   else {
       /* find last */
       t = app->title;
       for (; t->next; t = t->next);
@@ -409,8 +400,7 @@ pndman_translated* _pndman_application_new_description(pndman_application *app)
 
    /* how to allocate? */
    if (!app->description) t = app->description = _pndman_translated_new();
-   else
-   {
+   else {
       /* find last */
       t = app->description;
       for (; t->next; t = t->next);
@@ -431,8 +421,7 @@ pndman_license* _pndman_application_new_license(pndman_application *app)
 
    /* how to allocate? */
    if (!app->license) l = app->license = _pndman_license_new();
-   else
-   {
+   else {
       /* find last */
       l = app->license;
       for (; l->next; l = l->next);
@@ -453,8 +442,7 @@ pndman_previewpic* _pndman_application_new_previewpic(pndman_application *app)
 
    /* how to allocate? */
    if (!app->previewpic) p = app->previewpic = _pndman_previewpic_new();
-   else
-   {
+   else {
       /* find last */
       p = app->previewpic;
       for (; p->next; p = p->next);
@@ -475,8 +463,7 @@ pndman_association* _pndman_application_new_association(pndman_application *app)
 
    /* how to allocate? */
    if (!app->association) a = app->association = _pndman_association_new();
-   else
-   {
+   else {
       /* find last */
       a = app->association;
       for (; a->next; a = a->next);
@@ -497,8 +484,7 @@ pndman_category* _pndman_application_new_category(pndman_application *app)
 
    /* how to allocate? */
    if (!app->category) c = app->category = _pndman_category_new();
-   else
-   {
+   else {
       /* find last */
       c = app->category;
       for (; c->next; c = c->next);

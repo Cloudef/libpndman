@@ -42,14 +42,12 @@ static int _pndman_device_new(pndman_device **device)
 {
    pndman_device *new;
 
-   if (!device)
-      return RETURN_FAIL;
+   if (!device) return RETURN_FAIL;
 
    /* find last device */
    *device = _pndman_device_last(*device);
    new = calloc(1, sizeof(pndman_device));
-   if (!new)
-      return RETURN_FAIL;
+   if (!new) return RETURN_FAIL;
 
    /* set defaults */
    pndman_device_init(new);
@@ -63,11 +61,10 @@ static int _pndman_device_new(pndman_device **device)
 static int _pndman_device_new_if_exist(pndman_device **device, char *check_existing)
 {
    pndman_device *d;
-   if (check_existing)
-   {
+
+   if (check_existing) {
       d = _pndman_device_first(*device);
-      for(; d && d->exist; d = d->next)
-      {
+      for(; d && d->exist; d = d->next) {
          DEBUGP("%s == %s\n", d->mount, check_existing);
          if (!strcmp(d->mount, check_existing))
             return RETURN_OK;
@@ -75,9 +72,7 @@ static int _pndman_device_new_if_exist(pndman_device **device, char *check_exist
    }
 
    *device = _pndman_device_last(*device);
-   if (!(*device)->exist)
-      return RETURN_OK;
-
+   if (!(*device)->exist) return RETURN_OK;
    return _pndman_device_new(device);
 }
 
@@ -86,12 +81,10 @@ static int _pndman_device_free(pndman_device *device)
 {
    pndman_device *deleted;
 
-   if (!device)
-      return RETURN_FAIL;
+   if (!device) return RETURN_FAIL;
 
    /* avoid freeing the first device */
-   if (device->prev)
-   {
+   if (device->prev) {
       /* set previous device point to the next device */
       device->prev->next    = device->next;
 
@@ -101,10 +94,8 @@ static int _pndman_device_free(pndman_device *device)
 
       free(device);
    }
-   else
-   {
-      if (device->next)
-      {
+   else {
+      if (device->next) {
          /* copy next to this and free the next */
          strcpy(device->device, device->next->device);
          strcpy(device->mount,  device->next->mount);
@@ -121,8 +112,7 @@ static int _pndman_device_free(pndman_device *device)
 
          free(deleted);
       }
-      else
-         pndman_device_init(device);
+      else pndman_device_init(device);
    }
 
    return RETURN_OK;
@@ -133,15 +123,13 @@ static int _pndman_device_free_all(pndman_device *device)
 {
    pndman_device *prev;
 
-   if (!device)
-      return RETURN_FAIL;
+   if (!device) return RETURN_FAIL;
 
    /* find the last device */
    device = _pndman_device_last(device);
 
    /* free everything */
-   for(; device->prev; device = prev)
-   {
+   for(; device->prev; device = prev) {
       prev = device->prev;
       free(device);
    }
@@ -157,11 +145,8 @@ static int _pndman_device_add_absolute(char *path, pndman_device *device)
    struct stat st;
    struct statvfs fs;
 
-   if (stat(path, &st) != 0)
-      return RETURN_FAIL;
-
-   if (!S_ISDIR(st.st_mode))
-   {
+   if (stat(path, &st) != 0) return RETURN_FAIL;
+   if (!S_ISDIR(st.st_mode)) {
       DEBUGP("%s: is not a directory\n", path);
       return RETURN_FAIL;
    }
@@ -202,15 +187,11 @@ static int _pndman_device_add(char *path, pndman_device *device)
    struct statfs fs;
    char strings[4096];
 
-   if (!path)
-      return RETURN_FAIL;
-
+   if (!path) return RETURN_FAIL;
    mtab = setmntent(LINUX_MTAB, "r");
    memset(strings, 0, 4096);
-   while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings))))
-   {
-      if (mnt.mnt_dir != NULL)
-      {
+   while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
+      if (mnt.mnt_dir != NULL) {
          if (strcmp(mnt.mnt_fsname, path) == 0 ||
              strcmp(mnt.mnt_dir,    path) == 0  )
              break;
@@ -288,10 +269,8 @@ static int _pndman_device_detect(pndman_device *device)
    ret = RETURN_OK;
    mtab = setmntent(LINUX_MTAB, "r");
    memset(strings, 0, 4096);
-   while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings))))
-   {
-      if ((mnt.mnt_dir != NULL) && (statfs(mnt.mnt_dir, &fs) == 0))
-      {
+   while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
+      if ((mnt.mnt_dir != NULL) && (statfs(mnt.mnt_dir, &fs) == 0)) {
          if(strstr(mnt.mnt_fsname, "/dev/")	        != 0 &&
             strcmp(mnt.mnt_dir, "/")		        != 0 &&
             strcmp(mnt.mnt_dir, "/home")		!= 0 &&
@@ -330,18 +309,16 @@ static int _pndman_device_detect(pndman_device *device)
       return RETURN_FAIL;
 
    ret = RETURN_OK; p = szTemp;
-   while (*p)
-   {
+   while (*p) {
       *szDrive = *p;
 
-      if (QueryDosDevice(szDrive, szName, PATH_MAX-1))
-      {
+      if (QueryDosDevice(szDrive, szName, PATH_MAX-1)) {
          /* check for read && write perms */
          if (access(szDrive, R_OK | W_OK) == -1)
          { while (*p++);  continue; }
 
          if (!GetDiskFreeSpaceEx(szDrive,
-             &bytes_available, &bytes_size, &bytes_free))
+            &bytes_available, &bytes_size, &bytes_free))
          { while (*p++); continue; }
 
          if ((ret = _pndman_device_new_if_exist(&device, szDrive)) != RETURN_OK)
@@ -373,9 +350,7 @@ static int _pndman_device_detect(pndman_device *device)
 int pndman_device_init(pndman_device *device)
 {
    DEBUG("pndman device init");
-
-   if (!device)
-      return RETURN_FAIL;
+   if (!device) return RETURN_FAIL;
 
    memset(device->device, 0, PATH_MAX);
    memset(device->mount,  0, PATH_MAX);
@@ -393,10 +368,7 @@ int pndman_device_init(pndman_device *device)
 int pndman_device_detect(pndman_device *device)
 {
    DEBUG("pndman device detect");
-
-   if (!device)
-      return RETURN_FAIL;
-
+   if (!device) return RETURN_FAIL;
    return _pndman_device_detect(device);
 }
 
@@ -404,10 +376,7 @@ int pndman_device_detect(pndman_device *device)
 int pndman_device_add(char *path, pndman_device *device)
 {
    DEBUG("pndman device add");
-
-   if (!device)
-      return RETURN_FAIL;
-
+   if (!device) return RETURN_FAIL;
    return _pndman_device_add(path, device);
 }
 
@@ -415,10 +384,7 @@ int pndman_device_add(char *path, pndman_device *device)
 int pndman_device_free(pndman_device *device)
 {
    DEBUG("pndman device free");
-
-   if (!device)
-      return RETURN_FAIL;
-
+   if (!device) return RETURN_FAIL;
    return _pndman_device_free(device);
 }
 
@@ -426,10 +392,7 @@ int pndman_device_free(pndman_device *device)
 int pndman_device_free_all(pndman_device *device)
 {
    DEBUG("pndman device free all");
-
-   if (!device)
-      return RETURN_FAIL;
-
+   if (!device) return RETURN_FAIL;
    return _pndman_device_free_all(device);
 }
 

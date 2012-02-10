@@ -75,19 +75,16 @@ int _pndman_repository_free_pnd_all(pndman_repository *repo)
 static int _pndman_repository_new(pndman_repository **repo)
 {
    pndman_repository *new;
-
-   if (!repo)
-      return RETURN_FAIL;
+   if (!repo) return RETURN_FAIL;
 
    /* find last repo */
    *repo = _pndman_repository_last(*repo);
    new = calloc(1, sizeof(pndman_repository));
-   if (!new)
-      return RETURN_FAIL;
+   if (!new) return RETURN_FAIL;
 
    /* set defaults */
    pndman_repository_init(new);
-   new->prev       = *repo;
+   new->prev     = *repo;
    (*repo)->next = new;
    *repo         = new;
    return RETURN_OK;
@@ -97,20 +94,16 @@ static int _pndman_repository_new(pndman_repository **repo)
 static int _pndman_repository_new_if_exist(pndman_repository **repo, char *check_existing)
 {
    pndman_repository *r;
-   if (check_existing)
-   {
+   if (check_existing) {
       r = _pndman_repository_first(*repo);
-      for(; r && r->exist; r = r->next)
-      {
+      for(; r && r->exist; r = r->next) {
          DEBUGP("%s == %s\n", r->url, check_existing);
-         if (!strcmp(r->url, check_existing))
-            return RETURN_OK;
+         if (!strcmp(r->url, check_existing)) return RETURN_FAIL;
       }
    }
 
    *repo = _pndman_repository_last(*repo);
-   if (!(*repo)->exist)
-      return RETURN_OK;
+   if (!(*repo)->exist) return RETURN_OK;
 
    return _pndman_repository_new(repo);
 }
@@ -133,12 +126,10 @@ static int _pndman_repository_free(pndman_repository *repo)
    pndman_package    *p, *n;
    pndman_repository *deleted;
 
-   if (!repo)
-      return RETURN_FAIL;
+   if (!repo) return RETURN_FAIL;
 
    /* avoid freeing the first repo */
-   if (repo->prev)
-   {
+   if (repo->prev) {
       /* set previous repo point to the next repo */
       repo->prev->next    = repo->next;
 
@@ -149,10 +140,8 @@ static int _pndman_repository_free(pndman_repository *repo)
       _pndman_repository_free_pnd_all(repo);
       free(repo);
    }
-   else
-   {
-      if (repo->next)
-      {
+   else {
+      if (repo->next) {
          /* copy next to this and free the next */
          strcpy(repo->url,     repo->next->url);
          strcpy(repo->name,    repo->next->name);
@@ -170,8 +159,7 @@ static int _pndman_repository_free(pndman_repository *repo)
          _pndman_repository_free_pnd_all(deleted);
          free(deleted);
       }
-      else
-         pndman_repository_init(repo);
+      else pndman_repository_init(repo);
    }
 
    return RETURN_OK;
@@ -182,15 +170,13 @@ static int _pndman_repository_free_all(pndman_repository *repo)
 {
    pndman_repository *prev;
 
-   if (!repo)
-      return RETURN_FAIL;
+   if (!repo) return RETURN_FAIL;
 
    /* find the last repo */
    repo = _pndman_repository_last(repo);
 
    /* free everything */
-   for(; repo->prev; repo = prev)
-   {
+   for(; repo->prev; repo = prev) {
       prev = repo->prev;
       _pndman_repository_free_pnd_all(repo);
       free(repo);
@@ -213,19 +199,19 @@ static int _pndman_repository_sync(pndman_repository *repo, pndman_device *devic
 
 /* API */
 
-/* \brief Initialize repo list, call this only once after declaring pndman_repository */
+/* \brief Initialize repo list, call this only once after declaring pndman_repository
+ * NOTE: first repository == local repository */
 int pndman_repository_init(pndman_repository *repo)
 {
    DEBUG("pndman repo init");
-
-   if (!repo)
-      return RETURN_FAIL;
+   if (!repo) return RETURN_FAIL;
 
    memset(repo->url,       0, REPO_URL);
-   memset(repo->name,      0, REPO_NAME);
+   /* memset(repo->name,      0, REPO_NAME); */
+   strcpy(repo->name, LOCAL_DB_NAME);
    memset(repo->updates,   0, REPO_URL);
    repo->version   = 0;
-   repo->exist     = 0;
+   repo->exist     = 1;
    repo->pnd  = NULL;
    repo->next = NULL;
    repo->prev = NULL;
@@ -237,10 +223,7 @@ int pndman_repository_init(pndman_repository *repo)
 int pndman_repository_add(char *url, pndman_repository *repo)
 {
    DEBUG("pndman repo add");
-
-   if (!repo)
-      return RETURN_FAIL;
-
+   if (!repo) return RETURN_FAIL;
    return _pndman_repository_add(url, repo);
 }
 
@@ -249,9 +232,7 @@ int pndman_repository_add(char *url, pndman_repository *repo)
  *  On -1 error. */
 int pndman_repository_sync(pndman_repository *repo, pndman_device *device)
 {
-   if (!repo)
-      return RETURN_FAIL;
-
+   if (!repo) return RETURN_FAIL;
    return _pndman_repository_sync(repo, device);
 }
 
@@ -259,10 +240,7 @@ int pndman_repository_sync(pndman_repository *repo, pndman_device *device)
 int pndman_repository_free(pndman_repository *repo)
 {
    DEBUG("pndman repo free");
-
-   if (!repo)
-      return RETURN_FAIL;
-
+   if (!repo) return RETURN_FAIL;
    return _pndman_repository_free(repo);
 }
 
@@ -270,10 +248,7 @@ int pndman_repository_free(pndman_repository *repo)
 int pndman_repository_free_all(pndman_repository *repo)
 {
    DEBUG("pndman repo free all");
-
-   if (!repo)
-      return RETURN_FAIL;
-
+   if (!repo) return RETURN_FAIL;
    return _pndman_repository_free_all(repo);
 }
 

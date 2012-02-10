@@ -1,6 +1,8 @@
 #ifndef PNDMAN_REPOSITORY_H
 #define PNDMAN_REPOSITORY_H
 
+#define LOCAL_DB_NAME "libpndman repository"
+
 #define REPO_URL  LINE_MAX
 #define REPO_NAME 24
 
