@@ -97,7 +97,7 @@ static int _pndman_repository_new_if_exist(pndman_repository **repo, char *check
    if (check_existing) {
       r = _pndman_repository_first(*repo);
       for(; r && r->exist; r = r->next) {
-         DEBUGP("%s == %s\n", r->url, check_existing);
+         // DEBUGP("%s == %s\n", r->url, check_existing);
          if (!strcmp(r->url, check_existing)) return RETURN_FAIL;
       }
    }

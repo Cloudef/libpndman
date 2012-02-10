@@ -140,15 +140,59 @@ static int _pndman_sync_process(pndman_repository *repo, char *data)
    return RETURN_OK;
 }
 
+/* \brief commit logic */
+static int _pndman_commit(pndman_repository *r, FILE *f)
+{
+   pndman_package *p;
+
+   fprintf(f, "{"); /* start */
+   fprintf(f, "\"repository\":{\"name\":\"%s\",\"version\":%.2f,\"updates\":\"%s\"},",
+         r->name, r->version, r->updates);
+   fprintf(f, "\"packages\":["); /* packages */
+   for (p = r->pnd; p; p = p->next) {
+      fprintf(f, "{");
+      fprintf(f, "\"id\":\"%s\"", p->id);
+      fprintf(f, "}");
+      if (p->next) fprintf(f, ",");
+   }
+   fprintf(f, "]}\n"); /* end */
+}
+
 /* \brief write json data to local database */
+static int _pndman_commit_local(pndman_repository *repo, pndman_device *device)
+{
+   FILE *f;
+   char db_path[PATH_MAX];
+
+   if (!device || !device->exist) return RETURN_FAIL;
+    strncpy(db_path, device->mount, PATH_MAX-1);
+   strncat(db_path, "/local.db", PATH_MAX-1);
+   printf("-!- writing to %s\n", db_path);
+   f = fopen(db_path, "w");
+   if (!f) return RETURN_FAIL;
+
+   /* write local db */
+   _pndman_commit(repo, f);
+
+   fclose(f);
+   return RETURN_OK;
+}
+
+/* \brief store repositories json data */
 static int _pndman_commit_database(pndman_repository *repo, pndman_device *device)
 {
    FILE *f;
    pndman_repository *r;
-   pndman_package    *p;
    char db_path[PATH_MAX];
 
-   if (!device) return RETURN_FAIL;
+   if (!device || !device->exist) return RETURN_FAIL;
+
+   /* find local db and read it first */
+   r = repo;
+   for (; r; r = r->next)
+      if (!strcmp(r->name, LOCAL_DB_NAME))
+      { _pndman_commit_local(r, device); break; }
+
    strncpy(db_path, device->mount, PATH_MAX-1);
    strncat(db_path, "/repo.db", PATH_MAX-1);
    printf("-!- writing to %s\n", db_path);
@@ -160,17 +204,7 @@ static int _pndman_commit_database(pndman_repository *repo, pndman_device *devic
    for (; r; r = r->next) {
       if (!strlen(r->url)) continue;
       fprintf(f, "[%s]\n", r->url);
-      fprintf(f, "{"); /* start */
-      fprintf(f, "\"repository\":{\"name\":\"%s\",\"version\":%.2f,\"updates\":\"%s\"},",
-              r->name, r->version, r->updates);
-      fprintf(f, "\"packages\":["); /* packages */
-      for (p = r->pnd; p; p = p->next) {
-         fprintf(f, "{");
-         fprintf(f, "\"id\":\"%s\"", p->id);
-         fprintf(f, "}");
-         if (p->next) fprintf(f, ",");
-      }
-      fprintf(f, "]}\n"); /* end */
+      _pndman_commit(r, f);
    }
 
    fclose(f);
@@ -187,8 +221,10 @@ static int _pndman_query_local_from_devices(pndman_repository *repo, pndman_devi
    char *ret;
 
    assert(repo);
-   if (_pndman_curlm) return RETURN_OK;
-   if (!device)       return RETURN_FAIL;
+   if (_pndman_curlm)               return RETURN_OK;
+   if (!device || !device->exist)   return RETURN_FAIL;
+
+   /* begin to read local database */
    strncpy(db_path, device->mount, PATH_MAX-1);
    strncat(db_path, "/local.db", PATH_MAX-1);
    printf("-!- local from %s\n", db_path);
@@ -215,8 +251,18 @@ int _pndman_query_repository_from_devices(pndman_repository *repo, pndman_device
    char *ret;
    pndman_repository *r, *c = NULL;
 
-   if (_pndman_curlm) return RETURN_OK;
-   if (!device)       return RETURN_FAIL;
+   if (_pndman_curlm)               return RETURN_OK;
+   if (!device || !device->exist)   return RETURN_FAIL;
+   puts(device->mount);
+   puts(device->device);
+
+   /* find local db and read it first */
+   r = repo;
+   for (; r; r = r->next)
+      if (!strcmp(r->name, LOCAL_DB_NAME))
+      { _pndman_query_local_from_devices(r, device); break; }
+
+   /* begin to read other repositories */
    strncpy(db_path, device->mount, PATH_MAX-1);
    strncat(db_path, "/repo.db", PATH_MAX-1);
    printf("-!- reading from %s\n", db_path);
@@ -228,10 +274,7 @@ int _pndman_query_repository_from_devices(pndman_repository *repo, pndman_device
    while ((ret = fgets(s, LINE_MAX, f))) {
       r = repo;
       for (; r; r = r->next) {
-         if (!strlen(r->url)) {
-            if (!strcmp(r->name, LOCAL_DB_NAME)) { _pndman_query_local_from_devices(r, device); continue; } /* local db */
-            else continue;
-         }
+         if (!strlen(r->url)) continue;
          snprintf(s2, LINE_MAX-1, "[%s]", r->url);
          if (!(memcmp(s, s2, strlen(s2)))) {
             if (c) _pndman_sync_process(c,data);
