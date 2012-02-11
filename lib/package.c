@@ -90,8 +90,12 @@ pndman_package* _pndman_new_pnd(void)
       return NULL;
 
    /* NULL */
-   memset(pnd->path, 0, PND_PATH);
-   memset(pnd->id,   0, PND_ID);
+   memset(pnd->path,    0, PND_PATH);
+   memset(pnd->id,      0, PND_ID);
+   memset(pnd->info,    0, PND_INFO);
+   memset(pnd->md5,     0, PND_MD5);
+   memset(pnd->url,     0, PND_STR);
+   memset(pnd->vendor,  0, PND_NAME);
 
    //memset(pnd->icon, 0, PND_PATH-1);
    strcpy(pnd->icon, PND_DEFAULT_ICON);
@@ -104,6 +108,9 @@ pndman_package* _pndman_new_pnd(void)
    pnd->description     = NULL;
    pnd->category        = NULL;
 
+   pnd->size            = 0;
+   pnd->modified_time   = 0;
+   pnd->rating          = 0;
    pnd->flags           = 0;
    pnd->next            = NULL;
    pnd->next_installed  = NULL;

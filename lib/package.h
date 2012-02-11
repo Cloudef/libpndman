@@ -1,3 +1,5 @@
+#include <time.h>
+
 #ifndef PNDMAN_PACKAGE_H
 #define PNDMAN_PACKAGE_H
 
@@ -8,6 +10,8 @@
 #define PND_VER      8
 #define PND_STR      256
 #define PND_SHRT_STR 24
+#define PND_MD5      32
+#define PND_INFO     1024
 #define PND_PATH     PATH_MAX
 
 #define PND_DEFAULT_ICON "icon.png"
@@ -149,6 +153,13 @@ typedef struct pndman_package
    char path[PND_PATH];
    char id[PND_ID];
    char icon[PND_PATH];
+   char info[PND_INFO];
+   char md5[PND_MD5];
+   char url[PND_STR];
+   char vendor[PND_NAME];
+   size_t size;
+   time_t modified_time;
+   int rating;
 
    pndman_author     author;
    pndman_version    version;

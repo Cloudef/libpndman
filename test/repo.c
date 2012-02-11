@@ -37,6 +37,12 @@ int main()
    pndman_repository_add(REPO_URL, &repository);
    pndman_repository_add(REPO_URL, &repository);
 
+   r = &repository;
+   for (; r; r = r->next)
+   {
+      printf("%s\n", r->name);
+   }
+
    /* sync repositories */
    while (pndman_repository_sync(&repository, &device) == 1);
 
@@ -49,10 +55,12 @@ int main()
       printf("   URL: %s\n", r->url);
       printf("   VER: %f\n", r->version);
       puts("");
-      /*pnd = r->pnd;
+      pnd = r->pnd;
       for (; pnd; pnd = pnd->next) {
-         puts(pnd->id);
-      }*/
+         printf("ID:    %s\n", pnd->id);
+         printf("ICON:  %s\n", pnd->icon);
+         printf("MD5:   %s\n", pnd->md5);
+      }
    }
    puts("");
 

@@ -16,7 +16,6 @@ typedef struct pndman_repository
    char name[REPO_NAME];
    char updates[REPO_URL];
    time_t timestamp;
-
    float version;
 
    pndman_package *pnd;

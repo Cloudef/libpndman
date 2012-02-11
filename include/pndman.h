@@ -21,6 +21,8 @@
 #define PND_VER      8
 #define PND_STR      256
 #define PND_SHRT_STR 24
+#define PND_MD5      32
+#define PND_INFO     1024
 #define PND_PATH     PATH_MAX
 #define REPO_URL     LINE_MAX
 #define REPO_NAME    24
@@ -153,6 +155,13 @@ typedef struct pndman_package
    const char path[PND_PATH];
    const char id[PND_ID];
    const char icon[PND_PATH];
+   char info[PND_INFO];
+   char md5[PND_MD5];
+   char url[PND_STR];
+   char vendor[PND_NAME];
+   size_t size;
+   time_t modified_time;
+   int rating;
 
    const pndman_author     author;
    const pndman_version    version;
@@ -178,9 +187,10 @@ typedef struct pndman_repository
    const char url[REPO_URL];
    const char name[REPO_NAME];
    const char updates[REPO_URL];
+   time_t timestamp;
    const float version;
-   pndman_package *pnd;
 
+   pndman_package *pnd;
    struct pndman_repository *next, *prev;
 } pndman_repository;
 

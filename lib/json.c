@@ -119,6 +119,13 @@ static int _pndman_json_repo_header(json_t *repo_header, pndman_repository *repo
    return RETURN_OK;
 }
 
+static int _json_set_string(char *string, json_t *object, size_t max)
+{
+   if (!object) return RETURN_FAIL;
+   strncpy(string, json_string_value(object), max-1);
+   return RETURN_OK;
+}
+
 /* \brief json parse repository packages */
 static int _pndman_json_repo_packages(json_t *packages, pndman_repository *repo)
 {
@@ -134,7 +141,10 @@ static int _pndman_json_repo_packages(json_t *packages, pndman_repository *repo)
       /* INFO READ HERE */
       pnd = _pndman_repository_new_pnd(repo);
       if (!pnd) return RETURN_FAIL;
-      strcpy(pnd->id, json_string_value(json_object_get(package,"id")));
+      _json_set_string(pnd->id,     json_object_get(package,"id"),     PND_ID);
+      _json_set_string(pnd->icon,   json_object_get(package,"icon"),   PND_PATH);
+      _json_set_string(pnd->md5,    json_object_get(package,"md5"),    PND_MD5);
+      _json_set_string(pnd->vendor, json_object_get(package,"vendor"), PND_NAME);
    }
    return RETURN_OK;
 }
@@ -193,7 +203,7 @@ static int _pndman_commit_local(pndman_repository *repo, pndman_device *device)
    char db_path[PATH_MAX];
 
    if (!device || !device->exist) return RETURN_FAIL;
-    strncpy(db_path, device->mount, PATH_MAX-1);
+   strncpy(db_path, device->mount, PATH_MAX-1);
    strncat(db_path, "/local.db", PATH_MAX-1);
    printf("-!- writing to %s\n", db_path);
    f = fopen(db_path, "w");
