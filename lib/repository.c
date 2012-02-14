@@ -17,7 +17,7 @@ static int _pndman_repository_init(pndman_repository *repo)
    memset(repo->url,       0, REPO_URL);
    memset(repo->name,      0, REPO_NAME);
    memset(repo->updates,   0, REPO_URL);
-   repo->version   = 0;
+   strcpy(repo->version, "1.0");
    repo->exist     = 1;
    repo->timestamp = 0;
    repo->pnd  = NULL;
@@ -156,7 +156,7 @@ static int _pndman_repository_free(pndman_repository *repo)
          strcpy(repo->url,     repo->next->url);
          strcpy(repo->name,    repo->next->name);
          strcpy(repo->updates, repo->next->updates);
-         repo->version  = repo->next->version;
+         strcpy(repo->version, repo->next->version);
          repo->exist    = repo->next->exist;
          repo->pnd      = repo->next->pnd;
 

@@ -12,11 +12,15 @@
 #include "repository.h"
 #include "curl.h"
 
+#define TMP_DIR         "/tmp/libpndman"
+#define TMP_QUERY_FILE  TMP_DIR"device.tmp"
+
 /* \brief wrap curl_request internally and add *next pointer */
 typedef struct _pndman_sync_request
 {
    pndman_repository            *repo;
-   curl_request                  request;
+   FILE                         *file;
+   CURL                         *curl;
    struct _pndman_sync_request  *next;
 } _pndman_sync_request;
 
@@ -48,45 +52,53 @@ static _pndman_sync_request* _pndman_new_sync_request(_pndman_sync_request *firs
    _pndman_sync_request *object;
    _pndman_sync_request *r = first;
    char *url = NULL;
+   char tmp_path[PATH_MAX];
    char timestamp[REPO_TIMESTAMP];
 
    for(; first && r->next; r = r->next);
    object = malloc(sizeof(_pndman_sync_request));
    if (!object) return NULL;
+   snprintf(tmp_path, PATH_MAX-1, TMP_DIR"/%p", object);
+   object->file = fopen(tmp_path, "rw");
+   if (!object->file) {
+      free(object);
+      return NULL;
+   }
 
    object->repo = repo;
    object->next = NULL;
 
    /* reset curl */
-   object->request.curl = curl_easy_init();
-   if (!object->request.curl) {
+   object->curl = curl_easy_init();
+   if (!object->curl) {
       free(object);
       return NULL;
    }
-
-   object->request.result.pos = 0;
-   memset(object->request.result.data, 0, MAX_REQUEST-1);
 
    if (strlen(repo->updates) && repo->timestamp) {
       snprintf(timestamp, REPO_TIMESTAMP-1, "%lu", repo->timestamp);
       url = str_replace(repo->updates, "%time%", timestamp);
    } else url = strdup(repo->url);
-   if (!url) return NULL;
+   if (!url) {
+      curl_easy_cleanup(object->curl);
+      free(object);
+      return NULL;
+   }
 
    printf("ADD: %s\n", url);
    printf("PRI: %p\n", object);
 
    /* set download URL */
-   curl_easy_setopt(object->request.curl, CURLOPT_URL, url);
-   curl_easy_setopt(object->request.curl, CURLOPT_PRIVATE, object);
-   curl_easy_setopt(object->request.curl, CURLOPT_WRITEFUNCTION, curl_write_request);
-   curl_easy_setopt(object->request.curl, CURLOPT_CONNECTTIMEOUT, 5L );
+   curl_easy_setopt(object->curl, CURLOPT_URL, url);
+   curl_easy_setopt(object->curl, CURLOPT_PRIVATE, object);
+   curl_easy_setopt(object->curl, CURLOPT_WRITEFUNCTION, curl_write_file);
+   curl_easy_setopt(object->curl, CURLOPT_CONNECTTIMEOUT, 5L );
    //curl_easy_setopt(handle->curl, CURLOPT_NOPROGRESS, 0);
    //curl_easy_setopt(handle->curl, CURLOPT_PROGRESSFUNCTION, curl_progress_func);
-   curl_easy_setopt(object->request.curl, CURLOPT_WRITEDATA, &object->request);
+   curl_easy_setopt(object->curl, CURLOPT_WRITEDATA, &object->file);
 
    /* add to multi interface */
-   curl_multi_add_handle(_pndman_curlm, object->request.curl);
+   curl_multi_add_handle(_pndman_curlm, object->curl);
 
    free(url);
    return object;
@@ -96,8 +108,8 @@ static _pndman_sync_request* _pndman_new_sync_request(_pndman_sync_request *firs
 static void _pndman_free_sync_request(_pndman_sync_request *object)
 {
    assert(object);
-   curl_multi_remove_handle(_pndman_curlm, object->request.curl);
-   curl_easy_cleanup(object->request.curl);
+   curl_multi_remove_handle(_pndman_curlm, object->curl);
+   curl_easy_cleanup(object->curl);
    free(object);
 }
 
@@ -114,7 +126,7 @@ static int _pndman_json_repo_header(json_t *repo_header, pndman_repository *repo
    if ((element = json_object_get(repo_header, "updates")))
       strncpy(repo->updates, json_string_value(element), REPO_URL-1);
    if ((element = json_object_get(repo_header, "version")))
-      repo->version = json_number_value(element);
+      strncpy(repo->version, json_string_value(element), REPO_VERSION-1);
 
    return RETURN_OK;
 }
@@ -150,13 +162,13 @@ static int _pndman_json_repo_packages(json_t *packages, pndman_repository *repo)
 }
 
 /* \brief process retivied json data */
-static int _pndman_sync_process(pndman_repository *repo, char *data)
+static int _pndman_sync_process(pndman_repository *repo, FILE *data)
 {
    pndman_package *pnd;
    json_t *root, *repo_header, *packages;
    json_error_t error;
 
-   root = json_loads(data, 0, &error);
+   root = json_loadf(data, 0, &error);
    if (!root) {
       printf("WARN: Bad json data, won't process sync for: %s\n", repo->url);
       return RETURN_FAIL;
@@ -253,10 +265,7 @@ static int _pndman_commit_database(pndman_repository *repo, pndman_device *devic
 static int _pndman_query_local_from_devices(pndman_repository *repo, pndman_device *device)
 {
    FILE *f;
-   char s[LINE_MAX];
-   char data[MAX_REQUEST];
    char db_path[PATH_MAX];
-   char *ret;
 
    assert(repo);
    if (_pndman_curlm)               return RETURN_OK;
@@ -270,9 +279,7 @@ static int _pndman_query_local_from_devices(pndman_repository *repo, pndman_devi
    if (!f) return RETURN_FAIL;
 
    /* read local database */
-   memset(s, 0, LINE_MAX); memset(data, 0, MAX_REQUEST);
-   while ((ret = fgets(s, LINE_MAX, f))) strncat(data, s, LINE_MAX-1);
-   _pndman_sync_process(repo, data);
+   _pndman_sync_process(repo, f);
 
    fclose(f);
    return RETURN_OK;
@@ -281,10 +288,9 @@ static int _pndman_query_local_from_devices(pndman_repository *repo, pndman_devi
 /* \brief read repository information from device */
 int _pndman_query_repository_from_devices(pndman_repository *repo, pndman_device *device)
 {
-   FILE *f;
+   FILE *f, *f2;
    char s[LINE_MAX];
    char s2[LINE_MAX];
-   char data[MAX_REQUEST];
    char db_path[PATH_MAX];
    char *ret;
    pndman_repository *r, *c = NULL;
@@ -304,6 +310,8 @@ int _pndman_query_repository_from_devices(pndman_repository *repo, pndman_device
    printf("-!- reading from %s\n", db_path);
    f = fopen(db_path, "r");
    if (!f) return RETURN_FAIL;
+   f2 = fopen(TMP_QUERY_FILE, "rw");
+   if (!f2) return RETURN_FAIL;
 
    /* read repositories */
    memset(s,  0, LINE_MAX);
@@ -313,16 +321,18 @@ int _pndman_query_repository_from_devices(pndman_repository *repo, pndman_device
          if (!strlen(r->url)) continue;
          snprintf(s2, LINE_MAX-1, "[%s]", r->url);
          if (!(memcmp(s, s2, strlen(s2)))) {
-            if (c) _pndman_sync_process(c,data);
+            fflush(f2);
+            if (c) _pndman_sync_process(c,f2);
             c = r;
-            memset(data, 0, MAX_REQUEST);
             memset(s, 0, LINE_MAX);
          }
       }
-      if (c && strlen(s)) strncat(data, s, MAX_REQUEST-1);
+      if (c && strlen(s)) fprintf(f2, "%s", s);
    }
-   if (c) _pndman_sync_process(c,data);
+   fflush(f2);
+   if (c) _pndman_sync_process(c,f2);
 
+   fclose(f2);
    fclose(f);
    return RETURN_OK;
 }
@@ -372,7 +382,7 @@ int _pndman_sync_perform(int *still_running)
    while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left))) {
       curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &request);
       if (msg->msg == CURLMSG_DONE) { /* DONE */
-         _pndman_sync_process(request->repo, request->request.result.data);
+         _pndman_sync_process(request->repo, request->file);
       }
    }
 #endif

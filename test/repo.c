@@ -37,12 +37,6 @@ int main()
    pndman_repository_add(REPO_URL, &repository);
    pndman_repository_add(REPO_URL, &repository);
 
-   r = &repository;
-   for (; r; r = r->next)
-   {
-      printf("%s\n", r->name);
-   }
-
    /* sync repositories */
    while (pndman_repository_sync(&repository, &device) == 1);
 
@@ -53,7 +47,7 @@ int main()
       printf("%s :\n", r->name);
       printf("   UPD: %s\n", r->updates);
       printf("   URL: %s\n", r->url);
-      printf("   VER: %f\n", r->version);
+      printf("   VER: %s\n", r->version);
       puts("");
       pnd = r->pnd;
       for (; pnd; pnd = pnd->next) {

@@ -26,6 +26,7 @@
 #define PND_PATH     PATH_MAX
 #define REPO_URL     LINE_MAX
 #define REPO_NAME    24
+#define REPO_VERSION 8
 #define HANDLE_NAME  24
 
 /* type enum for version struct */
@@ -187,8 +188,8 @@ typedef struct pndman_repository
    const char url[REPO_URL];
    const char name[REPO_NAME];
    const char updates[REPO_URL];
-   time_t timestamp;
-   const float version;
+   const char version[REPO_VERSION];
+   const time_t timestamp;
 
    pndman_package *pnd;
    struct pndman_repository *next, *prev;
@@ -230,9 +231,12 @@ typedef struct pndman_handle
 #undef PND_VER
 #undef PND_STR
 #undef PND_SHRT_STR
+#undef PND_INFO
+#undef PND_MD5
 #undef PND_PATH
 #undef REPO_URL
 #undef REPO_NAME
+#undef REPO_VERSION
 #undef HANDLE_NAME
 
 /*! \brief
