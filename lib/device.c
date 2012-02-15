@@ -240,8 +240,11 @@ static int _pndman_device_add(char *path, pndman_device *device)
       return RETURN_FAIL;
 
    /* fill device struct */
-   strncpy(device->mount,  szDrive, PATH_MAX-1);
-   strncpy(device->device, szName,  PATH_MAX-1);
+   if (strlen(path) > 3 && strcmp(szDrive, path))
+      strncpy(device->mount, path, PATH_MAX-1);
+   else
+      strncpy(device->mount,  szDrive, PATH_MAX-1);
+   strncpy(device->device, szName, PATH_MAX-1);
    device->free      = bytes_free.QuadPart;
    device->size      = bytes_size.QuadPart;
    device->available = bytes_available.QuadPart;

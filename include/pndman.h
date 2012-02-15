@@ -1,6 +1,7 @@
 #ifndef PNDMAN_H
 #define PNDMAN_H
 
+#include <time.h>
 #ifdef __linux__
 #  include <limits.h>
 #endif
