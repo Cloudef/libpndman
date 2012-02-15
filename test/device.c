@@ -37,8 +37,7 @@ int main()
    /* print devices */
    puts("");
    device_count = 0;
-   for(d = &device; d; d = d->next)
-   {
+   for(d = &device; d; d = d->next) {
       printf("%12s : %24s : %zu : %zu : %zu\n",
             d->device, d->mount, d->size, d->free, d->available);
       device_count++;
@@ -46,8 +45,7 @@ int main()
    puts("");
 
    /* if count is more than one, do the next step */
-   if (device_count > 1)
-   {
+   if (device_count > 1) {
       /* go to the middle device and free it */
       i = 0;
       d = &device;

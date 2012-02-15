@@ -30,6 +30,8 @@ typedef enum
    RETURN_FALSE =  !RETURN_TRUE
 } PNDMAN_RETURN;
 
+FILE* _pndman_get_tmp_file();
+
 #endif /* PNDMAN_PNDMAN_H */
 
 /* vim: set ts=8 sw=3 tw=0 :*/

@@ -2,9 +2,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <curl/curl.h>
-
 #include "pndman.h"
 #include "curl.h"
+
+/* INTERNAL API */
 
 /* \brief write to file */
 size_t curl_write_file(void *data, size_t size, size_t nmemb, FILE *file)

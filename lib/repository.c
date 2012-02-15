@@ -9,8 +9,6 @@
 #include "device.h"
 #include "repository.h"
 
-/* INTERNAL */
-
 /* \brief initialize repository struct */
 static int _pndman_repository_init(pndman_repository *repo)
 {
@@ -23,7 +21,10 @@ static int _pndman_repository_init(pndman_repository *repo)
    repo->pnd  = NULL;
    repo->next = NULL;
    repo->prev = NULL;
+   return RETURN_OK;
 }
+
+/* INTERNAL */
 
 /* \brief Find first repo */
 inline pndman_repository* _pndman_repository_first(pndman_repository *repo)
@@ -197,16 +198,6 @@ static int _pndman_repository_free_all(pndman_repository *repo)
    return RETURN_OK;
 }
 
-/* \brief Sync repository */
-static int _pndman_repository_sync(pndman_repository *repo, pndman_device *device)
-{
-   /* check against local */
-   if (device) _pndman_query_repository_from_devices(repo, device);
-
-   /* check against remote */
-   return _pndman_query_repository_from_json(repo);
-}
-
 /* API */
 
 /* \brief Initialize repo list, call this only once after declaring pndman_repository
@@ -226,15 +217,6 @@ int pndman_repository_add(char *url, pndman_repository *repo)
    DEBUG("pndman repo add");
    if (!repo) return RETURN_FAIL;
    return _pndman_repository_add(url, repo);
-}
-
-/* \brief Sync repositories, takes device argument for synchorizing only changes beetwen remote and local
- *  If 0 is returned, call the function again. If 1 returned, everything is complete.
- *  On -1 error. */
-int pndman_repository_sync(pndman_repository *repo, pndman_device *device)
-{
-   if (!repo) return RETURN_FAIL;
-   return _pndman_repository_sync(repo, device);
 }
 
 /* \brief Free one repo */

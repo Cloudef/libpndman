@@ -2,8 +2,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <curl/curl.h>
-
 #include "pndman.h"
+#include "device.h"
 #include "curl.h"
 
 /* TODO: add download statistics
@@ -23,6 +23,7 @@ typedef struct pndman_handle
 
    /* info */
    int            done;
+   pndman_device  *device;
    CURL           *curl;
    FILE           *file;
 } pndman_handle;
@@ -48,6 +49,8 @@ static int _pndman_curl_free(void)
    return RETURN_OK;
 }
 
+/* API */
+
 /* \brief Allocate new pndman_handle for transfer */
 int pndman_handle_init(char *name, pndman_handle *handle)
 {
@@ -57,6 +60,7 @@ int pndman_handle_init(char *name, pndman_handle *handle)
       return RETURN_FAIL;
 
    handle->curl = NULL;
+   handle->device = NULL;
    strncpy(handle->name, name, HANDLE_NAME-1);
    memset(handle->error, 0, LINE_MAX);
    handle->flags = 0;
@@ -84,11 +88,17 @@ int pndman_handle_free(pndman_handle *handle)
 /* \brief Perform pndman_handle */
 int pndman_handle_perform(pndman_handle *handle)
 {
+   char tmp_path[PATH_MAX];
    DEBUG("pndman_handle_perform");
-   if (!handle) return RETURN_FAIL;
+   if (!handle)               return RETURN_FAIL;
+   if (!handle->device)       return RETURN_FAIL;
+   if (!strlen(handle->url))  return RETURN_FAIL;
 
    /* open file to write */
-   handle->file = fopen("pndman_temp", "wb");
+   strncpy(tmp_path, handle->device->mount, PATH_MAX-1);
+   strncat(tmp_path, "/", PATH_MAX-1);
+   strncat(tmp_path, handle->name, PATH_MAX-1);
+   handle->file = fopen(tmp_path, "wb");
    if (!handle->file) return RETURN_FAIL;
 
    /* reset curl */
@@ -115,9 +125,11 @@ int pndman_handle_perform(pndman_handle *handle)
    return RETURN_OK;
 }
 
-/* \brief Perform download on all handles */
-int pndman_download(int *still_running)
+/* \brief Perform download on all handles
+ * returns the number of downloads currently going on, on error returns -1 */
+int pndman_download()
 {
+   int still_running;
    int maxfd = -1;
    struct timeval timeout;
    fd_set fdread;
@@ -130,7 +142,7 @@ int pndman_download(int *still_running)
    pndman_handle *handle;
 
    /* perform download */
-   curl_multi_perform(_pndman_curlm, still_running);
+   curl_multi_perform(_pndman_curlm, &still_running);
 
    /* zero file descriptions */
    FD_ZERO(&fdread);
@@ -163,8 +175,8 @@ int pndman_download(int *still_running)
    }
 
    /* it's okay to get rid of this */
-   if (!*still_running) _pndman_curl_free();
-   return RETURN_OK;
+   if (!still_running) _pndman_curl_free();
+   return still_running;
 }
 
 /* vim: set ts=8 sw=3 tw=0 :*/

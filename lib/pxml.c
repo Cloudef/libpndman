@@ -933,7 +933,6 @@ int pnd_do_something(char *pnd_file)
       printf("X11:      %s\n", x11);
       printf("FREQ:     %d\n", app->frequency);
 
-
       /* previewpics */
       puts("LICENSE(S):");
       l = app->license;

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <unistd.h>
+#include <assert.h>
 
 #ifdef __linux__
 #  include <mntent.h>
@@ -15,8 +16,6 @@
 #include "package.h"
 #include "repository.h"
 #include "device.h"
-
-/* INTERNAL */
 
 /* used also by internal functions */
 int pndman_device_init(pndman_device *device);
@@ -41,8 +40,7 @@ static inline pndman_device* _pndman_device_last(pndman_device *device)
 static int _pndman_device_new(pndman_device **device)
 {
    pndman_device *new;
-
-   if (!device) return RETURN_FAIL;
+   assert(device);
 
    /* find last device */
    *device = _pndman_device_last(*device);
@@ -80,8 +78,7 @@ static int _pndman_device_new_if_exist(pndman_device **device, char *check_exist
 static int _pndman_device_free(pndman_device *device)
 {
    pndman_device *deleted;
-
-   if (!device) return RETURN_FAIL;
+   assert(device);
 
    /* avoid freeing the first device */
    if (device->prev) {
@@ -105,10 +102,10 @@ static int _pndman_device_free(pndman_device *device)
          device->exist      = device->next->exist;
 
          deleted = device->next;
-         device->next         = deleted->next;
+         device->next       = deleted->next;
 
          if (device->next)
-            device->next->prev   = device;
+            device->next->prev = device;
 
          free(deleted);
       }
@@ -122,8 +119,7 @@ static int _pndman_device_free(pndman_device *device)
 static int _pndman_device_free_all(pndman_device *device)
 {
    pndman_device *prev;
-
-   if (!device) return RETURN_FAIL;
+   assert(device);
 
    /* find the last device */
    device = _pndman_device_last(device);

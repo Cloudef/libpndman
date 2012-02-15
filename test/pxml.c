@@ -40,35 +40,31 @@ int main()
    if (!dp)
       return EXIT_FAILURE;
 
-   while (ep = readdir (dp))
-   {
-      if (strstr(ep->d_name, ".pnd"))
-      {
+   while (ep = readdir (dp)) {
+      if (strstr(ep->d_name, ".pnd")) {
          strncpy(path2, path1,      PATH_MAX-1);
          strncat(path2, ep->d_name, PATH_MAX-1);
          puts(path2);
          pnd_do_something(path2);
-
          ++count;
       }
    }
 
    closedir(dp);
 #elif __WIN32__
-    sprintf(path1, "%s/*.pnd", PND_DIR);
+   sprintf(path1, "%s/*.pnd", PND_DIR);
 
-    if ((hFind = FindFirstFile(path1, &dp)) == INVALID_HANDLE_VALUE)
-       return EXIT_FAILURE;
+   if ((hFind = FindFirstFile(path1, &dp)) == INVALID_HANDLE_VALUE)
+      return EXIT_FAILURE;
 
-    do
-    {
-       sprintf(path2, "%s/%s", PND_DIR, dp.cFileName);
-       puts(path2);
-       pnd_do_something(path2);
+   do {
+      sprintf(path2, "%s/%s", PND_DIR, dp.cFileName);
+      puts(path2);
+      pnd_do_something(path2);
 
-       ++count;
-    } while (FindNextFile(hFind, &dp));
-    FindClose(hFind);
+      ++count;
+   } while (FindNextFile(hFind, &dp));
+   FindClose(hFind);
 #endif
 
    if (pndman_quit() == -1)

@@ -4,9 +4,9 @@
 
 /* create these paths to test, local db writing */
 #if __linux__
-#  define TEST_ABSOLUTE "/tmp/pndman"
+#  define TEST_ABSOLUTE "/tmp/libpndman"
 #elif __WIN32__
-#  define TEST_ABSOLUTE "C:/pndman"
+#  define TEST_ABSOLUTE "C:/libpndman"
 #else
 #  error "No support yet"
 #endif
@@ -16,7 +16,7 @@
 int main()
 {
    pndman_repository repository, *r;
-   pndman_device     device;
+   pndman_device     device, *d;
    pndman_package   *pnd;
 
    puts("This test, tests various repository operations within libpndman.");
@@ -25,7 +25,7 @@ int main()
    puts("Additionally it does some free trickery, so there should be no memory leaks or segmentation faults either.");
    puts("");
 
-   if (pndman_init() == -1)
+   if (pndman_init() != 0)
       return EXIT_FAILURE;
 
    /* add device */
@@ -37,8 +37,16 @@ int main()
    pndman_repository_add(REPO_URL, &repository);
    pndman_repository_add(REPO_URL, &repository);
 
-   /* sync repositories */
-   while (pndman_repository_sync(&repository, &device) == 1);
+   r = &repository;
+   for (; r; r = r->next) {
+      d = &device;
+      for (; d; d = d->next) pndman_read_from_device(r, d);
+      pndman_sync_request(r);
+   }
+
+   /* sync repositories
+    * in real use should check error (-1) */
+   while (pndman_sync() > 0);
 
    puts("");
    r = &repository;
@@ -58,8 +66,10 @@ int main()
    }
    puts("");
 
-   /* commit, needs devices! */
-   pndman_commit_database(&repository, &device);
+   /* commit all repositories to every device */
+   d = &device;
+   for (; d; d = d->next)
+      pndman_commit(&repository, d);
 
    /* free everything */
    pndman_repository_free_all(&repository);

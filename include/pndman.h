@@ -221,6 +221,7 @@ typedef struct pndman_handle
 
    /* info */
    int            done;
+   pndman_device  *device;
    const void     *curl;
    const void     *file;
 } pndman_handle;
@@ -254,6 +255,7 @@ int pndman_quit();
  * I'm just defining them here, since I'm getting sick of implict declaration warnings.
  * So no need to document these here yet. */
 int pndman_repository_init(pndman_repository *repo);
+int pndman_repository_add(char *url, pndman_repository *repo);
 int pndman_repository_free(pndman_repository *repo);
 int pndman_repository_free_all(pndman_repository *repo);
 int pndman_device_init(pndman_device *device);
@@ -264,7 +266,11 @@ int pndman_device_free_all(pndman_device *device);
 int pndman_handle_init(char *name, pndman_handle *handle);
 int pndman_handle_perform(pndman_handle *handle);
 int pndman_handle_free(pndman_handle *handle);
-int pndman_download(int *still_running);
+int pndman_download();
+int pndman_read_from_device(pndman_repository *repo, pndman_device *device);
+int pndman_sync();
+int pndman_sync_request(pndman_repository *repo);
+int pndman_commit(pndman_repository *repo, pndman_device *device);
 
 /* test thing, for surely */
 int pnd_do_something(char *file);

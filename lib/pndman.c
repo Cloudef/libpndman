@@ -1,9 +1,20 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "pndman.h"
 #include "device.h"
 #include "package.h"
 #include "repository.h"
 #include "version.h"
+
+/* \brief return temporary file */
+FILE* _pndman_get_tmp_file()
+{
+   DEBUG("creating temporary file");
+   FILE *tmp;
+   if ((tmp = tmpfile()))
+      return tmp;
+   return NULL;
+}
 
 /* API */
 
