@@ -194,6 +194,7 @@ typedef struct pndman_repository
 
    pndman_package *pnd;
    struct pndman_repository *next, *prev;
+   const int exist;
 } pndman_repository;
 
 /*! \brief
@@ -207,6 +208,7 @@ typedef struct pndman_device
    const size_t size, free, available;
 
    struct pndman_device *next, *prev;
+   const int exist;
 } pndman_device;
 
 /*! \brief
