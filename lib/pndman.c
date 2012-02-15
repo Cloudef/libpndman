@@ -9,11 +9,23 @@
 /* \brief return temporary file */
 FILE* _pndman_get_tmp_file()
 {
-   DEBUG("creating temporary file");
    FILE *tmp;
-   if ((tmp = tmpfile()))
-      return tmp;
-   return NULL;
+
+#ifndef __WIN32__ /* why won't this work on windows 7 correctly :/ */
+   if (!(tmp = tmpfile()))
+      return NULL;
+#else
+   char* name;
+   if (!(name = _tempnam( NULL, NULL )))
+      return NULL;
+   if (!(tmp = fopen(name, "wb+TD"))) {
+      free(name);
+      return NULL;
+   }
+   free(name);
+#endif
+   DEBUG("created temporary file");
+   return tmp;
 }
 
 /* API */
