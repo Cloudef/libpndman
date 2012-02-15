@@ -288,6 +288,7 @@ static int _pndman_sync_perform()
    while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left))) {
       curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &request);
       if (msg->msg == CURLMSG_DONE) { /* DONE */
+         printf("%s : done\n", request->repo->url);
          _pndman_json_process(request->repo, request->file);
       }
    }
