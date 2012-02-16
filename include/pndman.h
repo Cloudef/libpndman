@@ -40,6 +40,9 @@ typedef enum pndman_handle_flags
    PNDMAN_HANDLE_INSTALL = 0x01,
    PNDMAN_HANDLE_REMOVE  = 0x02,
    PNDMAN_HANDLE_FORCE   = 0x04,
+   PNDMAN_HANDLE_INSTALL_DESKTOP = 0x08,
+   PNDMAN_HANDLE_INSTALL_MENU    = 0x16,
+   PNDMAN_HANDLE_INSTALL_APPS    = 0x32,
 } pndman_handle_flags;
 
 /* type enum for version struct */
