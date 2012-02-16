@@ -236,7 +236,7 @@ typedef struct pndman_handle
    const char     error[LINE_MAX];
    pndman_package *pnd;
    pndman_device  *device;
-   pndman_handle_flags flags;
+   unsigned int flags;
 
    /* info */
    int            done;
