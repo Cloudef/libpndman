@@ -41,8 +41,8 @@ typedef enum pndman_handle_flags
    PNDMAN_HANDLE_REMOVE  = 0x02,
    PNDMAN_HANDLE_FORCE   = 0x04,
    PNDMAN_HANDLE_INSTALL_DESKTOP = 0x08,
-   PNDMAN_HANDLE_INSTALL_MENU    = 0x16,
-   PNDMAN_HANDLE_INSTALL_APPS    = 0x32,
+   PNDMAN_HANDLE_INSTALL_MENU    = 0x10,
+   PNDMAN_HANDLE_INSTALL_APPS    = 0x12,
 } pndman_handle_flags;
 
 /* type enum for version struct */
@@ -227,6 +227,20 @@ typedef struct pndman_device
    const int exist;
 } pndman_device;
 
+/* \brief curl_write_result struct for storing curl result to memory */
+typedef struct curl_write_result
+{
+   const void *data;
+   const int   pos;
+} curl_write_result;
+
+/* \brief struct for holding internal request data */
+typedef struct curl_request
+{
+   const curl_write_result result;
+   const void              *curl;
+} curl_request;
+
 /*! \brief
  * COMMON
  * Struct for PND transiction
@@ -237,12 +251,11 @@ typedef struct pndman_handle
    const char     error[LINE_MAX];
    pndman_package *pnd;
    pndman_device  *device;
-
    unsigned int flags;
 
    /* info */
    int            done;
-   const void     *curl;
+   curl_request   request;
    const void     *file;
 } pndman_handle;
 
