@@ -3,9 +3,9 @@
 #include "pndman.h"
 
 #if __linux__
-#  define TEST_ABSOLUTE "/tmp"
+#  define TEST_ABSOLUTE "/tmp/libpndman"
 #elif __WIN32__
-#  define TEST_ABSOLUTE "C:/"
+#  define TEST_ABSOLUTE "C:/libpndman"
 #else
 #  error "No support yet"
 #endif

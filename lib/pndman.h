@@ -4,11 +4,14 @@
 #define DEBUG(x)      puts(x)
 #define DEBUGP(x,...) printf(x,##__VA_ARGS__)
 
+/* \brief appdata directory to store, temporary downland and database data */
+#define PNDMAN_APPDATA "libpndman"
+
 #ifdef __linux__
 #  include <limits.h>
 #endif
 
-/* Currently only mingw */
+/* \brief currently only mingw */
 #ifdef __WIN32__
 #  include <windows.h>
 #  include <limits.h>

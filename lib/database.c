@@ -86,8 +86,8 @@ static _pndman_sync_request* _pndman_new_sync_request(_pndman_sync_request *firs
       return NULL;
    }
 
-   printf("ADD: %s\n", url);
-   printf("PRI: %p\n", object);
+   DEBUGP("ADD: %s\n", url);
+   DEBUGP("PRI: %p\n", object);
 
    /* set download URL */
    curl_easy_setopt(object->curl, CURLOPT_URL, url);
@@ -121,9 +121,9 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
    char db_path[PATH_MAX];
 
    if (!device || !device->exist) return RETURN_FAIL;
-   strncpy(db_path, device->mount, PATH_MAX-1);
+   strncpy(db_path, device->appdata, PATH_MAX-1);
    strncat(db_path, "/local.db", PATH_MAX-1);
-   printf("-!- writing to %s\n", db_path);
+   DEBUGP("-!- writing to %s\n", db_path);
    f = fopen(db_path, "w");
    if (!f) return RETURN_FAIL;
 
@@ -150,9 +150,9 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
          break;
       }
 
-   strncpy(db_path, device->mount, PATH_MAX-1);
+   strncpy(db_path, device->appdata, PATH_MAX-1);
    strncat(db_path, "/repo.db", PATH_MAX-1);
-   printf("-!- writing to %s\n", db_path);
+   DEBUGP("-!- writing to %s\n", db_path);
    f = fopen(db_path, "w");
    if (!f) return RETURN_FAIL;
 
@@ -179,9 +179,9 @@ static int _pndman_db_get_local(pndman_repository *repo, pndman_device *device)
    if (!device || !device->exist)   return RETURN_FAIL;
 
    /* begin to read local database */
-   strncpy(db_path, device->mount, PATH_MAX-1);
+   strncpy(db_path, device->appdata, PATH_MAX-1);
    strncat(db_path, "/local.db", PATH_MAX-1);
-   printf("-!- local from %s\n", db_path);
+   DEBUGP("-!- local from %s\n", db_path);
    f = fopen(db_path, "r");
    if (!f) return RETURN_FAIL;
 
@@ -216,9 +216,9 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
       return RETURN_FAIL;
 
    /* begin to read other repositories */
-   strncpy(db_path, device->mount, PATH_MAX-1);
+   strncpy(db_path, device->appdata, PATH_MAX-1);
    strncat(db_path, "/repo.db", PATH_MAX-1);
-   printf("-!- reading from %s\n", db_path);
+   DEBUGP("-!- reading from %s\n", db_path);
    f = fopen(db_path, "r");
    if (!f) return RETURN_FAIL;
 
@@ -288,7 +288,7 @@ static int _pndman_sync_perform()
    while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left))) {
       curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &request);
       if (msg->msg == CURLMSG_DONE) { /* DONE */
-         printf("%s : done\n", request->repo->url);
+         DEBUGP("%s : done\n", request->repo->url);
          _pndman_json_process(request->repo, request->file);
       }
    }
@@ -358,7 +358,7 @@ int pndman_sync()
    if (!still_running)
       _pndman_query_cleanup();
 
-   // printf("%d : %p\n", still_running, _pndman_internal_request);
+   // DEBUGP("%d : %p\n", still_running, _pndman_internal_request);
    return still_running;
 }
 

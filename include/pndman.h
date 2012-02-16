@@ -172,13 +172,13 @@ typedef struct pndman_package
    const char path[PND_PATH];
    const char id[PND_ID];
    const char icon[PND_PATH];
-   char info[PND_INFO];
-   char md5[PND_MD5];
-   char url[PND_STR];
-   char vendor[PND_NAME];
-   size_t size;
-   time_t modified_time;
-   int rating;
+   const char info[PND_INFO];
+   const char md5[PND_MD5];
+   const char url[PND_STR];
+   const char vendor[PND_NAME];
+   const size_t size;
+   const time_t modified_time;
+   const int rating;
 
    const pndman_author     author;
    const pndman_version    version;
@@ -222,6 +222,7 @@ typedef struct pndman_device
    const char device[PATH_MAX];
    const size_t size, free, available;
 
+   char appdata[PATH_MAX];
    struct pndman_device *next, *prev;
    const int exist;
 } pndman_device;
@@ -236,6 +237,7 @@ typedef struct pndman_handle
    const char     error[LINE_MAX];
    pndman_package *pnd;
    pndman_device  *device;
+
    unsigned int flags;
 
    /* info */

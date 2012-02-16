@@ -3,6 +3,7 @@
 #include <malloc.h>
 #include <unistd.h>
 #include <assert.h>
+#include <errno.h>
 
 #ifdef __linux__
 #  include <mntent.h>
@@ -36,6 +37,62 @@ static inline pndman_device* _pndman_device_last(pndman_device *device)
    return device;
 }
 
+static int _check_create_tree_dir(char *path)
+{
+   if (access(path, F_OK) != 0) {
+      if (errno == EACCES)
+         return RETURN_FAIL;
+      if (mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
+         return RETURN_FAIL;
+   }
+   return RETURN_OK;
+}
+
+static int _pndman_device_check_pnd_tree(pndman_device *device)
+{
+   char tmp[PATH_MAX];
+   char tmp2[PATH_MAX];
+   assert(device);
+
+   /* <device>/pandora */
+   strncpy(tmp, device->mount, PATH_MAX-1);
+   strncat(tmp, "/pandora", PATH_MAX-1);
+   if (_check_create_tree_dir(tmp) == -1)
+      return RETURN_FAIL;
+
+   /* <device>/apps */
+   memcpy(tmp2, tmp, PATH_MAX);
+   strncat(tmp2, "/apps", PATH_MAX-1);
+   if (_check_create_tree_dir(tmp2) == -1)
+      return RETURN_FAIL;
+
+   /* <device>/menu */
+   memcpy(tmp2, tmp, PATH_MAX);
+   strncat(tmp2, "/menu", PATH_MAX-1);
+   if (_check_create_tree_dir(tmp2) == -1)
+      return RETURN_FAIL;
+
+   /* <device>/desktop */
+   memcpy(tmp2, tmp, PATH_MAX);
+   strncat(tmp2, "/desktop", PATH_MAX-1);
+   if (_check_create_tree_dir(tmp2) == -1)
+      return RETURN_FAIL;
+
+   /* <device>/appdata */
+   memcpy(tmp2, tmp, PATH_MAX);
+   strncat(tmp2, "/appdata", PATH_MAX-1);
+   if (_check_create_tree_dir(tmp2) == -1)
+      return RETURN_FAIL;
+
+   /* <device>/appdata/<LIBPNDMAN_APPDATA_FOLDER> */
+   strncat(tmp2, "/"PNDMAN_APPDATA, PATH_MAX-1);
+   if (_check_create_tree_dir(tmp2) == -1)
+      return RETURN_FAIL;
+
+   memcpy(device->appdata, tmp2, PATH_MAX);
+   return RETURN_OK;
+}
+
 /* \brief Allocate next device */
 static int _pndman_device_new(pndman_device **device)
 {
@@ -63,9 +120,8 @@ static int _pndman_device_new_if_exist(pndman_device **device, char *check_exist
    if (check_existing) {
       d = _pndman_device_first(*device);
       for(; d && d->exist; d = d->next) {
-         DEBUGP("%s == %s\n", d->mount, check_existing);
-         if (!strcmp(d->mount, check_existing))
-            return RETURN_OK;
+         // DEBUGP("%s == %s\n", d->mount, check_existing);
+         if (!strcmp(d->mount, check_existing)) return RETURN_FAIL;
       }
    }
 
@@ -160,6 +216,11 @@ static int _pndman_device_add_absolute(char *path, pndman_device *device)
 
    /* fill device struct */
    strncpy(device->mount,  path, PATH_MAX-1);
+   if (_pndman_device_check_pnd_tree(device) != RETURN_OK) {
+      _pndman_device_free(device);
+      return RETURN_FAIL;
+   }
+
    strncpy(device->device, path, PATH_MAX-1);
    device->free      = fs.f_bfree  * fs.f_bsize;
    device->size      = fs.f_blocks * fs.f_bsize;
@@ -244,6 +305,12 @@ static int _pndman_device_add(char *path, pndman_device *device)
       strncpy(device->mount, path, PATH_MAX-1);
    else
       strncpy(device->mount,  szDrive, PATH_MAX-1);
+
+   if (_pndman_device_check_pnd_tree(device) != RETURN_OK) {
+      _pndman_device_free(device);
+      return RETURN_FAIL;
+   }
+
    strncpy(device->device, szName, PATH_MAX-1);
    device->free      = bytes_free.QuadPart;
    device->size      = bytes_size.QuadPart;
@@ -257,6 +324,7 @@ static int _pndman_device_add(char *path, pndman_device *device)
 /* \brief Detect devices and fill them automatically. */
 static int _pndman_device_detect(pndman_device *device)
 {
+   pndman_device *old_device;
 #ifdef __linux__
    FILE *mtab;
    struct mntent *m;
@@ -279,17 +347,23 @@ static int _pndman_device_detect(pndman_device *device)
             if (access(mnt.mnt_dir, R_OK | W_OK) == -1)
                continue;
 
+            old_device = device;
             if ((ret = _pndman_device_new_if_exist(&device, mnt.mnt_dir)) != RETURN_OK)
                break;
 
             DEBUGP("%s: %d\n", mnt.mnt_dir, device->exist);
 
             strncpy(device->mount,  mnt.mnt_dir,    PATH_MAX-1);
-            strncpy(device->device, mnt.mnt_fsname, PATH_MAX-1);
-            device->free      = fs.f_bfree  * fs.f_bsize;
-            device->size      = fs.f_blocks * fs.f_bsize;
-            device->available = fs.f_bavail * fs.f_bsize;
-            device->exist     = 1;
+            if (_pndman_device_check_pnd_tree(device) == RETURN_OK) {
+               strncpy(device->device, mnt.mnt_fsname, PATH_MAX-1);
+               device->free      = fs.f_bfree  * fs.f_bsize;
+               device->size      = fs.f_blocks * fs.f_bsize;
+               device->available = fs.f_bavail * fs.f_bsize;
+               device->exist     = 1;
+            } else {
+               _pndman_device_free(device);
+               device = old_device;
+            }
          }
       }
       m = NULL;
@@ -320,17 +394,23 @@ static int _pndman_device_detect(pndman_device *device)
             &bytes_available, &bytes_size, &bytes_free))
          { while (*p++); continue; }
 
+         old_device = device;
          if ((ret = _pndman_device_new_if_exist(&device, szDrive)) != RETURN_OK)
             break;
 
          DEBUGP("%s : %s\n", szDrive, szName);
 
          strncpy(device->mount,  szDrive, PATH_MAX-1);
-         strncpy(device->device, szName,  PATH_MAX-1);
-         device->free      = bytes_free.QuadPart;
-         device->size      = bytes_size.QuadPart;
-         device->available = bytes_available.QuadPart;
-         device->exist     = 1;
+         if (_pndman_device_check_pnd_tree(device) == RETURN_OK) {
+            strncpy(device->device, szName,  PATH_MAX-1);
+            device->free      = bytes_free.QuadPart;
+            device->size      = bytes_size.QuadPart;
+            device->available = bytes_available.QuadPart;
+            device->exist     = 1;
+         } else {
+            _pndman_device_free(device);
+            device = old_device;
+         }
       }
 
       /* go to the next NULL character. */
@@ -353,6 +433,7 @@ int pndman_device_init(pndman_device *device)
 
    memset(device->device, 0, PATH_MAX);
    memset(device->mount,  0, PATH_MAX);
+   memset(device->appdata,0, PATH_MAX);
    device->size      = 0;
    device->free      = 0;
    device->available = 0;

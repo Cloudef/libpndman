@@ -11,6 +11,7 @@ typedef struct pndman_device
    char device[PATH_MAX];
    size_t size, free, available;
 
+   char appdata[PATH_MAX];
    struct pndman_device *next, *prev;
 
    /* internal */

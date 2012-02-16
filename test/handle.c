@@ -63,6 +63,7 @@ int main()
    /* print some info */
    puts(repo->name);
    puts(repo->pnd->id);
+   puts(repo->pnd->md5);
    puts(repo->pnd->url);
 
    i = 0;

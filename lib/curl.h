@@ -1,7 +1,7 @@
 #ifndef PNDMAN_CURL_H
 #define PNDMAN_CURL_H
 
-#define MAX_REQUEST 1024 * 1024
+#define MAX_REQUEST  2048
 #define CURL_TIMEOUT 15L
 
 #ifdef __cplusplus
@@ -11,7 +11,7 @@ extern "C" {
 /* \brief curl_write_result struct for storing curl result to memory */
 typedef struct curl_write_result
 {
-   char  data[MAX_REQUEST];
+   char *data;
    int   pos;
 } curl_write_result;
 
@@ -30,6 +30,9 @@ int curl_progress_func(void* ptr, double TotalToDownload, double NowDownloaded, 
 
 /* \brief write response */
 size_t curl_write_request(void *data, size_t size, size_t nmemb, curl_request *request);
+
+int curl_init_request(curl_request *request);
+void curl_free_request(curl_request *request);
 
 #ifdef __cplusplus
 }

@@ -71,6 +71,7 @@ int main()
          printf("ID:    %s\n", pnd->id);
          printf("ICON:  %s\n", pnd->icon);
          printf("MD5:   %s\n", pnd->md5);
+         printf("URL:   %s\n", pnd->url);
       }
    }
    puts("");

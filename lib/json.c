@@ -70,7 +70,7 @@ int _pndman_json_process(pndman_repository *repo, FILE *data)
    fseek(data, 0L, SEEK_SET);
    root = json_loadf(data, 0, &error);
    if (!root) {
-      printf("WARN: Bad json data, won't process sync for: %s\n", repo->url);
+      DEBUGP("WARN: Bad json data, won't process sync for: %s\n", repo->url);
       return RETURN_FAIL;
    }
 
@@ -80,9 +80,9 @@ int _pndman_json_process(pndman_repository *repo, FILE *data)
          packages = json_object_get(root, "packages");
          if (json_is_array(packages))
             _pndman_json_process_packages(packages, repo);
-         else printf("WARN: No packages array for: %s\n", repo->url);
+         else DEBUGP("WARN: No packages array for: %s\n", repo->url);
       }
-   } else printf("WARN: Bad repo header for: %s\n", repo->url);
+   } else DEBUGP("WARN: Bad repo header for: %s\n", repo->url);
 
    json_decref(root);
    return RETURN_OK;

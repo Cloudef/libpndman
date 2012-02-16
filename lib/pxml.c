@@ -427,7 +427,7 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
    pndman_category    *category;
    pndman_association *association;
 
-   //printf("Found start : %s [%s, %s]\n", tag, attrs[0], attrs[1]);
+   //DEBUGP("Found start : %s [%s, %s]\n", tag, attrs[0], attrs[1]);
 
    /* check parse state, so we don't parse wrong stuff */
    switch (*parse_state) {
@@ -669,7 +669,7 @@ static void _pxml_pnd_data(void *data, char *text, int len)
 /* \brief End element tag */
 static void _pxml_pnd_end_tag(void *data, char *tag)
 {
-   //printf("Found end : %s\n", tag);
+   //DEBUGP("Found end : %s\n", tag);
 
    unsigned int          *parse_state  = &((pxml_parse*)data)->state;
    // pndman_package     *pnd          = ((pxml_parse*)data)->pnd;
@@ -867,29 +867,29 @@ int pnd_do_something(char *pnd_file)
    else if (test->version.type == PND_VERSION_BETA)   type = PND_TYPE_BETA;
    else if (test->version.type == PND_VERSION_ALPHA)  type = PND_TYPE_ALPHA;
 
-   puts("");
-   printf("ID:       %s\n", test->id);
+   DEBUG("");
+   DEBUGP("ID:       %s\n", test->id);
    if (!strlen(test->id)) {
-      puts("Your code sucks, fix it!");
+      DEBUG("Your code sucks, fix it!");
       exit(0);
    }
 
    /* titles */
-   puts("TITLE(S):");
+   DEBUG("TITLE(S):");
    t = test->title;
    for (; t; t = t->next)
-      printf("  %s:    %s\n", t->lang, t->string);
+      DEBUGP("  %s:    %s\n", t->lang, t->string);
 
    /* descriptions */
-   puts("DESCRIPTION(S):");
+   DEBUG("DESCRIPTION(S):");
    t = test->description;
    for (; t; t = t->next)
-      printf("  %s:    %s\n", t->lang, t->string);
+      DEBUGP("  %s:    %s\n", t->lang, t->string);
 
-   printf("ICON:     %s\n", test->icon);
-   printf("AUTHOR:   %s\n", test->author.name);
-   printf("WEBSITE:  %s\n", test->author.website);
-   printf("VERSION:  %s.%s.%s.%s %s\n", test->version.major, test->version.minor,
+   DEBUGP("ICON:     %s\n", test->icon);
+   DEBUGP("AUTHOR:   %s\n", test->author.name);
+   DEBUGP("WEBSITE:  %s\n", test->author.website);
+   DEBUGP("VERSION:  %s.%s.%s.%s %s\n", test->version.major, test->version.minor,
          test->version.release, test->version.build, type);
 
    app = test->app;
@@ -902,62 +902,62 @@ int pnd_do_something(char *pnd_file)
       else if (app->version.type == PND_VERSION_BETA)   type = PND_TYPE_BETA;
       else if (app->version.type == PND_VERSION_ALPHA)  type = PND_TYPE_ALPHA;
 
-      puts("");
-      printf("ID:       %s\n", app->id);
+      DEBUG("");
+      DEBUGP("ID:       %s\n", app->id);
 
       /* titles */
-      puts("TITLE(S):");
+      DEBUG("TITLE(S):");
       t = app->title;
       for (; t; t = t->next)
-         printf("  %s:    %s\n", t->lang, t->string);
+         DEBUGP("  %s:    %s\n", t->lang, t->string);
 
       /* descriptions */
-      puts("DESCRIPTION(S):");
+      DEBUG("DESCRIPTION(S):");
       t = app->description;
       for (; t; t = t->next)
-         printf("  %s:    %s\n", t->lang, t->string);
+         DEBUGP("  %s:    %s\n", t->lang, t->string);
 
-      printf("ICON:     %s\n", app->icon);
-      printf("AUTHOR:   %s\n", app->author.name);
-      printf("WEBSITE:  %s\n", app->author.website);
-      printf("VERSION:  %s.%s.%s.%s %s\n", app->version.major, app->version.minor,
+      DEBUGP("ICON:     %s\n", app->icon);
+      DEBUGP("AUTHOR:   %s\n", app->author.name);
+      DEBUGP("WEBSITE:  %s\n", app->author.website);
+      DEBUGP("VERSION:  %s.%s.%s.%s %s\n", app->version.major, app->version.minor,
             app->version.release, app->version.build, type);
-      printf("OSVER:    %s.%s.%s.%s\n", app->osversion.major, app->osversion.minor,
+      DEBUGP("OSVER:    %s.%s.%s.%s\n", app->osversion.major, app->osversion.minor,
             app->osversion.release, app->osversion.build);
 
-      printf("BKGRND:   %s\n", app->exec.background ? PND_TRUE : PND_FALSE);
-      printf("STARTDIR: %s\n", app->exec.startdir);
-      printf("STNDLONE: %s\n", app->exec.standalone ? PND_TRUE : PND_FALSE);
-      printf("COMMAND:  %s\n", app->exec.command);
-      printf("ARGS:     %s\n", app->exec.arguments);
-      printf("X11:      %s\n", x11);
-      printf("FREQ:     %d\n", app->frequency);
+      DEBUGP("BKGRND:   %s\n", app->exec.background ? PND_TRUE : PND_FALSE);
+      DEBUGP("STARTDIR: %s\n", app->exec.startdir);
+      DEBUGP("STNDLONE: %s\n", app->exec.standalone ? PND_TRUE : PND_FALSE);
+      DEBUGP("COMMAND:  %s\n", app->exec.command);
+      DEBUGP("ARGS:     %s\n", app->exec.arguments);
+      DEBUGP("X11:      %s\n", x11);
+      DEBUGP("FREQ:     %d\n", app->frequency);
 
       /* previewpics */
-      puts("LICENSE(S):");
+      DEBUG("LICENSE(S):");
       l = app->license;
       for (; l; l = l->next)
-         printf("  %s, %s, %s\n", l->name, l->url, l->sourcecodeurl);
+         DEBUGP("  %s, %s, %s\n", l->name, l->url, l->sourcecodeurl);
 
       /* previewpics */
-      puts("ASSOCIATION(S):");
+      DEBUG("ASSOCIATION(S):");
       a = app->association;
       for (; a; a = a->next)
-         printf("  %s, %s, %s\n", a->name, a->filetype, a->exec);
+         DEBUGP("  %s, %s, %s\n", a->name, a->filetype, a->exec);
 
       /* categories */
-      puts("CATEGORIE(S):");
+      DEBUG("CATEGORIE(S):");
       c = app->category;
       for (; c; c = c->next)
-         printf("  %s, %s\n", c->main, c->sub);
+         DEBUGP("  %s, %s\n", c->main, c->sub);
 
       /* previewpics */
-      puts("PREVIEWPIC(S):");
+      DEBUG("PREVIEWPIC(S):");
       p = app->previewpic;
       for (; p; p = p->next)
-         printf("  %s\n", p->src);
+         DEBUGP("  %s\n", p->src);
    }
-   puts("");
+   DEBUG("");
    _pndman_free_pnd(test);
 
    return RETURN_OK;
