@@ -461,7 +461,9 @@ int pndman_device_add(char *path, pndman_device *device)
 {
    DEBUG("pndman device add");
    if (!device) return RETURN_FAIL;
-   return _pndman_device_add(path, device);
+   if (_pndman_device_add(path, device) != RETURN_OK)
+      return RETURN_FAIL;
+   _strip_slash(device->mount);
 }
 
 /* \brief Free one device */

@@ -38,6 +38,7 @@ typedef enum
 } PNDMAN_RETURN;
 
 FILE* _pndman_get_tmp_file();
+void _strip_slash(char *path);
 
 #ifdef __cplusplus
 }

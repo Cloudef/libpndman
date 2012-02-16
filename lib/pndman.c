@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "pndman.h"
 #include "device.h"
 #include "package.h"
@@ -26,6 +27,14 @@ FILE* _pndman_get_tmp_file()
 #endif
    DEBUG("created temporary file");
    return tmp;
+}
+
+/* \brief strip trailing slash from string */
+void _strip_slash(char *path)
+{
+   if (path[strlen(path)-1] == '/' ||
+       path[strlen(path)-1] == '\\')
+      path[strlen(path)-1] = 0;
 }
 
 /* API */
