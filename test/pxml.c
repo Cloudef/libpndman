@@ -86,7 +86,7 @@ int main()
       err("could not find any pnd files");
 
    do {
-      sprintf(path2, "%s/%s", cwd, dp.cFileName);
+      sprintf(path2, "%s/pandora/menu/%s", cwd, dp.cFileName);
       puts(path2);
       pnd_do_something(path2);
 
