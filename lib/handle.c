@@ -22,8 +22,8 @@ typedef enum pndman_handle_flags
    PNDMAN_HANDLE_REMOVE  = 0x02,
    PNDMAN_HANDLE_FORCE   = 0x04,
    PNDMAN_HANDLE_INSTALL_DESKTOP = 0x08,
-   PNDMAN_HANDLE_INSTALL_MENU    = 0x16,
-   PNDMAN_HANDLE_INSTALL_APPS    = 0x32,
+   PNDMAN_HANDLE_INSTALL_MENU    = 0x10,
+   PNDMAN_HANDLE_INSTALL_APPS    = 0x12,
 } pndman_handle_flags;
 
 /* \brief pndman_handle struct */
@@ -82,7 +82,7 @@ static int _pndman_handle_download(pndman_handle *handle)
 {
    char tmp_path[PATH_MAX];
 
-   DEBUG("handle install");
+   DEBUG("handle download");
    if (!handle->device)             return RETURN_FAIL;
    if (!strlen(handle->pnd->url))   return RETURN_FAIL;
    if (!(handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
@@ -121,7 +121,7 @@ static int _pndman_handle_download(pndman_handle *handle)
 
 static int _parse_filename_from_header(char *filename, pndman_handle *handle)
 {
-   char* haystack = handle->request.result.data;
+   char* haystack = (char*)handle->request.result.data;
    char* needle   = "filename=\"";
    int pos = 0, rpos = 0, found = 0;
    for(; rpos < strlen(haystack); rpos++) {
@@ -156,9 +156,7 @@ static int _pndman_handle_install(pndman_handle *handle)
    char install[PATH_MAX];
    char filename[PATH_MAX];
    char tmp[PATH_MAX];
-
    DEBUG("handle install");
-   DEBUG("install not yet implented");
 
    if (!handle->device) return RETURN_FAIL;
    if (!(handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
@@ -189,6 +187,7 @@ static int _pndman_handle_install(pndman_handle *handle)
    /* check that if pnd for some reason exists, but does not exist on database,
     * or vice versa! (do I actually even need this?) */
 
+   DEBUGP("install: %s\n", install);
    // if (_pndman_check_lost_pnd(install) == RETURN_OK)
    {
       /* pnd really does not exist */
@@ -207,7 +206,6 @@ static int _pndman_handle_install(pndman_handle *handle)
 static int _pndman_handle_remove(pndman_handle *handle)
 {
    DEBUG("handle remove");
-   DEBUG("remove not yet implented");
 
    /* sanity checks */
    if (!(handle->pnd->flags & PND_INSTALLED))
@@ -216,6 +214,7 @@ static int _pndman_handle_remove(pndman_handle *handle)
       return RETURN_FAIL;
 
    /* remove */
+   DEBUGP("remove: %s\n", handle->pnd->path);
    unlink(handle->pnd->path);
 
    /* mark removed */
@@ -275,7 +274,7 @@ int pndman_handle_perform(pndman_handle *handle)
    if (!handle->pnd)    return RETURN_FAIL;
    if (!handle->flags)  return RETURN_FAIL;
 
-   if (handle->flags & PNDMAN_HANDLE_INSTALL)
+   if ((handle->flags & PNDMAN_HANDLE_INSTALL))
       if (_pndman_handle_download(handle) != RETURN_OK)
          return RETURN_FAIL;
 
@@ -344,12 +343,10 @@ int pndman_handle_commit(pndman_handle *handle)
    if (!handle->pnd)    return RETURN_FAIL;
    if (!handle->done)   return RETURN_FAIL;
 
-   if (handle->flags & PNDMAN_HANDLE_REMOVE) {
+   if ((handle->flags & PNDMAN_HANDLE_REMOVE))
       if (_pndman_handle_remove(handle) != RETURN_OK)
          return RETURN_FAIL;
-      handle->pnd->flags = 0;
-   }
-   if (handle->flags & PNDMAN_HANDLE_INSTALL)
+   if ((handle->flags & PNDMAN_HANDLE_INSTALL))
       if (!_pndman_handle_install(handle) != RETURN_OK)
          return RETURN_FAIL;
 
