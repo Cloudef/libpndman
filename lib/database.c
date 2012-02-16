@@ -93,7 +93,7 @@ static _pndman_sync_request* _pndman_new_sync_request(_pndman_sync_request *firs
    curl_easy_setopt(object->curl, CURLOPT_URL, url);
    curl_easy_setopt(object->curl, CURLOPT_PRIVATE, object);
    curl_easy_setopt(object->curl, CURLOPT_WRITEFUNCTION, curl_write_file);
-   curl_easy_setopt(object->curl, CURLOPT_CONNECTTIMEOUT, 5L );
+   curl_easy_setopt(object->curl, CURLOPT_CONNECTTIMEOUT, CURL_TIMEOUT);
    //curl_easy_setopt(handle->curl, CURLOPT_NOPROGRESS, 0);
    //curl_easy_setopt(handle->curl, CURLOPT_PROGRESSFUNCTION, curl_progress_func);
    curl_easy_setopt(object->curl, CURLOPT_WRITEDATA, object->file);

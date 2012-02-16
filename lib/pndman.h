@@ -18,6 +18,10 @@
 #  endif
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*! \brief
  * Default return values.
  * Expections will be test functions where true condition returns 1, and false condition 0 */
@@ -31,6 +35,10 @@ typedef enum
 } PNDMAN_RETURN;
 
 FILE* _pndman_get_tmp_file();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* PNDMAN_PNDMAN_H */
 

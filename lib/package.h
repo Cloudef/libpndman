@@ -1,10 +1,9 @@
-#include <time.h>
-
 #ifndef PNDMAN_PACKAGE_H
 #define PNDMAN_PACKAGE_H
 
-/* if these limits are exceeded, there are no sane people left alive */
+#include <time.h>
 
+/* if these limits are exceeded, there are no sane people left alive */
 #define PND_ID       256
 #define PND_NAME     24
 #define PND_VER      8
@@ -26,7 +25,18 @@
 #define PND_X11_STOP       "stop"
 #define PND_X11_IGNORE     "ignore"
 
-/* type enum for version struct */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* \brief pndman package state flags */
+typedef enum pndman_package_flags
+{
+   PND_INSTALLED = 0x01,
+   PND_UPDATE    = 0x02,
+} pndman_package_flags;
+
+/* \brief type enum for version struct */
 typedef enum pndman_version_type
 {
    PND_VERSION_RELEASE,
@@ -34,7 +44,7 @@ typedef enum pndman_version_type
    PND_VERSION_ALPHA
 } pndman_version_type;
 
-/* x11 enum for exec struct */
+/* \brief x11 enum for exec struct */
 typedef enum pndman_exec_x11
 {
    PND_EXEC_REQ,
@@ -175,8 +185,6 @@ typedef struct pndman_package
    struct pndman_package *next;
 } pndman_package;
 
-#endif /* PNDMAN_PACKAGE_H */
-
 /* INTERNAL */
 
 /* \brief Allocate new pndman_package */
@@ -219,5 +227,11 @@ pndman_association* _pndman_application_new_association(pndman_application *app)
 
 /* \brief Internal allocation of category for pndman_application */
 pndman_category* _pndman_application_new_category(pndman_application *app);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* PNDMAN_PACKAGE_H */
 
 /* vim: set ts=8 sw=3 tw=0 :*/

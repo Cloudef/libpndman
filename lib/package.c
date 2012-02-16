@@ -16,10 +16,19 @@ static void _pndman_init_version(pndman_version *ver)
    ver->type = PND_VERSION_RELEASE;
 }
 
+/* \brief Copy version struct */
+static void _pndman_copy_version(pndman_version *dst, pndman_version *src)
+{
+   memcpy(dst->major, src->major, PND_VER);
+   memcpy(dst->minor, src->minor, PND_VER);
+   memcpy(dst->release, src->release, PND_VER);
+   memcpy(dst->build, src->build, PND_VER);
+   dst->type = src->type;
+}
+
 /* \brief Init exec struct */
 static void _pndman_init_exec(pndman_exec *exec)
 {
-
    memset(exec->startdir,   0, PND_PATH);
    memset(exec->command,    0, PND_STR);
    memset(exec->arguments,  0, PND_STR);
@@ -29,11 +38,30 @@ static void _pndman_init_exec(pndman_exec *exec)
    exec->x11         = PND_EXEC_IGNORE;
 }
 
+/* \brief Copy exec struct */
+static void _pndman_copy_exec(pndman_exec *dst, pndman_exec *src)
+{
+   memcpy(dst->startdir, src->startdir, PND_PATH);
+   memcpy(dst->command, src->command, PND_STR);
+   memcpy(dst->arguments, src->arguments, PND_STR);
+
+   dst->standalone   = src->standalone;
+   dst->background   = src->background;
+   dst->x11          = src->x11;
+}
+
 /* \brief Init author struct */
 static void _pndman_init_author(pndman_author *author)
 {
    memset(author->name,    0, PND_NAME);
    memset(author->website, 0, PND_STR);
+}
+
+/* \brief Copy author struct */
+static void _pndman_copy_author(pndman_author *dst, pndman_author *src)
+{
+   memcpy(dst->name, src->name, PND_NAME);
+   memcpy(dst->website, src->website, PND_STR);
 }
 
 /* \brief Init info struct */
@@ -42,6 +70,176 @@ static void _pndman_init_info(pndman_info *info)
    memset(info->name,   0, PND_NAME);
    memset(info->type,   0, PND_SHRT_STR);
    memset(info->src,    0, PND_PATH);
+}
+
+/* \brief Copy info struct */
+static void _pndman_copy_info(pndman_info *dst, pndman_info *src)
+{
+   memcpy(dst->name, src->name, PND_NAME);
+   memcpy(dst->type, src->type, PND_SHRT_STR);
+   memcpy(dst->src, src->src, PND_PATH);
+}
+
+/* \brief Internal allocation of pndman_translated */
+static pndman_translated* _pndman_translated_new(void)
+{
+   pndman_translated *t;
+
+   t = malloc(sizeof(pndman_translated));
+   if (!t) return NULL;
+
+   /* init */
+   memset(t->lang,   0, PND_SHRT_STR);
+   memset(t->string, 0, PND_STR);
+   t->next = NULL;
+
+   return t;
+}
+
+/* \brief Internal copy of pndman_translated */
+static pndman_translated* _pndman_copy_translated(pndman_translated *src)
+{
+   pndman_translated *t;
+
+   if (!src) return NULL;
+   t = malloc(sizeof(pndman_translated));
+   if (!t) return NULL;
+
+   memcpy(t->lang, src->lang, PND_SHRT_STR);
+   memcpy(t->string, src->string, PND_STR);
+   t->next = _pndman_copy_translated(src->next);
+
+   return t;
+}
+
+/* \brief Internal allocation of pndman_license */
+static pndman_license* _pndman_license_new(void)
+{
+   pndman_license *l;
+
+   l = malloc(sizeof(pndman_license));
+   if (!l) return NULL;
+
+   /* init */
+   memset(l->name,            0, PND_SHRT_STR);
+   memset(l->url,             0, PND_STR);
+   memset(l->sourcecodeurl,   0, PND_STR);
+   l->next = NULL;
+
+   return l;
+}
+
+/* \brief Internal copy of pndman_license */
+static pndman_license* _pndman_copy_license(pndman_license *src)
+{
+   pndman_license *l;
+
+   if (!src) return NULL;
+   l = malloc(sizeof(pndman_license));
+   if (!l) return NULL;
+
+   memcpy(l->name, src->name, PND_SHRT_STR);
+   memcpy(l->url, src->url, PND_STR);
+   memcpy(l->sourcecodeurl, src->sourcecodeurl, PND_STR);
+   l->next = _pndman_copy_license(src->next);
+
+   return l;
+}
+
+/* \brief Internal allocation of pndman_previewpic */
+static pndman_previewpic* _pndman_previewpic_new(void)
+{
+   pndman_previewpic *p;
+
+   p = malloc(sizeof(pndman_previewpic));
+   if (!p) return NULL;
+
+   /* init */
+   memset(p->src,   0, PND_PATH);
+   p->next = NULL;
+
+   return p;
+}
+
+/* \brief Internal copy of pndman_previewpic */
+static pndman_previewpic* _pndman_copy_previewpic(pndman_previewpic *src)
+{
+   pndman_previewpic *p;
+
+   if (!src) return NULL;
+   p = malloc(sizeof(pndman_previewpic));
+   if (!p) return NULL;
+
+   memcpy(p->src, src->src, PND_PATH);
+   p->next = _pndman_copy_previewpic(src->next);
+
+   return p;
+}
+
+/* \brief Internal allocation of pndman_association */
+static pndman_association* _pndman_association_new(void)
+{
+   pndman_association *a;
+
+   a = malloc(sizeof(pndman_association));
+   if (!a) return NULL;
+
+   /* init */
+   memset(a->name,            0, PND_STR);
+   memset(a->filetype,        0, PND_SHRT_STR);
+   memset(a->exec,            0, PND_STR);
+   a->next = NULL;
+
+   return a;
+}
+
+/* \brief Internal copy of pndman_assocation */
+static pndman_association* _pndman_copy_association(pndman_association *src)
+{
+   pndman_association *a;
+
+   if (!src) return NULL;
+   a = malloc(sizeof(pndman_association));
+   if (!a) return NULL;
+
+   memcpy(a->name, src->name, PND_STR);
+   memcpy(a->filetype, src->filetype, PND_SHRT_STR);
+   memcpy(a->exec, src->exec, PND_STR);
+   a->next = _pndman_copy_association(src->next);
+
+   return a;
+}
+
+/* \brief Internal allocation of pndman_category */
+static pndman_category* _pndman_category_new(void)
+{
+   pndman_category *c;
+
+   c = malloc(sizeof(pndman_category));
+   if (!c) return NULL;
+
+   /* init */
+   memset(c->main,   0, PND_SHRT_STR);
+   memset(c->sub,    0, PND_SHRT_STR);
+   c->next = NULL;
+
+   return c;
+}
+
+/* \brief Internal copy of pndman_category */
+static pndman_category* _pndman_copy_category(pndman_category *src)
+{
+   pndman_category *c;
+
+   if (!src) return NULL;
+   c = malloc(sizeof(pndman_category));
+   if (!c) return NULL;
+
+   memcpy(c->main, src->main, PND_SHRT_STR);
+   memcpy(c->sub, src->sub, PND_SHRT_STR);
+   c->next = _pndman_copy_category(src->next);
+
+   return c;
 }
 
 /* \brief Allocate new pndman_application */
@@ -75,6 +273,40 @@ static pndman_application* _pndman_new_application(void)
    app->frequency    = 0;
 
    app->next = NULL;
+
+   return app;
+}
+
+/* \brief Copy all applications */
+static pndman_application* _pndman_copy_application(pndman_application *src)
+{
+   pndman_application *app;
+
+   if (!src) return NULL;
+   app = malloc(sizeof(pndman_application));
+   if (!app)
+      return NULL;
+
+   /* copy */
+   memcpy(app->id,      src->id,       PND_ID);
+   memcpy(app->appdata, src->appdata,  PND_PATH);
+   memcpy(app->icon,    src->icon,     PND_PATH);
+
+   _pndman_copy_author(&app->author, &src->author);
+   _pndman_copy_version(&app->osversion, &src->osversion);
+   _pndman_copy_version(&app->version, &src->version);
+   _pndman_copy_exec(&app->exec, &src->exec);
+   _pndman_copy_info(&app->info, &src->info),
+
+   app->title        = _pndman_copy_translated(src->title);
+   app->description  = _pndman_copy_translated(src->description);
+   app->category     = _pndman_copy_category(src->category);
+   app->previewpic   = _pndman_copy_previewpic(src->previewpic);
+   app->license      = _pndman_copy_license(src->license);
+   app->association  = _pndman_copy_association(src->association);
+
+   app->frequency    = src->frequency;
+   app->next         = _pndman_copy_application(src->next);
 
    return app;
 }
@@ -113,6 +345,43 @@ pndman_package* _pndman_new_pnd(void)
    pnd->rating          = 0;
    pnd->flags           = 0;
    pnd->next            = NULL;
+   pnd->next_installed  = NULL;
+
+   return pnd;
+}
+
+/* \brief Copy pndman_package */
+pndman_package* _pndman_copy_pnd(pndman_package *src)
+{
+   pndman_package *pnd;
+   assert(src);
+
+   /* allocate */
+   pnd = malloc(sizeof(pndman_package));
+   if (!pnd)
+      return NULL;
+
+   /* copy */
+   memcpy(pnd->path,    src->path,     PND_PATH);
+   memcpy(pnd->id,      src->id,       PND_ID);
+   memcpy(pnd->info,    src->info,     PND_INFO);
+   memcpy(pnd->md5,     src->md5,      PND_MD5);
+   memcpy(pnd->url,     src->url,      PND_STR);
+   memcpy(pnd->vendor,  src->vendor,   PND_NAME);
+   memcpy(pnd->icon,    src->icon,     PND_PATH);
+
+   _pndman_copy_author(&pnd->author, &src->author);
+   _pndman_copy_version(&pnd->version, &src->version);
+   pnd->app          = _pndman_copy_application(src->app);
+   pnd->title        = _pndman_copy_translated(src->title);
+   pnd->description  = _pndman_copy_translated(src->description);
+   pnd->category     = _pndman_copy_category(src->category);
+
+   pnd->size            = src->size;
+   pnd->modified_time   = src->modified_time;
+   pnd->rating          = src->rating;
+   pnd->flags           = src->flags;
+   pnd->next            = src->next;
    pnd->next_installed  = NULL;
 
    return pnd;
@@ -230,87 +499,6 @@ void _pndman_free_pnd(pndman_package *pnd)
 
    /* free this */
    free(pnd);
-}
-
-/* \brief Internal allocation of pndman_translated */
-static pndman_translated* _pndman_translated_new(void)
-{
-   pndman_translated *t;
-
-   t = malloc(sizeof(pndman_translated));
-   if (!t) return NULL;
-
-   /* init */
-   memset(t->lang,   0, PND_SHRT_STR);
-   memset(t->string, 0, PND_STR);
-   t->next = NULL;
-
-   return t;
-}
-
-/* \brief Internal allocation of pndman_license */
-static pndman_license* _pndman_license_new(void)
-{
-   pndman_license *l;
-
-   l = malloc(sizeof(pndman_license));
-   if (!l) return NULL;
-
-   /* init */
-   memset(l->name,            0, PND_SHRT_STR);
-   memset(l->url,             0, PND_STR);
-   memset(l->sourcecodeurl,   0, PND_STR);
-   l->next = NULL;
-
-   return l;
-}
-
-/* \brief Internal allocation of pndman_previewpic */
-static pndman_previewpic* _pndman_previewpic_new(void)
-{
-   pndman_previewpic *p;
-
-   p = malloc(sizeof(pndman_previewpic));
-   if (!p) return NULL;
-
-   /* init */
-   memset(p->src,   0, PND_PATH);
-   p->next = NULL;
-
-   return p;
-}
-
-/* \brief Internal allocation of pndman_association */
-static pndman_association* _pndman_association_new(void)
-{
-   pndman_association *a;
-
-   a = malloc(sizeof(pndman_association));
-   if (!a) return NULL;
-
-   /* init */
-   memset(a->name,            0, PND_STR);
-   memset(a->filetype,        0, PND_SHRT_STR);
-   memset(a->exec,            0, PND_STR);
-   a->next = NULL;
-
-   return a;
-}
-
-/* \brief Internal allocation of pndman_category */
-static pndman_category* _pndman_category_new(void)
-{
-   pndman_category *c;
-
-   c = malloc(sizeof(pndman_category));
-   if (!c) return NULL;
-
-   /* init */
-   memset(c->main,   0, PND_SHRT_STR);
-   memset(c->sub,    0, PND_SHRT_STR);
-   c->next = NULL;
-
-   return c;
 }
 
 /* \brief Internal allocation of title for pndman_package */

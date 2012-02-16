@@ -1,7 +1,7 @@
-#include <time.h>
-
 #ifndef PNDMAN_REPOSITORY_H
 #define PNDMAN_REPOSITORY_H
+
+#include <time.h>
 
 #define LOCAL_DB_NAME "libpndman repository"
 
@@ -9,6 +9,10 @@
 #define REPO_NAME       24
 #define REPO_TIMESTAMP  48
 #define REPO_VERSION    8
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* \brief pndman_repository struct */
 typedef struct pndman_repository
@@ -31,6 +35,10 @@ pndman_repository* _pndman_repository_last(pndman_repository *repo);
 
 pndman_package* _pndman_repository_new_pnd(pndman_repository *repo);
 int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *r);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* PNDMAN_REPOSITORY_H */
 

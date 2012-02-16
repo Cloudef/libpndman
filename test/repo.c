@@ -13,6 +13,12 @@
 
 #define REPO_URL "http://repo.openpandora.org/includes/get_data.php"
 
+static void err(char *str)
+{
+   puts(str);
+   exit(EXIT_FAILURE);
+}
+
 int main()
 {
    pndman_repository repository, *r;
@@ -26,16 +32,19 @@ int main()
    puts("");
 
    if (pndman_init() != 0)
-      return EXIT_FAILURE;
+      err("pndman_init failed");
 
    /* add device */
    pndman_device_init(&device);
-   pndman_device_add(TEST_ABSOLUTE, &device);
+   if (pndman_device_add(TEST_ABSOLUTE, &device) == -1)
+      err("failed to add device "TEST_ABSOLUTE", check that it exists");
 
    /* add repository */
    pndman_repository_init(&repository);
-   pndman_repository_add(REPO_URL, &repository);
-   pndman_repository_add(REPO_URL, &repository);
+   if (pndman_repository_add(REPO_URL, &repository) == -1)
+      err("failed to add "REPO_URL", :/");
+   if (pndman_repository_add(REPO_URL, &repository) == 0)
+      err("second repo add should fail!");
 
    r = &repository;
    for (; r; r = r->next) {
@@ -76,7 +85,7 @@ int main()
    pndman_device_free_all(&device);
 
    if (pndman_quit() == -1)
-      return EXIT_FAILURE;
+      err("pndman_quit failed");
 
    return EXIT_SUCCESS;
 }

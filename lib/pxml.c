@@ -788,33 +788,33 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
 
    /* header */
    if (!strlen(pnd->id) && strlen(pnd->app->id))
-      strcpy(pnd->id, pnd->app->id);
+      memcpy(pnd->id, pnd->app->id, PND_ID);
    if (!strlen(pnd->icon) && strlen(pnd->app->icon))
-      strcpy(pnd->icon, pnd->app->icon);
+      memcpy(pnd->icon, pnd->app->icon, PND_PATH);
 
    /* author */
    if (!strlen(pnd->author.name) && strlen(pnd->app->author.name))
-      strcpy(pnd->author.name, pnd->app->author.name);
+      memcpy(pnd->author.name, pnd->app->author.name, PND_NAME);
    if (!strlen(pnd->author.website) && strlen(pnd->app->author.website))
-      strcpy(pnd->author.website, pnd->app->author.website);
+      memcpy(pnd->author.website, pnd->app->author.website, PND_STR);
 
    /* version */
    if (!strlen(pnd->version.major) && strlen(pnd->app->version.major))
-      strcpy(pnd->version.major, pnd->app->version.major);
+      memcpy(pnd->version.major, pnd->app->version.major, PND_VER);
    if (!strlen(pnd->version.minor) && strlen(pnd->app->version.minor))
-      strcpy(pnd->version.minor, pnd->app->version.minor);
+      memcpy(pnd->version.minor, pnd->app->version.minor, PND_VER);
    if (!strlen(pnd->version.release) && strlen(pnd->app->version.release))
-      strcpy(pnd->version.release, pnd->app->version.release);
+      memcpy(pnd->version.release, pnd->app->version.release, PND_VER);
    if (!strlen(pnd->version.build) && strlen(pnd->app->version.build))
-      strcpy(pnd->version.build, pnd->app->version.build);
+      memcpy(pnd->version.build, pnd->app->version.build, PND_VER);
 
    /* titles */
    if (!pnd->title && pnd->app->title) {
       t = pnd->app->title;
       for (; t; t = t->next) {
          if ((tc = _pndman_package_new_title(pnd))) {
-            strcpy(tc->lang, t->lang);
-            strcpy(tc->string, t->string);
+            memcpy(tc->lang, t->lang, PND_SHRT_STR);
+            memcpy(tc->string, t->string, PND_STR);
          }
       }
    }
@@ -824,8 +824,8 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
       t = pnd->app->description;
       for (; t; t = t->next) {
          if ((tc = _pndman_package_new_description(pnd))) {
-            strcpy(tc->lang, t->lang);
-            strcpy(tc->string, t->string);
+            memcpy(tc->lang, t->lang, PND_SHRT_STR);
+            memcpy(tc->string, t->string, PND_STR);
          }
       }
    }

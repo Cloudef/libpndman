@@ -10,6 +10,12 @@
 #  error "No support yet"
 #endif
 
+static void err(char *str)
+{
+   puts(str);
+   exit(EXIT_FAILURE);
+}
+
 int main()
 {
    pndman_device device, *d;
@@ -26,13 +32,15 @@ int main()
    puts("");
 
    if (pndman_init() == -1)
-      return EXIT_FAILURE;
+      err("pndman_init failed");
 
    /* add some devices */
    pndman_device_init(&device);
-   pndman_device_add(TEST_ABSOLUTE, &device);
+   if (pndman_device_add(TEST_ABSOLUTE, &device) == -1)
+      err("failed to add device "TEST_ABSOLUTE", does it exist?");
    pndman_device_detect(&device);
-   pndman_device_add(TEST_ABSOLUTE, &device);
+   if (pndman_device_add(TEST_ABSOLUTE, &device) == 0)
+      err("second device add should fail!");
 
    /* print devices */
    puts("");
@@ -75,7 +83,7 @@ int main()
    pndman_device_free_all(&device);
 
    if (pndman_quit() == -1)
-      return EXIT_FAILURE;
+      err("pndman_quit failed");
 
    return EXIT_SUCCESS;
 }

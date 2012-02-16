@@ -30,6 +30,18 @@
 #define REPO_VERSION 8
 #define HANDLE_NAME  24
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* \brief flags for handle to determite what to do */
+typedef enum pndman_handle_flags
+{
+   PNDMAN_HANDLE_INSTALL = 0x01,
+   PNDMAN_HANDLE_REMOVE  = 0x02,
+   PNDMAN_HANDLE_FORCE   = 0x04,
+} pndman_handle_flags;
+
 /* type enum for version struct */
 typedef enum pndman_version_type
 {
@@ -219,29 +231,15 @@ typedef struct pndman_handle
 {
    const char     name[HANDLE_NAME];
    const char     error[LINE_MAX];
-   char           url[LINE_MAX];
-   unsigned int   flags;
+   pndman_package *pnd;
+   pndman_device  *device;
+   pndman_handle_flags flags;
 
    /* info */
    int            done;
-   pndman_device  *device;
    const void     *curl;
    const void     *file;
 } pndman_handle;
-
-/* undef */
-#undef PND_ID
-#undef PND_NAME
-#undef PND_VER
-#undef PND_STR
-#undef PND_SHRT_STR
-#undef PND_INFO
-#undef PND_MD5
-#undef PND_PATH
-#undef REPO_URL
-#undef REPO_NAME
-#undef REPO_VERSION
-#undef HANDLE_NAME
 
 /*! \brief
  * Initializes the library and all the resources
@@ -277,6 +275,24 @@ int pndman_commit(pndman_repository *repo, pndman_device *device);
 
 /* test thing, for surely */
 int pnd_do_something(char *file);
+
+#ifdef __cplusplus
+}
+#endif
+
+/* undef */
+#undef PND_ID
+#undef PND_NAME
+#undef PND_VER
+#undef PND_STR
+#undef PND_SHRT_STR
+#undef PND_INFO
+#undef PND_MD5
+#undef PND_PATH
+#undef REPO_URL
+#undef REPO_NAME
+#undef REPO_VERSION
+#undef HANDLE_NAME
 
 /* Some design notes here...
  *

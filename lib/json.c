@@ -52,6 +52,7 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       _json_set_string(pnd->icon,   json_object_get(package,"icon"),   PND_PATH);
       _json_set_string(pnd->md5,    json_object_get(package,"md5"),    PND_MD5);
       _json_set_string(pnd->vendor, json_object_get(package,"vendor"), PND_NAME);
+      _json_set_string(pnd->url,    json_object_get(package,"uri"),    PND_STR);
    }
    return RETURN_OK;
 }

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <curl/curl.h>
 #include "pndman.h"
+#include "package.h"
 #include "device.h"
 #include "curl.h"
 
@@ -13,17 +14,28 @@
 
 #define HANDLE_NAME 24
 
+/* \brief flags for handle to determite what to do */
+typedef enum pndman_handle_flags
+{
+   PNDMAN_HANDLE_INSTALL = 0x01,
+   PNDMAN_HANDLE_REMOVE  = 0x02,
+   PNDMAN_HANDLE_FORCE   = 0x04,
+   PNDMAN_HANDLE_INSTALL_DESKTOP = 0x08,
+   PNDMAN_HANDLE_INSTALL_MENU    = 0x16,
+   PNDMAN_HANDLE_INSTALL_APPS    = 0x32,
+} pndman_handle_flags;
+
 /* \brief pndman_handle struct */
 typedef struct pndman_handle
 {
    char           name[HANDLE_NAME];
    char           error[LINE_MAX];
-   char           url[LINE_MAX];
-   unsigned int   flags;
+   pndman_package *pnd;
+   pndman_device  *device;
+   pndman_handle_flags flags;
 
    /* info */
    int            done;
-   pndman_device  *device;
    CURL           *curl;
    FILE           *file;
 } pndman_handle;
@@ -49,6 +61,60 @@ static int _pndman_curl_free(void)
    return RETURN_OK;
 }
 
+/* \brief pre routine when handle has install flag */
+static int _pndman_handle_download(pndman_handle *handle)
+{
+   DEBUG("handle install");
+   char tmp_path[PATH_MAX];
+   if (!handle->device) return RETURN_FAIL;
+   if (!strlen(handle->pnd->url)) return RETURN_FAIL;
+
+   /* open file to write */
+   snprintf(tmp_path, PATH_MAX-1, "%s/%p", handle->device->mount, handle);
+   handle->file = fopen(tmp_path, "wb");
+   if (!handle->file) return RETURN_FAIL;
+
+   /* reset curl */
+   if (handle->curl) curl_easy_reset(handle->curl);
+   else handle->curl = curl_easy_init();
+
+   if (!handle->curl) {
+      fclose(handle->file);
+      return RETURN_FAIL;
+   }
+
+   /* set download URL */
+   curl_easy_setopt(handle->curl, CURLOPT_URL,     handle->pnd->url);
+   curl_easy_setopt(handle->curl, CURLOPT_PRIVATE, handle);
+   curl_easy_setopt(handle->curl, CURLOPT_WRITEFUNCTION, curl_write_file);
+   curl_easy_setopt(handle->curl, CURLOPT_CONNECTTIMEOUT, CURL_TIMEOUT);
+   //curl_easy_setopt(handle->curl, CURLOPT_NOPROGRESS, 0);
+   //curl_easy_setopt(handle->curl, CURLOPT_PROGRESSFUNCTION, curl_progress_func);
+   curl_easy_setopt(handle->curl, CURLOPT_WRITEDATA, handle->file);
+
+   /* add to multi interface */
+   curl_multi_add_handle(_pndman_curlm, handle->curl);
+
+   return RETURN_OK;
+}
+
+/* \brief post routine when handle has install flag */
+static int _pndman_handle_install(pndman_handle *handle)
+{
+   DEBUG("handle install");
+   DEBUG("install not yet implented");
+   handle->pnd->flags |= PND_INSTALLED;
+   return RETURN_OK;
+}
+
+/* \brief post routine when handle has removal flag */
+static int _pndman_handle_remove(pndman_handle *handle)
+{
+   DEBUG("handle remove");
+   DEBUG("remove not yet implented");
+   return RETURN_OK;
+}
+
 /* API */
 
 /* \brief Allocate new pndman_handle for transfer */
@@ -61,6 +127,7 @@ int pndman_handle_init(char *name, pndman_handle *handle)
 
    handle->curl = NULL;
    handle->device = NULL;
+   handle->pnd = NULL;
    strncpy(handle->name, name, HANDLE_NAME-1);
    memset(handle->error, 0, LINE_MAX);
    handle->flags = 0;
@@ -80,7 +147,6 @@ int pndman_handle_free(pndman_handle *handle)
    if (_pndman_curlm) curl_multi_remove_handle(_pndman_curlm, handle->curl);
    curl_easy_cleanup(handle->curl);
    if (handle->file)  fclose(handle->file);
-
    handle->curl = NULL;
    return RETURN_OK;
 }
@@ -88,39 +154,14 @@ int pndman_handle_free(pndman_handle *handle)
 /* \brief Perform pndman_handle */
 int pndman_handle_perform(pndman_handle *handle)
 {
-   char tmp_path[PATH_MAX];
    DEBUG("pndman_handle_perform");
-   if (!handle)               return RETURN_FAIL;
-   if (!handle->device)       return RETURN_FAIL;
-   if (!strlen(handle->url))  return RETURN_FAIL;
+   if (!handle)         return RETURN_FAIL;
+   if (!handle->pnd)    return RETURN_FAIL;
+   if (!handle->flags)  return RETURN_FAIL;
 
-   /* open file to write */
-   strncpy(tmp_path, handle->device->mount, PATH_MAX-1);
-   strncat(tmp_path, "/", PATH_MAX-1);
-   strncat(tmp_path, handle->name, PATH_MAX-1);
-   handle->file = fopen(tmp_path, "wb");
-   if (!handle->file) return RETURN_FAIL;
-
-   /* reset curl */
-   if (handle->curl) curl_easy_reset(handle->curl);
-   else handle->curl = curl_easy_init();
-
-   if (!handle->curl) {
-      fclose(handle->file);
-      return RETURN_FAIL;
-   }
-
-   /* set download URL */
-   curl_easy_setopt(handle->curl, CURLOPT_URL,     handle->url);
-   curl_easy_setopt(handle->curl, CURLOPT_PRIVATE, handle);
-   curl_easy_setopt(handle->curl, CURLOPT_WRITEFUNCTION, curl_write_file);
-   curl_easy_setopt(handle->curl, CURLOPT_CONNECTTIMEOUT, 5L );
-   //curl_easy_setopt(handle->curl, CURLOPT_NOPROGRESS, 0);
-   //curl_easy_setopt(handle->curl, CURLOPT_PROGRESSFUNCTION, curl_progress_func);
-   curl_easy_setopt(handle->curl, CURLOPT_WRITEDATA, handle->file);
-
-   /* add to multi interface */
-   curl_multi_add_handle(_pndman_curlm, handle->curl);
+   if (handle->flags & PNDMAN_HANDLE_INSTALL)
+      if (_pndman_handle_download(handle) != RETURN_OK)
+         return RETURN_FAIL;
 
    return RETURN_OK;
 }
@@ -177,6 +218,26 @@ int pndman_download()
    /* it's okay to get rid of this */
    if (!still_running) _pndman_curl_free();
    return still_running;
+}
+
+/* \brief Commit handle's state to ram
+ * remember to call pndman_commit afterwards! */
+int pndman_handle_commit(pndman_handle *handle)
+{
+   if (!handle)         return RETURN_FAIL;
+   if (!handle->pnd)    return RETURN_FAIL;
+   if (!handle->done)   return RETURN_FAIL;
+
+   if (handle->flags & PNDMAN_HANDLE_REMOVE) {
+      if (_pndman_handle_remove(handle) != RETURN_OK)
+         return RETURN_FAIL;
+      handle->pnd->flags = 0;
+   }
+   if (handle->flags & PNDMAN_HANDLE_INSTALL)
+      if (!_pndman_handle_install(handle) != RETURN_OK)
+         return RETURN_FAIL;
+
+   return RETURN_OK;
 }
 
 /* vim: set ts=8 sw=3 tw=0 :*/

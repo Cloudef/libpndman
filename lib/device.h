@@ -1,6 +1,10 @@
 #ifndef PNDMAN_DEVICE_H
 #define PNDMAN_DEVICE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct pndman_device
 {
    char mount[PATH_MAX];
@@ -12,6 +16,10 @@ typedef struct pndman_device
    /* internal */
    int exist;
 } pndman_device;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* PNDMAN_DEVICE_H */
 

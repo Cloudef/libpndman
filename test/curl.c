@@ -12,19 +12,22 @@
 #  error "No support yet"
 #endif
 
-#define TEST_URL "http://cloudef.eu/armpit/harem_animes.txt"
+#define REPO_URL "http://repo.openpandora.org/includes/get_data.php"
 #define H_COUNT 5 /* handle count */
 #define D_AGAIN 2 /* how many times to download again?
                      tests adding new downloads to the same queue, while others are active */
 
 /* by default, download count should be 7 */
-
-/* we need unique download identifiers, for now at least (might change) */
-char *UNIQID[H_COUNT+1] = { "d1", "d2", "d3", "d4", "d5", "d6" };
+static void err(char *str)
+{
+   puts(str);
+   exit(EXIT_FAILURE);
+}
 
 int main()
 {
    pndman_device device;
+   pndman_repository repository, *repo;
    pndman_handle handle[H_COUNT+1];
    int i;
    int again         = 0;
@@ -34,17 +37,42 @@ int main()
    puts("");
 
    if (pndman_init() == -1)
-      return EXIT_FAILURE;
+      err("pndman_init failed");
 
    pndman_device_init(&device);
-   pndman_device_add(TEST_ABSOLUTE, &device);
+   if (pndman_device_add(TEST_ABSOLUTE, &device) == -1)
+      err("failed to add device "TEST_ABSOLUTE", check that it exists");
+
+   pndman_repository_init(&repository);
+   if (pndman_repository_add(REPO_URL, &repository) == -1)
+      err("failed to add repository "REPO_URL", :/");
+
+   /* the repository we added, is the next one.
+    * first repository is always the local repository */
+   repo = repository.next;
+
+   /* read from device, then sync the repository we added */
+   pndman_read_from_device(repo, &device);
+   pndman_sync_request(repo);
+   while (pndman_sync() > 0);
+
+   /* check that we actually got pnd's */
+   if (!repo->pnd)
+      err("no PND's retivied from "REPO_URL", maybe it's down?");
+
+   /* print some info */
+   puts(repo->name);
+   puts(repo->pnd->id);
+   puts(repo->pnd->url);
 
    i = 0;
    for (; i != H_COUNT; ++i) {
-      pndman_handle_init(UNIQID[i], &handle[i]);
-      strcpy(handle[i].url, TEST_URL);
+      pndman_handle_init("DOWNLOAD", &handle[i]);
+      handle[i].pnd    = repo->pnd; /* lets download the first pnd from repository */
       handle[i].device = &device;
-      pndman_handle_perform(&handle[i]);
+      handle[i].flags  = PNDMAN_HANDLE_INSTALL;
+      if (pndman_handle_perform(&handle[i]) == -1)
+         err("failed to perform handle");
    }
 
    /* download while running,
@@ -74,7 +102,7 @@ int main()
       pndman_handle_free(&handle[i]);
 
    if (pndman_quit() == -1)
-      return EXIT_FAILURE;
+      err("pndman_quit failed");
 
    puts("");
    printf("Download Count: %zu\n", dcount);
