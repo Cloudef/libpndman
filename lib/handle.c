@@ -90,14 +90,15 @@ static int _pndman_handle_download(pndman_handle *handle)
        !(handle->flags & PNDMAN_HANDLE_INSTALL_APPS))
       return RETURN_FAIL;
 
+   /* reset curl */
+   if (!curl_init_request(&handle->request))
+      return RETURN_FAIL;
+
    /* open file to write */
    snprintf(tmp_path, PATH_MAX-1, "%s/%p", handle->device->appdata, handle);
    handle->file = fopen(tmp_path, "wb");
-   if (!handle->file) return RETURN_FAIL;
-
-   /* reset curl */
-   if (!curl_init_request(&handle->request)) {
-      fclose(handle->file);
+   if (!handle->file) {
+      curl_free_request(&handle->request);
       return RETURN_FAIL;
    }
 
@@ -266,7 +267,7 @@ int pndman_handle_free(pndman_handle *handle)
    return RETURN_OK;
 }
 
-/* \brief Perform pndman_handle */
+/* \brief perform handle, currently only needed for INSTALL handles */
 int pndman_handle_perform(pndman_handle *handle)
 {
    DEBUG("pndman_handle_perform");
