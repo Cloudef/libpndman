@@ -1,16 +1,39 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <string.h>
 #include "pndman.h"
 
-#if __linux__
+static void err(char *str)
+{
+   puts(str);
+   exit(EXIT_FAILURE);
+}
+
+#ifdef __WIN32__
+#  define getcwd _getcwd
+#elif __linux__
+#  include <sys/stat.h>
 #  include <dirent.h>
-#  define PND_DIR "/media/Storage/pandora/menu"
-#elif __WIN32__
-#  define PND_DIR "D:/pandora/menu"
-#else
-#  error "No support yet"
 #endif
+static char* test_device()
+{
+   char *cwd = malloc(PATH_MAX);
+   if (!cwd) return NULL;
+   getcwd(cwd, PATH_MAX);
+   strncat(cwd, "/SD", PATH_MAX-1);
+   if (access(cwd, F_OK) != 0)
+#ifdef __WIN32__
+      if (mkdir(cwd) == -1) {
+#else
+      if (mkdir(cwd, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1) {
+#endif
+         free(cwd);
+         return NULL;
+      }
+   return cwd;
+}
 
 int main()
 {
@@ -23,20 +46,25 @@ int main()
 #endif
    char path1[PATH_MAX];
    char path2[PATH_MAX];
+   char *cwd;
    size_t count = 0;
 
+   cwd = test_device();
+   if (!cwd) err("failed to get virtual device path");
+
    puts("This test, tests various pxml operations within libpndman.");
+   puts("To get some pnds, run handle(.exe) first.");
    puts("");
 
    if (pndman_init() == -1)
-      return EXIT_FAILURE;
+      err("pndman init failed");
 
 #ifdef __linux__
    /* copy path */
-   strncpy(path1, PND_DIR, PATH_MAX-1);
-   strncat(path1, "/",     PATH_MAX-1);
+   strncpy(path1, cwd, PATH_MAX-1);
+   strncat(path1, "/pandora/menu/", PATH_MAX-1);
 
-   dp = opendir(PND_DIR);
+   dp = opendir(path1);
    if (!dp)
       return EXIT_FAILURE;
 
@@ -52,10 +80,10 @@ int main()
 
    closedir(dp);
 #elif __WIN32__
-   sprintf(path1, "%s/*.pnd", PND_DIR);
+   sprintf(path1, "%s/pandora/menu/*.pnd", cwd);
 
    if ((hFind = FindFirstFile(path1, &dp)) == INVALID_HANDLE_VALUE)
-      return EXIT_FAILURE;
+      err("could not find any pnd files");
 
    do {
       sprintf(path2, "%s/%s", PND_DIR, dp.cFileName);
@@ -67,8 +95,9 @@ int main()
    FindClose(hFind);
 #endif
 
+   free(cwd);
    if (pndman_quit() == -1)
-      return EXIT_FAILURE;
+      err("pndman quit failed");
 
    puts("");
    printf("%zu PNDs\n", count);
