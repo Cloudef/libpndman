@@ -46,10 +46,14 @@ static CURLM *_pndman_curlm;
 /* \brief move file, src -> dst */
 static int _pndman_move_file(char* src, char* dst)
 {
+   FILE *f;
+
    /* remove dst, if exists */
-   if (access(dst, F_OK) == 0)
+   if ((f = fopen(dst, "r"))) {
+      fclose(f);
       if (unlink(dst) != 0)
          return RETURN_FAIL;
+   }
 
    /* rename */
    if (rename(src, dst) != 0)
@@ -166,6 +170,7 @@ static int _pndman_handle_install(pndman_handle *handle)
 
    /* get install directory */
    strncpy(install, handle->device->mount, PATH_MAX-1);
+   strncat(install, "/pandora", PATH_MAX-1);
    if (handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP)
       strncat(install, "/desktop", PATH_MAX-1);
    else if (handle->flags & PNDMAN_HANDLE_INSTALL_MENU)
@@ -187,14 +192,17 @@ static int _pndman_handle_install(pndman_handle *handle)
    /* check that if pnd for some reason exists, but does not exist on database,
     * or vice versa! (do I actually even need this?) */
 
+   /* close the download file, so we can move it */
+   if (handle->file) fclose(handle->file);
+   handle->file = NULL;
+
+   snprintf(tmp, PATH_MAX-1, "%s/%p", handle->device->appdata, handle);
    DEBUGP("install: %s\n", install);
-   // if (_pndman_check_lost_pnd(install) == RETURN_OK)
-   {
-      /* pnd really does not exist */
-      snprintf(tmp, PATH_MAX-1, "%s/%p", handle->device->appdata, handle);
-      if (_pndman_move_file(tmp, install) != RETURN_OK)
-         return RETURN_FAIL;
-   }
+   DEBUGP("from: %s\n", tmp);
+   if (_pndman_move_file(tmp, install) != RETURN_OK)
+      return RETURN_FAIL;
+
+   DEBUG("install mark");
 
    /* mark installed */
    handle->pnd->flags |= PND_INSTALLED;
@@ -259,9 +267,11 @@ int pndman_handle_free(pndman_handle *handle)
    curl_free_request(&handle->request);
 
    /* get rid of the temporary file */
-   if (handle->file) fclose(handle->file);
-   snprintf(tmp_path, PATH_MAX-1, "%s/%p", handle->device->appdata, handle);
-   unlink(tmp_path);
+   if (handle->file) {
+      fclose(handle->file);
+      snprintf(tmp_path, PATH_MAX-1, "%s/%p", handle->device->appdata, handle);
+      unlink(tmp_path);
+   }
 
    return RETURN_OK;
 }
@@ -325,9 +335,8 @@ int pndman_download()
    /* update status of curl handles */
    while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left))) {
       curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &handle);
-      if (msg->msg == CURLMSG_DONE) {
+      if (msg->msg == CURLMSG_DONE)
          handle->done = 1;
-      }
    }
 
    /* it's okay to get rid of this */
@@ -341,13 +350,13 @@ int pndman_handle_commit(pndman_handle *handle)
 {
    if (!handle)         return RETURN_FAIL;
    if (!handle->pnd)    return RETURN_FAIL;
-   if (!handle->done)   return RETURN_FAIL;
+   DEBUG("pndman handle commit");
 
    if ((handle->flags & PNDMAN_HANDLE_REMOVE))
       if (_pndman_handle_remove(handle) != RETURN_OK)
          return RETURN_FAIL;
    if ((handle->flags & PNDMAN_HANDLE_INSTALL))
-      if (!_pndman_handle_install(handle) != RETURN_OK)
+      if (_pndman_handle_install(handle) != RETURN_OK)
          return RETURN_FAIL;
 
    return RETURN_OK;
