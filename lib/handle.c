@@ -91,7 +91,7 @@ static int _pndman_handle_download(pndman_handle *handle)
       return RETURN_FAIL;
 
    /* reset curl */
-   if (!curl_init_request(&handle->request))
+   if (curl_init_request(&handle->request) != RETURN_OK)
       return RETURN_FAIL;
 
    /* open file to write */
