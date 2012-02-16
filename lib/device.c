@@ -42,7 +42,11 @@ static int _check_create_tree_dir(char *path)
    if (access(path, F_OK) != 0) {
       if (errno == EACCES)
          return RETURN_FAIL;
+#ifdef __WIN32__
+      if (mkdir(path) == -1)
+#else
       if (mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
+#endif
          return RETURN_FAIL;
    }
    return RETURN_OK;
