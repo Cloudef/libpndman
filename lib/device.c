@@ -230,6 +230,8 @@ static int _pndman_device_add_absolute(char *path, pndman_device *device)
    device->size      = fs.f_blocks * fs.f_bsize;
    device->available = fs.f_bavail * fs.f_bsize;
    device->exist     = 1;
+   _strip_slash(device->device);
+   _strip_slash(device->mount);
 #endif
 
    return RETURN_OK;
@@ -282,6 +284,8 @@ static int _pndman_device_add(char *path, pndman_device *device)
    device->size      = fs.f_blocks * fs.f_bsize;
    device->available = fs.f_bavail * fs.f_bsize;
    device->exist     = 1;
+   _strip_slash(device->device);
+   _strip_slash(device->mount);
 #elif __WIN32__
    char szName[PATH_MAX];
    char szDrive[3] = { ' ', ':', '\0' };
@@ -320,6 +324,8 @@ static int _pndman_device_add(char *path, pndman_device *device)
    device->size      = bytes_size.QuadPart;
    device->available = bytes_available.QuadPart;
    device->exist     = 1;
+   _strip_slash(device->device);
+   _strip_slash(device->mount);
 #endif
 
    return RETURN_OK;
@@ -364,6 +370,8 @@ static int _pndman_device_detect(pndman_device *device)
                device->size      = fs.f_blocks * fs.f_bsize;
                device->available = fs.f_bavail * fs.f_bsize;
                device->exist     = 1;
+               _strip_slash(device->device);
+               _strip_slash(device->mount);
             } else {
                _pndman_device_free(device);
                device = old_device;
@@ -411,6 +419,8 @@ static int _pndman_device_detect(pndman_device *device)
             device->size      = bytes_size.QuadPart;
             device->available = bytes_available.QuadPart;
             device->exist     = 1;
+            _strip_slash(device->device);
+            _strip_slash(device->mount);
          } else {
             _pndman_device_free(device);
             device = old_device;
@@ -461,9 +471,7 @@ int pndman_device_add(char *path, pndman_device *device)
 {
    DEBUG("pndman device add");
    if (!device) return RETURN_FAIL;
-   if (_pndman_device_add(path, device) != RETURN_OK)
-      return RETURN_FAIL;
-   _strip_slash(device->mount);
+   return _pndman_device_add(path, device);
 }
 
 /* \brief Free one device */
