@@ -11,7 +11,7 @@ extern "C" {
 /* \brief curl_write_result struct for storing curl result to memory */
 typedef struct curl_write_result
 {
-   char *data;
+   void *data;
    int   pos;
 } curl_write_result;
 
