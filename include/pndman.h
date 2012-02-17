@@ -157,12 +157,12 @@ typedef struct pndman_application
    const pndman_exec    exec;
    const pndman_info    info;
 
-   const pndman_translated    *title;
-   const pndman_translated    *description;
-   const pndman_license       *license;
-   const pndman_previewpic    *previewpic;
-   const pndman_category      *category;
-   const pndman_association   *association;
+   pndman_translated    *title;
+   pndman_translated    *description;
+   pndman_license       *license;
+   pndman_previewpic    *previewpic;
+   pndman_category      *category;
+   pndman_association   *association;
 
    struct pndman_application *next;
 } pndman_application;
@@ -183,12 +183,14 @@ typedef struct pndman_package
 
    const pndman_author     author;
    const pndman_version    version;
-   const pndman_application *app;
+   pndman_application *app;
 
    /* bleh, lots of data duplication.. */
-   const pndman_translated *title;
-   const pndman_translated *description;
-   const pndman_category   *category;
+   pndman_translated *title;
+   pndman_translated *description;
+   pndman_license    *license;
+   pndman_previewpic *previewpic;
+   pndman_category   *category;
 
    unsigned int flags;
    struct pndman_package *next_installed;

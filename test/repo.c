@@ -108,8 +108,7 @@ int main()
       printf("   URL: %s\n", r->url);
       printf("   VER: %s\n", r->version);
       puts("");
-      pnd = r->pnd;
-      for (; pnd; pnd = pnd->next) {
+      for (pnd = r->pnd; pnd; pnd = pnd->next) {
          printf("ID:    %s\n", pnd->id);
          printf("ICON:  %s\n", pnd->icon);
          printf("MD5:   %s\n", pnd->md5);

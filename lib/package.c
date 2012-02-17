@@ -340,6 +340,8 @@ pndman_package* _pndman_new_pnd(void)
    pnd->app             = NULL;
    pnd->title           = NULL;
    pnd->description     = NULL;
+   pnd->license         = NULL;
+   pnd->previewpic      = NULL;
    pnd->category        = NULL;
 
    pnd->size            = 0;
@@ -377,6 +379,8 @@ pndman_package* _pndman_copy_pnd(pndman_package *src)
    pnd->app          = _pndman_copy_application(src->app);
    pnd->title        = _pndman_copy_translated(src->title);
    pnd->description  = _pndman_copy_translated(src->description);
+   pnd->license      = _pndman_copy_license(src->license);
+   pnd->previewpic   = _pndman_copy_previewpic(src->previewpic);
    pnd->category     = _pndman_copy_category(src->category);
 
    pnd->size            = src->size;
@@ -467,9 +471,11 @@ static void _pndman_free_application(pndman_application *app)
 void _pndman_free_pnd(pndman_package *pnd)
 {
    pndman_translated  *t, *tn;
+   pndman_license     *l, *ln;
+   pndman_previewpic  *p, *pn;
    pndman_category    *c, *cn;
    pndman_application *a, *an;
-   pndman_package     *p, *pn;
+   pndman_package     *pp, *ppn;
 
    /* should never be null */
    assert(pnd);
@@ -484,6 +490,17 @@ void _pndman_free_pnd(pndman_package *pnd)
    for (; t; t = tn)
    { tn = t->next; free(t); }
 
+   /* free licenses */
+   l = pnd->license;
+   for (; l; l = ln)
+   { ln = l->next; free(l); }
+
+   /* free previewpics */
+   p = pnd->previewpic;
+   for (; p; p = pn)
+   { pn = p->next; free(p); }
+
+
    /* free categories */
    c = pnd->category;
    for (; c; c = cn)
@@ -495,9 +512,9 @@ void _pndman_free_pnd(pndman_package *pnd)
    { an = a->next; _pndman_free_application(a); }
 
    /* free next installed PND */
-   p = pnd->next_installed;
-   for (; p; p = pn)
-   { pn = p->next_installed; free(p); }
+   pp = pnd->next_installed;
+   for (; pp; pp = ppn)
+   { ppn = pp->next_installed; _pndman_free_pnd(pp); }
 
    /* free this */
    free(pnd);
