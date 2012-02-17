@@ -12,18 +12,20 @@
 #include "curl.h"
 #include "json.h"
 
-/* \brief wrap curl_request internally and add *next pointer */
-typedef struct _pndman_sync_request
+/* \brief sync handle struct */
+typedef struct pndman_sync_handle
 {
-   pndman_repository            *repo;
-   FILE                         *file;
-   CURL                         *curl;
-   struct _pndman_sync_request  *next;
-} _pndman_sync_request;
+   char                 error[LINE_MAX];
+   pndman_repository    *repository;
+   int                  done;
+
+   /* internal */
+   FILE                 *file;
+   CURL                 *curl;
+} pndman_sync_handle;
 
 /* \brief curl multi handle for json.c */
 static CURLM *_pndman_curlm = NULL;
-static _pndman_sync_request *_pndman_internal_request = NULL;
 
 /* \brief replace substring, precondition: s!=0, old!=0, new!=0 */
 static char *str_replace(const char *s, const char *old, const char *new)
@@ -44,34 +46,27 @@ static char *str_replace(const char *s, const char *old, const char *new)
 }
 
 /* \brief allocate internal sync request */
-static _pndman_sync_request* _pndman_new_sync_request(_pndman_sync_request *first, pndman_repository *repo)
+static int _pndman_new_sync_handle(pndman_sync_handle *object, pndman_repository *repo)
 {
-   _pndman_sync_request *object;
-   _pndman_sync_request *r = first;
    char *url = NULL;
    char timestamp[REPO_TIMESTAMP];
 
-   /* find last request */
-   for(; first && r->next; r = r->next);
-   object = malloc(sizeof(_pndman_sync_request));
-   if (!object) return NULL;
+   /* init */
+   object->repository = repo;
+   object->done = 0;
+   object->curl = NULL;
+   object->file = NULL;
+   memset(object->error, 0, LINE_MAX);
 
    /* create temporary write, where to write the request */
    object->file = _pndman_get_tmp_file();
-   if (!object->file) {
-      free(object);
-      return NULL;
-   }
-
-   object->repo = repo;
-   object->next = NULL;
+   if (!object->file) return RETURN_FAIL;
 
    /* reset curl */
    object->curl = curl_easy_init();
    if (!object->curl) {
       fclose(object->file);
-      free(object);
-      return NULL;
+      return RETURN_FAIL;;
    }
 
    /* check wether, to do merging or full sync */
@@ -82,8 +77,7 @@ static _pndman_sync_request* _pndman_new_sync_request(_pndman_sync_request *firs
    if (!url) {
       curl_easy_cleanup(object->curl);
       fclose(object->file);
-      free(object);
-      return NULL;
+      return RETURN_FAIL;
    }
 
    DEBUGP("ADD: %s\n", url);
@@ -101,17 +95,18 @@ static _pndman_sync_request* _pndman_new_sync_request(_pndman_sync_request *firs
    /* add to multi interface */
    curl_multi_add_handle(_pndman_curlm, object->curl);
    free(url);
-   return object;
+   return RETURN_OK;
 }
 
 /* \brief free internal sync request */
-static void _pndman_free_sync_request(_pndman_sync_request *object)
+static int _pndman_sync_handle_free(pndman_sync_handle *object)
 {
-   assert(object);
-   curl_multi_remove_handle(_pndman_curlm, object->curl);
-   curl_easy_cleanup(object->curl);
-   fclose(object->file);
-   free(object);
+   if (object->curl) {
+      if (_pndman_curlm) curl_multi_remove_handle(_pndman_curlm, object->curl);
+      curl_easy_cleanup(object->curl);
+   }
+   if (object->file) fclose(object->file);
+   return RETURN_OK;
 }
 
 /* \brief Store local database seperately */
@@ -276,7 +271,7 @@ static int _pndman_sync_perform()
    CURLMsg *msg;
    int msgs_left;
 
-   _pndman_sync_request *request;
+   pndman_sync_handle *handle;
 
    /* perform download */
    curl_multi_perform(_pndman_curlm, &still_running);
@@ -306,10 +301,11 @@ static int _pndman_sync_perform()
 #if 1
    /* update status of curl handles */
    while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left))) {
-      curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &request);
+      curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &handle);
       if (msg->msg == CURLMSG_DONE) { /* DONE */
-         DEBUGP("%s : done\n", request->repo->url);
-         _pndman_json_process(request->repo, request->file);
+         DEBUGP("%s : done\n", handle->repository->url);
+         handle->done = 1;
+         _pndman_json_process(handle->repository, handle->file);
       }
    }
 #endif
@@ -320,25 +316,13 @@ static int _pndman_sync_perform()
 /* \brief query cleanup */
 static void _pndman_query_cleanup(void)
 {
-   _pndman_sync_request *r2;
-
-   /* loop code here */
-   r2 = _pndman_internal_request;
-   for (; r2; r2 = _pndman_internal_request) {
-      _pndman_internal_request = r2->next;
-      _pndman_free_sync_request(r2);
-   }
-
    if (_pndman_curlm) curl_multi_cleanup(_pndman_curlm);
-   _pndman_curlm            = NULL;
-   _pndman_internal_request = NULL;
+   _pndman_curlm = NULL;
 }
 
 /* \brief request for synchorization for this repository */
-static int _pndman_repository_sync_request(pndman_repository *repo)
+static int _pndman_repository_sync_request(pndman_sync_handle *handle, pndman_repository *repo)
 {
-   _pndman_sync_request *r2;
-
    /* create curl handle if doesn't exist */
    if (!_pndman_curlm) {
       /* get multi curl handle */
@@ -348,13 +332,9 @@ static int _pndman_repository_sync_request(pndman_repository *repo)
 
    /* create indivual curl requests */
    if (!strlen(repo->url)) return RETURN_FAIL;
-   r2 = _pndman_new_sync_request(_pndman_internal_request, repo);
-   if (!_pndman_internal_request && r2) _pndman_internal_request = r2;
-   else if (!r2) return RETURN_FAIL;
-
-   /* failed to create even one request */
-   if (!_pndman_internal_request)
+   if (_pndman_new_sync_handle(handle, repo) != RETURN_OK)
       return RETURN_FAIL;
+
    return RETURN_OK;
 }
 
@@ -393,11 +373,19 @@ int pndman_read_from_device(pndman_repository *repo, pndman_device *device)
 
 /* \brief request synchorization for repository
  * call this for each repository you want to sync before pndman_sync */
-int pndman_sync_request(pndman_repository *repo)
+int pndman_sync_request(pndman_sync_handle *handle, pndman_repository *repo)
 {
    DEBUG("pndman_sync_request");
-   if (!repo) return RETURN_FAIL;
-   return _pndman_repository_sync_request(repo);
+   if (!repo || !handle) return RETURN_FAIL;
+   return _pndman_repository_sync_request(handle, repo);
+}
+
+/* \brief free sync request */
+int pndman_sync_request_free(pndman_sync_handle *handle)
+{
+   DEBUG("pndman_sync_request_free");
+   if (!handle) return RETURN_FAIL;
+   return _pndman_sync_handle_free(handle);
 }
 
 /* \brief commits _all_ repositories to specific device */

@@ -259,6 +259,20 @@ typedef struct pndman_handle
    const void     *file;
 } pndman_handle;
 
+/* \brief
+ * COMMON
+ * Struct for repository synchorization */
+typedef struct pndman_sync_handle
+{
+   const char           error[LINE_MAX];
+   pndman_repository    *repository;
+   int                  done;
+
+   /* internal */
+   const void           *file;
+   const void           *curl;
+} pndman_sync_handle;
+
 /*! \brief
  * Initializes the library and all the resources
  */
@@ -289,7 +303,8 @@ int pndman_handle_free(pndman_handle *handle);
 int pndman_download();
 int pndman_read_from_device(pndman_repository *repo, pndman_device *device);
 int pndman_sync();
-int pndman_sync_request(pndman_repository *repo);
+int pndman_sync_request(pndman_sync_handle *handle, pndman_repository *repo);
+int pndman_sync_request_free(pndman_sync_handle *handle);
 int pndman_commit(pndman_repository *repo, pndman_device *device);
 
 /* test thing, for surely */

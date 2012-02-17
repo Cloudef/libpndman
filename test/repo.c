@@ -40,6 +40,8 @@ int main()
    pndman_repository repository, *r;
    pndman_device     device, *d;
    pndman_package   *pnd;
+   pndman_sync_handle handle[1]; /* we should have only one remote repository */
+   unsigned int x;
    char *cwd;
 
    cwd = test_device();
@@ -66,16 +68,33 @@ int main()
    if (pndman_repository_add(REPO_URL, &repository) == 0)
       err("second repo add should fail!");
 
-   r = &repository;
+   r = &repository; x = 0;
    for (; r; r = r->next) {
       d = &device;
       for (; d; d = d->next) pndman_read_from_device(r, d);
-      pndman_sync_request(r);
+
+      /* skip the local repository */
+      if (x) {
+         if (pndman_sync_request(&handle[x-1], r) != RETURN_OK)
+            err("pndman_sync_request failed");
+      }
+      ++x;
    }
 
    /* sync repositories
     * in real use should check error (-1) */
-   while (pndman_sync() > 0);
+   while (pndman_sync() > 0) {
+      for (x = 0; x != 1; ++x) {
+         if (handle[x].done) {
+            printf("%s : DONE!\n", handle[x].repository->name);
+            pndman_sync_request_free(&handle[x]);
+         }
+      }
+   }
+
+   /* make sure all sync handles are freed */
+   for (x = 0; x != 1; ++x)
+      pndman_sync_request_free(&handle[x]);
 
    puts("");
    r = &repository;
