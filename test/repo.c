@@ -93,8 +93,11 @@ int main()
    }
 
    /* make sure all sync handles are freed */
-   for (x = 0; x != 1; ++x)
+   for (x = 0; x != 1; ++x) {
+      if (handle[x].done)
+         printf("%s : DONE!\n", handle[x].repository->name);
       pndman_sync_request_free(&handle[x]);
+   }
 
    puts("");
    r = &repository;
