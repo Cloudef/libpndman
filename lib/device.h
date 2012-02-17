@@ -18,6 +18,8 @@ typedef struct pndman_device
    int exist;
 } pndman_device;
 
+char* _pndman_device_get_appdata(pndman_device *device);
+
 #ifdef __cplusplus
 }
 #endif

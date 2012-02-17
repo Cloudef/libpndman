@@ -85,6 +85,7 @@ static int _pndman_curl_free(void)
 static int _pndman_handle_download(pndman_handle *handle)
 {
    char tmp_path[PATH_MAX];
+   char *appdata;
 
    DEBUG("handle download");
    if (!handle->device)             return RETURN_FAIL;
@@ -98,8 +99,15 @@ static int _pndman_handle_download(pndman_handle *handle)
    if (curl_init_request(&handle->request) != RETURN_OK)
       return RETURN_FAIL;
 
+   /* check appdata */
+   appdata = _pndman_device_get_appdata(handle->device);
+   if (!appdata) {
+      curl_free_request(&handle->request);
+      return RETURN_FAIL;
+   }
+
    /* open file to write */
-   snprintf(tmp_path, PATH_MAX-1, "%s/%p", handle->device->appdata, handle);
+   snprintf(tmp_path, PATH_MAX-1, "%s/%p", appdata, handle);
    handle->file = fopen(tmp_path, "wb");
    if (!handle->file) {
       curl_free_request(&handle->request);
@@ -160,6 +168,7 @@ static int _pndman_handle_install(pndman_handle *handle)
    char install[PATH_MAX];
    char filename[PATH_MAX];
    char tmp[PATH_MAX];
+   char *appdata;
    DEBUG("handle install");
 
    if (!handle->device) return RETURN_FAIL;
@@ -196,7 +205,11 @@ static int _pndman_handle_install(pndman_handle *handle)
    if (handle->file) fclose(handle->file);
    handle->file = NULL;
 
-   snprintf(tmp, PATH_MAX-1, "%s/%p", handle->device->appdata, handle);
+   /* check appdata */
+   appdata = _pndman_device_get_appdata(handle->device);
+   if (!appdata) return RETURN_FAIL;
+
+   snprintf(tmp, PATH_MAX-1, "%s/%p", appdata, handle);
    DEBUGP("install: %s\n", install);
    DEBUGP("from: %s\n", tmp);
    if (_pndman_move_file(tmp, install) != RETURN_OK)
@@ -213,13 +226,15 @@ static int _pndman_handle_install(pndman_handle *handle)
 /* \brief post routine when handle has removal flag */
 static int _pndman_handle_remove(pndman_handle *handle)
 {
+   FILE *f;
    DEBUG("handle remove");
 
    /* sanity checks */
    if (!(handle->pnd->flags & PND_INSTALLED))
       return RETURN_FAIL;
-   if (access(handle->pnd->path, F_OK) != 0)
+   if (!(f = fopen(handle->pnd->path, "r")))
       return RETURN_FAIL;
+   fclose(f);
 
    /* remove */
    DEBUGP("remove: %s\n", handle->pnd->path);
@@ -256,6 +271,7 @@ int pndman_handle_init(char *name, pndman_handle *handle)
 int pndman_handle_free(pndman_handle *handle)
 {
    char tmp_path[PATH_MAX];
+   char *appdata;
 
    DEBUG("pndman_handle_free");
    if (!handle)               return RETURN_FAIL;
@@ -269,8 +285,13 @@ int pndman_handle_free(pndman_handle *handle)
    /* get rid of the temporary file */
    if (handle->file) {
       fclose(handle->file);
-      snprintf(tmp_path, PATH_MAX-1, "%s/%p", handle->device->appdata, handle);
-      unlink(tmp_path);
+
+      /* check appdata */
+      appdata = _pndman_device_get_appdata(handle->device);
+      if (appdata) {
+         snprintf(tmp_path, PATH_MAX-1, "%s/%p", appdata, handle);
+         unlink(tmp_path);
+      }
    }
 
    return RETURN_OK;

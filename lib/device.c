@@ -52,11 +52,13 @@ static int _check_create_tree_dir(char *path)
    return RETURN_OK;
 }
 
+/* \brief check the pnd tree before writing to ->appdata */
 static int _pndman_device_check_pnd_tree(pndman_device *device)
 {
    char tmp[PATH_MAX];
    char tmp2[PATH_MAX];
    assert(device);
+   assert(strlen(device->mount));
 
    /* <device>/pandora */
    strncpy(tmp, device->mount, PATH_MAX-1);
@@ -220,11 +222,6 @@ static int _pndman_device_add_absolute(char *path, pndman_device *device)
 
    /* fill device struct */
    strncpy(device->mount,  path, PATH_MAX-1);
-   if (_pndman_device_check_pnd_tree(device) != RETURN_OK) {
-      _pndman_device_free(device);
-      return RETURN_FAIL;
-   }
-
    strncpy(device->device, path, PATH_MAX-1);
    device->free      = fs.f_bfree  * fs.f_bsize;
    device->size      = fs.f_blocks * fs.f_bsize;
@@ -313,12 +310,6 @@ static int _pndman_device_add(char *path, pndman_device *device)
       strncpy(device->mount, path, PATH_MAX-1);
    else
       strncpy(device->mount,  szDrive, PATH_MAX-1);
-
-   if (_pndman_device_check_pnd_tree(device) != RETURN_OK) {
-      _pndman_device_free(device);
-      return RETURN_FAIL;
-   }
-
    strncpy(device->device, szName, PATH_MAX-1);
    device->free      = bytes_free.QuadPart;
    device->size      = bytes_size.QuadPart;
@@ -334,7 +325,6 @@ static int _pndman_device_add(char *path, pndman_device *device)
 /* \brief Detect devices and fill them automatically. */
 static int _pndman_device_detect(pndman_device *device)
 {
-   pndman_device *old_device;
 #ifdef __linux__
    FILE *mtab;
    struct mntent *m;
@@ -357,25 +347,19 @@ static int _pndman_device_detect(pndman_device *device)
             if (access(mnt.mnt_dir, R_OK | W_OK) == -1)
                continue;
 
-            old_device = device;
             if ((ret = _pndman_device_new_if_exist(&device, mnt.mnt_dir)) != RETURN_OK)
                break;
 
             DEBUGP("%s: %d\n", mnt.mnt_dir, device->exist);
 
             strncpy(device->mount,  mnt.mnt_dir,    PATH_MAX-1);
-            if (_pndman_device_check_pnd_tree(device) == RETURN_OK) {
-               strncpy(device->device, mnt.mnt_fsname, PATH_MAX-1);
-               device->free      = fs.f_bfree  * fs.f_bsize;
-               device->size      = fs.f_blocks * fs.f_bsize;
-               device->available = fs.f_bavail * fs.f_bsize;
-               device->exist     = 1;
-               _strip_slash(device->device);
-               _strip_slash(device->mount);
-            } else {
-               _pndman_device_free(device);
-               device = old_device;
-            }
+            strncpy(device->device, mnt.mnt_fsname, PATH_MAX-1);
+            device->free      = fs.f_bfree  * fs.f_bsize;
+            device->size      = fs.f_blocks * fs.f_bsize;
+            device->available = fs.f_bavail * fs.f_bsize;
+            device->exist     = 1;
+            _strip_slash(device->device);
+            _strip_slash(device->mount);
          }
       }
       m = NULL;
@@ -406,25 +390,19 @@ static int _pndman_device_detect(pndman_device *device)
             &bytes_available, &bytes_size, &bytes_free))
          { while (*p++); continue; }
 
-         old_device = device;
          if ((ret = _pndman_device_new_if_exist(&device, szDrive)) != RETURN_OK)
             break;
 
          DEBUGP("%s : %s\n", szDrive, szName);
 
          strncpy(device->mount,  szDrive, PATH_MAX-1);
-         if (_pndman_device_check_pnd_tree(device) == RETURN_OK) {
-            strncpy(device->device, szName,  PATH_MAX-1);
-            device->free      = bytes_free.QuadPart;
-            device->size      = bytes_size.QuadPart;
-            device->available = bytes_available.QuadPart;
-            device->exist     = 1;
-            _strip_slash(device->device);
-            _strip_slash(device->mount);
-         } else {
-            _pndman_device_free(device);
-            device = old_device;
-         }
+         strncpy(device->device, szName,  PATH_MAX-1);
+         device->free      = bytes_free.QuadPart;
+         device->size      = bytes_size.QuadPart;
+         device->available = bytes_available.QuadPart;
+         device->exist     = 1;
+         _strip_slash(device->device);
+         _strip_slash(device->mount);
       }
 
       /* go to the next NULL character. */
@@ -435,6 +413,20 @@ static int _pndman_device_detect(pndman_device *device)
 #endif
 
    return ret;
+}
+
+/* INTERNAL */
+
+/* \brief check's devices structure and returns appdata */
+char* _pndman_device_get_appdata(pndman_device *device)
+{
+   assert(device);
+
+   /* check that all needed dirs exist */
+   if (_pndman_device_check_pnd_tree(device) != RETURN_OK)
+      return NULL;
+
+   return device->appdata;
 }
 
 /* API */

@@ -119,9 +119,15 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
 {
    FILE *f;
    char db_path[PATH_MAX];
+   char *appdata;
 
    if (!device || !device->exist) return RETURN_FAIL;
-   strncpy(db_path, device->appdata, PATH_MAX-1);
+
+   /* check appdata */
+   appdata = _pndman_device_get_appdata(device);
+   if (!appdata) return RETURN_FAIL;
+
+   strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/local.db", PATH_MAX-1);
    DEBUGP("-!- writing to %s\n", db_path);
    f = fopen(db_path, "w");
@@ -140,6 +146,8 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
    FILE *f;
    pndman_repository *r;
    char db_path[PATH_MAX];
+   char *appdata;
+
    if (!device || !device->exist) return RETURN_FAIL;
 
    /* find local db and read it first */
@@ -150,7 +158,11 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
          break;
       }
 
-   strncpy(db_path, device->appdata, PATH_MAX-1);
+   /* check appdata */
+   appdata = _pndman_device_get_appdata(device);
+   if (!appdata) return RETURN_FAIL;
+
+   strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/repo.db", PATH_MAX-1);
    DEBUGP("-!- writing to %s\n", db_path);
    f = fopen(db_path, "w");
@@ -173,13 +185,17 @@ static int _pndman_db_get_local(pndman_repository *repo, pndman_device *device)
 {
    FILE *f;
    char db_path[PATH_MAX];
+   char *appdata;
 
    assert(repo);
-   if (_pndman_curlm)               return RETURN_OK;
    if (!device || !device->exist)   return RETURN_FAIL;
 
+   /* check appdata */
+   appdata = _pndman_device_get_appdata(device);
+   if (!appdata) return RETURN_FAIL;
+
    /* begin to read local database */
-   strncpy(db_path, device->appdata, PATH_MAX-1);
+   strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/local.db", PATH_MAX-1);
    DEBUGP("-!- local from %s\n", db_path);
    f = fopen(db_path, "r");
@@ -200,9 +216,9 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
    char s2[LINE_MAX];
    char db_path[PATH_MAX];
    char *ret;
+   char *appdata;
    int  parse = 0;
 
-   if (_pndman_curlm)               return RETURN_OK;
    if (!device || !device->exist)   return RETURN_FAIL;
 
    /* find local db and read it first */
@@ -215,8 +231,12 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
    if (!strlen(repo->url))
       return RETURN_FAIL;
 
+   /* check appdata */
+   appdata = _pndman_device_get_appdata(device);
+   if (!appdata) return RETURN_FAIL;
+
    /* begin to read other repositories */
-   strncpy(db_path, device->appdata, PATH_MAX-1);
+   strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/repo.db", PATH_MAX-1);
    DEBUGP("-!- reading from %s\n", db_path);
    f = fopen(db_path, "r");
