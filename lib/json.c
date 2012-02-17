@@ -100,6 +100,35 @@ int _pndman_json_commit(pndman_repository *r, FILE *f)
    for (p = r->pnd; p; p = p->next) {
       fprintf(f, "{");
       fprintf(f, "\"id\":\"%s\"", p->id);
+      fprintf(f, "\"uri\":\"%s\"", p->url);
+
+      /* version object */
+      fprintf(f, "\"version\":{");
+      fprintf(f, "\"major\":\"%s\"", p->version.major);
+      fprintf(f, "\"minor\":\"%s\"", p->version.minor);
+      fprintf(f, "\"release\":\"%s\"", p->version.release);
+      fprintf(f, "\"build\":\"%s\"", p->version.build);
+      fprintf(f, "\"type\":\"%s\"",
+            p->version.type == PND_VERSION_RELEASE ? "release" :
+            p->version.type == PND_VERSION_BETA    ? "beta"    :
+            p->version.type == PND_VERSION_ALPHA   ? "alpha"   : "release");
+      fprintf(f, "},");
+
+      /* localization object */
+      fprintf(f, "\"localizations\":{");
+      fprintf(f, "},");
+
+      fprintf(f, "\"info\":\"%s\"", p->info);
+      fprintf(f, "\"size\":\"%llu\"", p->size);
+      fprintf(f, "\"md5\":\"%s\"", p->md5);
+      fprintf(f, "\"modified-time\":\"%d\"", p->modified_time);
+      fprintf(f, "\"rating\":\"%d\"", p->rating);
+
+      /* author object */
+      fprintf(f, "\"author\":");
+      fprintf(f, "{");
+      fprintf(f, "},");
+
       fprintf(f, "}");
       if (p->next) fprintf(f, ",");
    }
