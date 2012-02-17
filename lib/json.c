@@ -127,6 +127,9 @@ int _pndman_json_commit(pndman_repository *r, FILE *f)
       /* author object */
       fprintf(f, "\"author\":");
       fprintf(f, "{");
+      fprintf(f, "\"name\":\"%s\",", p->author.name);
+      fprintf(f, "\"website\":\"%s\",", p->author.website);
+      fprintf(f, "\"email\":\"%s\"", p->author.email);
       fprintf(f, "}");
 
       fprintf(f, "}");

@@ -78,6 +78,7 @@ typedef struct pndman_author
 {
    char name[PND_NAME];
    char website[PND_STR];
+   char email[PND_STR];
 } pndman_author;
 
 /* \brief Struct holding documentation information */

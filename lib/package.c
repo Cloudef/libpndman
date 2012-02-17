@@ -55,6 +55,7 @@ static void _pndman_init_author(pndman_author *author)
 {
    memset(author->name,    0, PND_NAME);
    memset(author->website, 0, PND_STR);
+   memset(author->email,   0, PND_STR);
 }
 
 /* \brief Copy author struct */
@@ -62,6 +63,7 @@ static void _pndman_copy_author(pndman_author *dst, pndman_author *src)
 {
    memcpy(dst->name, src->name, PND_NAME);
    memcpy(dst->website, src->website, PND_STR);
+   memcpy(dst->email, src->email, PND_STR);
 }
 
 /* \brief Init info struct */

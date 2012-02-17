@@ -47,6 +47,7 @@
 #define PXML_TYPE_ATTR        "type"
 #define PXML_NAME_ATTR        "name"
 #define PXML_WEBSITE_ATTR     "website"
+#define PXML_EMAIL_ATTR       "email"
 #define PXML_LANG_ATTR        "lang"
 #define PXML_BACKGROUND_ATTR  "background"
 #define PXML_STARTDIR_ATTR    "startdir"
@@ -381,8 +382,12 @@ static void _pxml_pnd_author_tag(pndman_author *author, char **attrs)
       /* <author name= */
       if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
          strncpy(author->name, attrs[++i], PND_NAME-1);
+      /* <author website= */
       else if(!memcmp(attrs[i], PXML_WEBSITE_ATTR, strlen(PXML_WEBSITE_ATTR)))
          strncpy(author->website, attrs[++i], PND_STR-1);
+      /* <author email= */
+      else if(!memcmp(attrs[i], PXML_EMAIL_ATTR, strlen(PXML_EMAIL_ATTR)))
+         strncpy(author->email, attrs[++i], PND_STR-1);
    }
 }
 
