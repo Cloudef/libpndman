@@ -179,6 +179,8 @@ typedef struct pndman_package
    /* bleh, lots of data duplication.. */
    pndman_translated *title;
    pndman_translated *description;
+   pndman_license    *license;
+   pndman_previewpic *previewpic;
    pndman_category   *category;
 
    unsigned int flags;
@@ -207,6 +209,15 @@ pndman_translated* _pndman_package_new_title(pndman_package *pnd);
 
 /* \brief Internal allocation of description for pndman_package */
 pndman_translated* _pndman_package_new_description(pndman_package *pnd);
+
+/* \brief Internal allocation of license for pndman_package */
+pndman_license* _pndman_package_new_license(pndman_package *pnd);
+
+/* \brief Internal allocation of previewpic for pndman_package */
+pndman_previewpic* _pndman_package_new_previewpic(pndman_package *pnd);
+
+/* \brief Internal allocation of category for pndman_package */
+pndman_category* _pndman_package_new_category(pndman_package *pnd);
 
 /* \brief Internal allocation of application for pndman_package */
 pndman_application* _pndman_package_new_application(pndman_package *pnd);

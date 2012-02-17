@@ -92,10 +92,15 @@ int _pndman_json_process(pndman_repository *repo, FILE *data)
 int _pndman_json_commit(pndman_repository *r, FILE *f)
 {
    pndman_package *p;
+   pndman_translated *t, *d;
+   pndman_previewpic *pic;
+   pndman_category *c;
+   pndman_license *l;
+   int found = 0;
 
    fprintf(f, "{"); /* start */
-   fprintf(f, "\"repository\":{\"name\":\"%s\",\"version\":\"%s\",\"updates\":\"%s\"},",
-         r->name, r->version, r->updates);
+   fprintf(f, "\"repository\":{\"name\":\"%s\",\"version\":\"%s\",\"updates\":\"%s\",\"timestamp\":%zu},",
+         r->name, r->version, r->updates, r->timestamp);
    fprintf(f, "\"packages\":["); /* packages */
    for (p = r->pnd; p; p = p->next) {
       fprintf(f, "{");
@@ -116,6 +121,19 @@ int _pndman_json_commit(pndman_repository *r, FILE *f)
 
       /* localization object */
       fprintf(f, "\"localizations\":{");
+      for (t = p->title; t; t = t->next) {
+         found = 0;
+         for (d = p->description; d ; d = d->next)
+            if (!strcmp(d->lang, t->lang)) {
+               found = 1;
+               break;
+            }
+
+         fprintf(f, "\"%s\":{", t->lang);
+         fprintf(f, "\"title:\":\"%s\",", t->string);
+         fprintf(f, "\"description\":\"%s\"", found ? d->string : "");
+         fprintf(f, "}%s", t->next ? "," : "");
+      }
       fprintf(f, "},");
 
       fprintf(f, "\"info\":\"%s\",", p->info);
@@ -130,10 +148,36 @@ int _pndman_json_commit(pndman_repository *r, FILE *f)
       fprintf(f, "\"name\":\"%s\",", p->author.name);
       fprintf(f, "\"website\":\"%s\",", p->author.website);
       fprintf(f, "\"email\":\"%s\"", p->author.email);
-      fprintf(f, "}");
+      fprintf(f, "},");
 
-      fprintf(f, "}");
-      if (p->next) fprintf(f, ",");
+      fprintf(f, "\"vendor\":\"%s\",", p->vendor);
+      fprintf(f, "\"icon\":\"%s\",", p->icon);
+
+      /* previewpics array */
+      fprintf(f, "\"previewpics\":[");
+      for (pic = p->previewpic; pic; pic = pic->next)
+         fprintf(f, "\"%s\"%s", pic->src, pic->next ? "," : "");
+      fprintf(f, "],");
+
+      /* licenses array */
+      fprintf(f, "\"licenses\":[");
+      for (l = p->license; l; l = l->next)
+         fprintf(f, "\"%s\"%s", l->name, l->next ? "," : "");
+      fprintf(f, "],");
+
+      /* sources array */
+      fprintf(f, "\"source\":[");
+      for (l = p->license; l; l = l->next)
+         fprintf(f, "\"%s\"%s", l->sourcecodeurl, l->next ? "," : "");
+      fprintf(f, "],");
+
+      /* categories array */
+      fprintf(f, "\"categories\":[");
+      for (c = p->category; c; c = c->next)
+         fprintf(f, "\"%s\",\"%s\"%s", c->main, c->sub, c->next ? "," : "");
+      fprintf(f, "]");
+
+      fprintf(f, "}%s", p->next ? "," : "");
    }
    fprintf(f, "]}\n"); /* end */
 

@@ -786,6 +786,9 @@ static int _pxml_pnd_parse(pxml_parse *data, char *PXML, size_t size)
 static void _pxml_pnd_post_process(pndman_package *pnd)
 {
    pndman_translated *t, *tc;
+   pndman_license *l, *lc;
+   pndman_previewpic *p, *pc;
+   pndman_category *c, *cc;
 
    /* no need to do anything */
    if (!pnd->app)
@@ -835,6 +838,38 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
       }
    }
 
+   /* licenses */
+   if (!pnd->license && pnd->app->license) {
+      l = pnd->app->license;
+      for (; l; l = l->next) {
+         if ((lc = _pndman_package_new_license(pnd))) {
+            memcpy(lc->name, l->name, PND_SHRT_STR);
+            memcpy(lc->url, l->url, PND_STR);
+            memcpy(lc->sourcecodeurl, l->sourcecodeurl, PND_STR);
+         }
+      }
+   }
+
+   /* previewpics */
+   if (!pnd->previewpic && pnd->app->previewpic) {
+      p = pnd->app->previewpic;
+      for (; p; p = p->next) {
+         if ((pc = _pndman_package_new_previewpic(pnd))) {
+            memcpy(pc->src, p->src, PND_PATH);
+         }
+      }
+   }
+
+   /* categories */
+   if (!pnd->category && pnd->app->category) {
+      c = pnd->app->category;
+      for (; c; c = c->next) {
+         if ((cc = _pndman_package_new_category(pnd))) {
+            memcpy(cc->main, c->main, PND_SHRT_STR);
+            memcpy(cc->sub, c->sub, PND_SHRT_STR);
+         }
+      }
+   }
 }
 
 /* \brief

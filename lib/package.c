@@ -545,6 +545,69 @@ pndman_translated* _pndman_package_new_description(pndman_package *pnd)
    return t;
 }
 
+ /* \brief Internal allocation of license for pndman_package */
+pndman_license* _pndman_package_new_license(pndman_package *pnd)
+{
+   pndman_license *l;
+
+   /* should not be null */
+   assert(pnd);
+
+   /* how to allocate? */
+   if (!pnd->license) l = pnd->license = _pndman_license_new();
+   else {
+      /* find last */
+      l = pnd->license;
+      for (; l->next; l = l->next);
+      l->next = _pndman_license_new();
+      l = l->next;
+   }
+
+   return l;
+}
+
+/* \brief Internal allocation of previewpic for pndman_package */
+pndman_previewpic* _pndman_package_new_previewpic(pndman_package *pnd)
+{
+   pndman_previewpic *p;
+
+   /* should not be null */
+   assert(pnd);
+
+   /* how to allocate? */
+   if (!pnd->previewpic) p = pnd->previewpic = _pndman_previewpic_new();
+   else {
+      /* find last */
+      p = pnd->previewpic;
+      for (; p->next; p = p->next);
+      p->next = _pndman_previewpic_new();
+      p = p->next;
+   }
+
+   return p;
+}
+
+/* \brief Internal allocation of category for pndman_package */
+pndman_category* _pndman_package_new_category(pndman_package *pnd)
+{
+   pndman_category *c;
+
+   /* should not be null */
+   assert(pnd);
+
+   /* how to allocate? */
+   if (!pnd->category) c = pnd->category = _pndman_category_new();
+   else {
+      /* find last */
+      c = pnd->category;
+      for (; c->next; c = c->next);
+      c->next = _pndman_category_new();
+      c = c->next;
+   }
+
+   return c;
+}
+
 /* \brief Internal allocation of application for pndman_package */
 pndman_application* _pndman_package_new_application(pndman_package *pnd)
 {
