@@ -303,7 +303,6 @@ static int _pndman_sync_perform()
    while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left))) {
       curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &handle);
       if (msg->msg == CURLMSG_DONE) { /* DONE */
-         DEBUGP("%s : done\n", handle->repository->url);
          handle->done = 1;
          _pndman_json_process(handle->repository, handle->file);
       }
