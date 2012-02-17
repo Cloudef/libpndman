@@ -119,9 +119,9 @@ int _pndman_json_commit(pndman_repository *r, FILE *f)
       fprintf(f, "},");
 
       fprintf(f, "\"info\":\"%s\"", p->info);
-      fprintf(f, "\"size\":\"%llu\"", p->size);
+      fprintf(f, "\"size\":\"%zu\"", p->size);
       fprintf(f, "\"md5\":\"%s\"", p->md5);
-      fprintf(f, "\"modified-time\":\"%d\"", p->modified_time);
+      fprintf(f, "\"modified-time\":\"%zu\"", p->modified_time);
       fprintf(f, "\"rating\":\"%d\"", p->rating);
 
       /* author object */
