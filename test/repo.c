@@ -75,7 +75,7 @@ int main()
 
       /* skip the local repository */
       if (x) {
-         if (pndman_sync_request(&handle[x-1], r) != RETURN_OK)
+         if (pndman_sync_request(&handle[x-1], r) != 0)
             err("pndman_sync_request failed");
       }
       ++x;
