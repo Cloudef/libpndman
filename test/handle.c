@@ -45,6 +45,7 @@ int main()
    pndman_package *pnd;
    pndman_repository repository, *repo;
    pndman_handle handle[H_COUNT+1];
+   pndman_sync_handle sync_handle;
    int i;
    int again         = 0;
    size_t dcount     = 0;
@@ -74,8 +75,16 @@ int main()
 
    /* read from device, then sync the repository we added */
    pndman_read_from_device(repo, &device);
-   pndman_sync_request(repo);
-   while (pndman_sync() > 0);
+   pndman_sync_request(&sync_handle, repo);
+   while (pndman_sync() > 0) {
+      if (sync_handle.done) {
+          printf("%s : DONE!\n", sync_handle.repository->name);
+         pndman_sync_request_free(&sync_handle);
+      }
+   }
+
+   /* make sure it's freed */
+   pndman_sync_request_free(&sync_handle);
 
    /* check that we actually got pnd's */
    if (!(pnd = repo->pnd))
