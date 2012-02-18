@@ -11,7 +11,7 @@
 static int _json_set_string(char *string, json_t *object, size_t max)
 {
    if (!object) return RETURN_FAIL;
-   strncpy(string, json_string_value(object), max);
+   strncpy(string, json_string_value(object), max-1);
    return RETURN_OK;
 }
 
@@ -167,8 +167,8 @@ static int _pndman_json_repo_header(json_t *repo_header, pndman_repository *repo
    assert(repo_header);
    assert(repo);
 
-   _json_set_string(repo->name,    json_object_get(repo_header, "name"), REPO_NAME-1);
-   _json_set_string(repo->updates, json_object_get(repo_header, "updates"), REPO_URL-1);
+   _json_set_string(repo->name,    json_object_get(repo_header, "name"), REPO_NAME);
+   _json_set_string(repo->updates, json_object_get(repo_header, "updates"), REPO_URL);
    if ((element = json_object_get(repo_header, "version")))
       if (json_is_string(element))
          strncpy(repo->version, json_string_value(element), REPO_VERSION);
@@ -245,6 +245,43 @@ int _pndman_json_process(pndman_repository *repo, FILE *data)
    return RETURN_OK;
 }
 
+/* \brief print to file with escapes */
+static void _cfprintf(FILE *f, char *str)
+{
+   int len, i;
+   if (!(len = strlen(str))) return;
+   for (i = 0; i != len; ++i) {
+      if (str[i] == '\\')
+         fprintf(f, "\\%c", '\\');
+      else if (str[i] == '\n')
+         fprintf(f, "\\n");
+      else if (str[i] == '\r')
+         fprintf(f, "\\r");
+      else if (str[i] == '\t')
+         fprintf(f, "\\t");
+      else if (str[i] == '"')
+         fprintf(f, "\\\"");
+      else
+         fprintf(f, "%c", str[i]);
+   }
+}
+
+/* \brief print json key to file */
+static void _fkeyf(FILE *f, char *key, char *value, int delim)
+{
+   fprintf(f, "\"%s\":\"", key);
+   _cfprintf(f, value);
+   fprintf(f, "\"%s", delim ? "," : "");
+}
+
+/* \brief print json string to file */
+static void _fstrf(FILE *f, char *value, int delim)
+{
+   fprintf(f, "\"");
+   _cfprintf(f, value);
+   fprintf(f, "\"%s", delim ? "," : "");
+}
+
 /* \brief outputs json for repository */
 int _pndman_json_commit(pndman_repository *r, FILE *f)
 {
@@ -261,18 +298,18 @@ int _pndman_json_commit(pndman_repository *r, FILE *f)
    fprintf(f, "\"packages\":["); /* packages */
    for (p = r->pnd; p; p = p->next) {
       fprintf(f, "{");
-      fprintf(f, "\"id\":\"%s\",", p->id);
-      fprintf(f, "\"uri\":\"%s\",", p->url);
+      _fkeyf(f, "id", p->id, 1);
+      _fkeyf(f, "uri", p->url, 1);
 
       /* version object */
       fprintf(f, "\"version\":{");
-      fprintf(f, "\"major\":\"%s\",", p->version.major);
-      fprintf(f, "\"minor\":\"%s\",", p->version.minor);
-      fprintf(f, "\"release\":\"%s\",", p->version.release);
-      fprintf(f, "\"build\":\"%s\",", p->version.build);
-      fprintf(f, "\"type\":\"%s\"",
+      _fkeyf(f, "major", p->version.major, 1);
+      _fkeyf(f, "minor", p->version.minor, 1);
+      _fkeyf(f, "release", p->version.release, 1);
+      _fkeyf(f, "build", p->version.build, 1);
+      _fkeyf(f, "type",
             p->version.type == PND_VERSION_BETA    ? "beta"    :
-            p->version.type == PND_VERSION_ALPHA   ? "alpha"   : "release");
+            p->version.type == PND_VERSION_ALPHA   ? "alpha"   : "release", 0);
       fprintf(f, "},");
 
       /* localization object */
@@ -286,53 +323,59 @@ int _pndman_json_commit(pndman_repository *r, FILE *f)
             }
 
          fprintf(f, "\"%s\":{", t->lang);
-         fprintf(f, "\"title:\":\"%s\",", t->string);
-         fprintf(f, "\"description\":\"%s\"", found ? d->string : "");
+         _fkeyf(f, "title", t->string, 1);
+         _fkeyf(f, "description", found ? d->string : "", 0);
          fprintf(f, "}%s", t->next ? "," : "");
       }
+
+      /* fallback */
+      if (!p->title)
+         fprintf(f, "\"en_US\":{\"title\":\"\",\"description\":\"\"}");
       fprintf(f, "},");
 
-      fprintf(f, "\"info\":\"%s\",", p->info);
+      _fkeyf(f, "info", p->info, 1);
+
       fprintf(f, "\"size\":\"%zu\",", p->size);
-      fprintf(f, "\"md5\":\"%s\",", p->md5);
+      _fkeyf(f, "md5", p->md5, 1);
       fprintf(f, "\"modified-time\":\"%zu\",", p->modified_time);
       fprintf(f, "\"rating\":\"%d\",", p->rating);
 
       /* author object */
       fprintf(f, "\"author\":");
       fprintf(f, "{");
-      fprintf(f, "\"name\":\"%s\",", p->author.name);
-      fprintf(f, "\"website\":\"%s\",", p->author.website);
-      fprintf(f, "\"email\":\"%s\"", p->author.email);
+      _fkeyf(f, "name", p->author.name, 1);
+      _fkeyf(f, "website", p->author.website, 1);
+      _fkeyf(f, "email", p->author.email, 0);
       fprintf(f, "},");
 
-      fprintf(f, "\"vendor\":\"%s\",", p->vendor);
-      fprintf(f, "\"icon\":\"%s\",", p->icon);
+      _fkeyf(f, "vendor", p->vendor, 1);
+      _fkeyf(f, "icon", p->icon, 1);
 
       /* previewpics array */
       fprintf(f, "\"previewpics\":[");
       for (pic = p->previewpic; pic; pic = pic->next)
-         fprintf(f, "\"%s\"%s", pic->src, pic->next ? "," : "");
+         _fstrf(f, pic->src, pic->next ? 1 : 0);
       fprintf(f, "],");
 
       /* licenses array */
       fprintf(f, "\"licenses\":[");
       for (l = p->license; l; l = l->next)
-         fprintf(f, "\"%s\"%s", l->name, l->next ? "," : "");
+         _fstrf(f, l->name, l->next ? 1 : 0);
       fprintf(f, "],");
 
       /* sources array */
       fprintf(f, "\"source\":[");
       for (l = p->license; l; l = l->next)
-         fprintf(f, "\"%s\"%s", l->sourcecodeurl, l->next ? "," : "");
+         _fstrf(f, l->sourcecodeurl, l->next ? 1 : 0);
       fprintf(f, "],");
 
       /* categories array */
       fprintf(f, "\"categories\":[");
-      for (c = p->category; c; c = c->next)
-         fprintf(f, "\"%s\",\"%s\"%s", c->main, c->sub, c->next ? "," : "");
+      for (c = p->category; c; c = c->next) {
+         _fstrf(f, c->main, 1);
+         _fstrf(f, c->sub, c->next ? 1 : 0);
+      }
       fprintf(f, "]");
-
       fprintf(f, "}%s", p->next ? "," : "");
    }
    fprintf(f, "]}\n"); /* end */
