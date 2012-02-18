@@ -114,7 +114,7 @@ int main()
          printf("DONE: %s\n", handle[i].name);
 
          /* handle is downloaded, "commit" it, (installs) */
-         if (pndman_handle_commit(&handle[i]) != 0)
+         if (pndman_handle_commit(&handle[i], &repository) != 0)
             printf("commit failed for: %s\n", handle[i].name);
 
          /* reset done and free */

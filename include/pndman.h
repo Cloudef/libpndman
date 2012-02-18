@@ -301,7 +301,7 @@ int pndman_device_free(pndman_device *device);
 int pndman_device_free_all(pndman_device *device);
 int pndman_handle_init(char *name, pndman_handle *handle);
 int pndman_handle_perform(pndman_handle *handle);
-int pndman_handle_commit(pndman_handle *handle);
+int pndman_handle_commit(pndman_handle *handle, pndman_repository *local);
 int pndman_handle_free(pndman_handle *handle);
 int pndman_download();
 int pndman_read_from_device(pndman_repository *repo, pndman_device *device);
