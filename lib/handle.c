@@ -170,6 +170,7 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    char filename[PATH_MAX];
    char tmp[PATH_MAX];
    char *appdata;
+   pndman_package *pnd;
    DEBUG("handle install");
 
    if (!handle->device) return RETURN_FAIL;
@@ -199,7 +200,11 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    strncat(install, "/", PATH_MAX-1);
    strncat(install, filename, PATH_MAX-1);
 
-   /* TODO: Copy the pnd object to local database!! */
+   /* Copy the pnd object to local database
+    * path should be always "" when installing from remote repository */
+   pnd = _pndman_repository_new_pnd_check(handle->pnd->id, handle->pnd->path, local);
+   if (!pnd) return RETURN_FAIL;
+   _pndman_copy_pnd(pnd, handle->pnd);
 
    /* close the download file, so we can move it */
    if (handle->file) fclose(handle->file);
@@ -218,8 +223,8 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    DEBUG("install mark");
 
    /* mark installed */
-   handle->pnd->flags |= PND_INSTALLED;
-   strcpy(handle->pnd->path, install);
+   pnd->flags |= PND_INSTALLED;
+   strcpy(pnd->path, install);
    return RETURN_OK;
 }
 
@@ -238,14 +243,11 @@ static int _pndman_handle_remove(pndman_handle *handle, pndman_repository *local
 
    /* remove */
    DEBUGP("remove: %s\n", handle->pnd->path);
-   unlink(handle->pnd->path);
+   if (unlink(handle->pnd->path) != 0)
+      return RETURN_FAIL;
 
-   /* TODO: remove the pnd object from local database */
-
-   /* mark removed */
-   handle->pnd->flags = 0;
-   memset(handle->pnd->path, 0, PND_PATH);
-   return RETURN_OK;
+   /* remove from local repo */
+   return _pndman_repository_free_pnd(handle->pnd, local);
 }
 
 /* API */

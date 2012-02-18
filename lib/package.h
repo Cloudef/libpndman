@@ -193,6 +193,9 @@ typedef struct pndman_package
 /* \brief Allocate new pndman_package */
 pndman_package* _pndman_new_pnd(void);
 
+/* \brief copy pndman_package, doesn't copy next && next_installed pointers */
+int _pndman_copy_pnd(pndman_package *pnd, pndman_package *src);
+
 /* \brief Internal free of pndman_application's titles
  * NOTE: Used by PXML parser */
 void _pndman_application_free_titles(pndman_application *app);

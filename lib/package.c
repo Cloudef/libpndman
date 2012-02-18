@@ -354,16 +354,11 @@ pndman_package* _pndman_new_pnd(void)
    return pnd;
 }
 
-/* \brief Copy pndman_package */
-pndman_package* _pndman_copy_pnd(pndman_package *src)
+/* \brief Copy pndman_package, doesn't copy next && next_installed pointer */
+int _pndman_copy_pnd(pndman_package *pnd, pndman_package *src)
 {
-   pndman_package *pnd;
+   assert(pnd);
    assert(src);
-
-   /* allocate */
-   pnd = malloc(sizeof(pndman_package));
-   if (!pnd)
-      return NULL;
 
    /* copy */
    memcpy(pnd->path,    src->path,     PND_PATH);
@@ -387,10 +382,8 @@ pndman_package* _pndman_copy_pnd(pndman_package *src)
    pnd->modified_time   = src->modified_time;
    pnd->rating          = src->rating;
    pnd->flags           = src->flags;
-   pnd->next            = src->next;
-   pnd->next_installed  = NULL;
 
-   return pnd;
+   return RETURN_OK;
 }
 
 /* \brief Internal free of pndman_application's titles
