@@ -84,8 +84,6 @@ int main()
    }
 
    /* make sure it's freed */
-   if (sync_handle.done)
-      printf("%s : DONE!\n", sync_handle.repository->name);
    pndman_sync_request_free(&sync_handle);
 
    /* check that we actually got pnd's */

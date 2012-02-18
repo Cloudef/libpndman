@@ -104,8 +104,10 @@ static int _pndman_sync_handle_free(pndman_sync_handle *object)
    if (object->curl) {
       if (_pndman_curlm) curl_multi_remove_handle(_pndman_curlm, object->curl);
       curl_easy_cleanup(object->curl);
+      object->curl = NULL;
    }
    if (object->file) fclose(object->file);
+   object->file = NULL;
    return RETURN_OK;
 }
 
@@ -340,7 +342,9 @@ static int _pndman_repository_sync_request(pndman_sync_handle *handle, pndman_re
 int pndman_sync()
 {
    int still_running;
-   if (!_pndman_curlm) return RETURN_FAIL;
+
+   /* we are done :) */
+   if (!_pndman_curlm) return 0;
 
    /* perform sync */
    if ((still_running = _pndman_sync_perform()) == -1) {
@@ -350,8 +354,14 @@ int pndman_sync()
 
    /* destoroy curlm when done,
     * and return exit code */
-   if (!still_running)
+   if (!still_running) {
       _pndman_query_cleanup();
+
+      /* fake so that we are still running, why?
+       * this lets user to catch the final completed download/sync
+       * in download/sync loop */
+      still_running = 1;
+   }
 
    // DEBUGP("%d : %p\n", still_running, _pndman_internal_request);
    return still_running;

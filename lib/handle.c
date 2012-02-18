@@ -297,6 +297,7 @@ int pndman_handle_free(pndman_handle *handle)
          unlink(tmp_path);
       }
    }
+   handle->file = NULL;
 
    return RETURN_OK;
 }
@@ -332,6 +333,9 @@ int pndman_download()
    int msgs_left;
    pndman_handle *handle;
 
+   /* we are done :) */
+   if (!_pndman_curlm) return 0;
+
    /* perform download */
    curl_multi_perform(_pndman_curlm, &still_running);
 
@@ -365,7 +369,15 @@ int pndman_download()
    }
 
    /* it's okay to get rid of this */
-   if (!still_running) _pndman_curl_free();
+   if (!still_running) {
+      _pndman_curl_free();
+
+      /* fake so that we are still running, why?
+       * this lets user to catch the final completed download/sync
+       * in download/sync loop */
+      still_running = 1;
+   }
+
    return still_running;
 }
 
