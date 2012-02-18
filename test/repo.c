@@ -105,12 +105,17 @@ int main()
       printf("   URL: %s\n", r->url);
       printf("   VER: %s\n", r->version);
       puts("");
-      for (pnd = r->pnd; pnd; pnd = pnd->next) {
-         printf("ID:    %s\n", pnd->id);
-         printf("ICON:  %s\n", pnd->icon);
-         printf("MD5:   %s\n", pnd->md5);
-         printf("URL:   %s\n", pnd->url);
-         puts("");
+
+      /* print only local repo packages if any,
+       * run handle exe to get some :) */
+      if (!r->prev) {
+         for (pnd = r->pnd; pnd; pnd = pnd->next) {
+            printf("ID:    %s\n", pnd->id);
+            printf("ICON:  %s\n", pnd->icon);
+            printf("MD5:   %s\n", pnd->md5);
+            printf("URL:   %s\n", pnd->url);
+            puts("");
+         }
       }
    }
    puts("");
