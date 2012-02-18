@@ -51,13 +51,6 @@ static int _pndman_new_sync_handle(pndman_sync_handle *object, pndman_repository
    char *url = NULL;
    char timestamp[REPO_TIMESTAMP];
 
-   /* init */
-   object->repository = repo;
-   object->done = 0;
-   object->curl = NULL;
-   object->file = NULL;
-   memset(object->error, 0, LINE_MAX);
-
    /* create temporary write, where to write the request */
    object->file = _pndman_get_tmp_file();
    if (!object->file) return RETURN_FAIL;
@@ -320,6 +313,16 @@ static void _pndman_query_cleanup(void)
 /* \brief request for synchorization for this repository */
 static int _pndman_repository_sync_request(pndman_sync_handle *handle, pndman_repository *repo)
 {
+   /* init */
+   handle->repository = repo;
+   handle->done = 0;
+   handle->curl = NULL;
+   handle->file = NULL;
+   memset(handle->error, 0, LINE_MAX);
+
+   /* no valid url == FAIL, same for local repository, this is expected */
+   if (!strlen(repo->url)) return RETURN_FAIL;
+
    /* create curl handle if doesn't exist */
    if (!_pndman_curlm) {
       /* get multi curl handle */
@@ -328,7 +331,6 @@ static int _pndman_repository_sync_request(pndman_sync_handle *handle, pndman_re
    }
 
    /* create indivual curl requests */
-   if (!strlen(repo->url)) return RETURN_FAIL;
    if (_pndman_new_sync_handle(handle, repo) != RETURN_OK)
       return RETURN_FAIL;
 
