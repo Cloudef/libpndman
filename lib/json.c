@@ -197,7 +197,7 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       _json_set_string(pnd->id,           json_object_get(package,"id"),      PND_ID);
       _json_set_string(pnd->url,          json_object_get(package,"uri"),     PND_STR);
       _json_set_version(&pnd->version,    json_object_get(package,"version"));
-      _json_set_localization(pnd,         json_object_get(package,"localization"));
+      _json_set_localization(pnd,         json_object_get(package,"localizations"));
       _json_set_string(pnd->info,         json_object_get(package,"info"),    PND_INFO);
       _json_set_number((double*)&pnd->size, json_object_get(package, "size"));
       _json_set_string(pnd->md5,          json_object_get(package,"md5"),     PND_MD5);
