@@ -361,8 +361,7 @@ pndman_package* _pndman_new_pnd(void)
 /* \brief Copy pndman_package, doesn't copy next && next_installed pointer */
 int _pndman_copy_pnd(pndman_package *pnd, pndman_package *src)
 {
-   assert(pnd);
-   assert(src);
+   assert(pnd && src);
 
    /* copy */
    memcpy(pnd->path,    src->path,     PND_PATH);

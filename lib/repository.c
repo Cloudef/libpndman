@@ -87,8 +87,7 @@ pndman_package* _pndman_repository_new_pnd_check(char *id, char *path, pndman_re
 int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *repo)
 {
    pndman_package *p;
-   assert(repo);
-   assert(pnd);
+   assert(pnd && repo);
 
    for (p = repo->pnd; p; p = p->next)
       if (p->next == pnd) {

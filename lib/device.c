@@ -57,8 +57,7 @@ static int _pndman_device_check_pnd_tree(pndman_device *device)
 {
    char tmp[PATH_MAX];
    char tmp2[PATH_MAX];
-   assert(device);
-   assert(strlen(device->mount));
+   assert(device && strlen(device->mount));
 
    /* <device>/pandora */
    strncpy(tmp, device->mount, PATH_MAX-1);

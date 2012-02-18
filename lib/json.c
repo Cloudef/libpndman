@@ -164,8 +164,7 @@ static int _json_set_localization(pndman_package *pnd, json_t *object)
 static int _pndman_json_repo_header(json_t *repo_header, pndman_repository *repo)
 {
    json_t *element;
-   assert(repo_header);
-   assert(repo);
+   assert(repo_header && repo);
 
    _json_set_string(repo->name,    json_object_get(repo_header, "name"), REPO_NAME);
    _json_set_string(repo->updates, json_object_get(repo_header, "updates"), REPO_URL);
@@ -185,9 +184,10 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
    json_t         *package;
    pndman_package *pnd;
    unsigned int p;
-
    char id[PND_ID];
    char path[PND_PATH];
+   assert(packages && repo);
+
    memset(id,   0, PND_ID);
    memset(path, 0, PND_PATH);
 
@@ -230,6 +230,7 @@ int _pndman_json_process(pndman_repository *repo, FILE *data)
 {
    json_t *root, *repo_header, *packages;
    json_error_t error;
+   assert(repo && data);
 
    /* flush and reset to beginning */
    fflush(data);
@@ -257,6 +258,7 @@ int _pndman_json_process(pndman_repository *repo, FILE *data)
 /* \brief print to file with escapes */
 static void _cfprintf(FILE *f, char *str)
 {
+   assert(f && str);
    int len, i;
    if (!(len = strlen(str))) return;
    for (i = 0; i != len; ++i) {
@@ -278,6 +280,7 @@ static void _cfprintf(FILE *f, char *str)
 /* \brief print json key to file */
 static void _fkeyf(FILE *f, char *key, char *value, int delim)
 {
+   assert(f && key && value);
    fprintf(f, "\"%s\":\"", key);
    _cfprintf(f, value);
    fprintf(f, "\"%s", delim ? "," : "");
@@ -286,6 +289,7 @@ static void _fkeyf(FILE *f, char *key, char *value, int delim)
 /* \brief print json string to file */
 static void _fstrf(FILE *f, char *value, int delim)
 {
+   assert(f && value);
    fprintf(f, "\"");
    _cfprintf(f, value);
    fprintf(f, "\"%s", delim ? "," : "");
@@ -300,6 +304,7 @@ int _pndman_json_commit(pndman_repository *r, FILE *f)
    pndman_category *c;
    pndman_license *l;
    int found = 0;
+   assert(f && r);
 
    fprintf(f, "{"); /* start */
    fprintf(f, "\"repository\":{\"name\":\"%s\",\"version\":\"%s\",\"updates\":\"%s\",\"timestamp\":%zu},",
