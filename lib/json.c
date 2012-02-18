@@ -179,28 +179,6 @@ static int _pndman_json_repo_header(json_t *repo_header, pndman_repository *repo
    return RETURN_OK;
 }
 
-/* \brief check duplicate pnd on repo, return that pnd if found, else return new */
-static pndman_package* _pndman_check_duplicate(char *id, char *path, pndman_repository *repo)
-{
-   pndman_package *pnd;
-
-   for (pnd = repo->pnd; pnd; pnd = pnd->next) {
-      if (!strcmp(id, pnd->id)) {
-         /* if local repository, create instance */
-         if (!repo->prev) {
-            if (strcmp(path, pnd->path)) {
-               /* create instance here, path differs! */
-            } else
-               return pnd; /* this is the same pnd as installed locally */
-         } else
-            return pnd; /* remote repository can't have instances :) */
-      }
-   }
-
-   /* create new pnd */
-   return _pndman_repository_new_pnd(repo);
-}
-
 /* \brief json parse repository packages */
 static int _pndman_json_process_packages(json_t *packages, pndman_repository *repo)
 {
@@ -221,9 +199,7 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       /* these are needed for checking duplicate pnd's */
       _json_set_string(id,   json_object_get(package,"id"),    PND_ID);
       _json_set_string(path, json_object_get(package, "path"), PND_PATH);
-      pnd = _pndman_check_duplicate(id, path, repo);
-
-      pnd = _pndman_repository_new_pnd(repo);
+      pnd = _pndman_repository_new_pnd_check(id, path, repo);
       if (!pnd) return RETURN_FAIL;
 
       memcpy(pnd->id,     id,  PND_ID);

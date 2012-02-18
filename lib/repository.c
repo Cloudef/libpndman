@@ -56,6 +56,28 @@ pndman_package* _pndman_repository_new_pnd(pndman_repository *repo)
    return p;
 }
 
+/* \brief check duplicate pnd on repo, return that pnd if found, else return new */
+pndman_package* _pndman_repository_new_pnd_check(char *id, char *path, pndman_repository *repo)
+{
+   pndman_package *pnd;
+
+   for (pnd = repo->pnd; pnd; pnd = pnd->next) {
+      if (!strcmp(id, pnd->id)) {
+         /* if local repository, create instance */
+         if (!repo->prev) {
+            if (strcmp(path, pnd->path)) {
+               /* create instance here, path differs! */
+            } else
+               return pnd; /* this is the same pnd as installed locally */
+         } else
+            return pnd; /* remote repository can't have instances :) */
+      }
+   }
+
+   /* create new pnd */
+   return _pndman_repository_new_pnd(repo);
+}
+
 /* \brief free pnd from repository */
 int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *repo)
 {

@@ -5,6 +5,7 @@
 #include <curl/curl.h>
 #include "pndman.h"
 #include "package.h"
+#include "repository.h"
 #include "device.h"
 #include "curl.h"
 
@@ -163,7 +164,7 @@ static int _parse_filename_from_header(char *filename, pndman_handle *handle)
 }
 
 /* \brief post routine when handle has install flag */
-static int _pndman_handle_install(pndman_handle *handle)
+static int _pndman_handle_install(pndman_handle *handle, pndman_repository *local)
 {
    char install[PATH_MAX];
    char filename[PATH_MAX];
@@ -198,8 +199,7 @@ static int _pndman_handle_install(pndman_handle *handle)
    strncat(install, "/", PATH_MAX-1);
    strncat(install, filename, PATH_MAX-1);
 
-   /* check that if pnd for some reason exists, but does not exist on database,
-    * or vice versa! (do I actually even need this?) */
+   /* TODO: Copy the pnd object to local database!! */
 
    /* close the download file, so we can move it */
    if (handle->file) fclose(handle->file);
@@ -224,7 +224,7 @@ static int _pndman_handle_install(pndman_handle *handle)
 }
 
 /* \brief post routine when handle has removal flag */
-static int _pndman_handle_remove(pndman_handle *handle)
+static int _pndman_handle_remove(pndman_handle *handle, pndman_repository *local)
 {
    FILE *f;
    DEBUG("handle remove");
@@ -239,6 +239,8 @@ static int _pndman_handle_remove(pndman_handle *handle)
    /* remove */
    DEBUGP("remove: %s\n", handle->pnd->path);
    unlink(handle->pnd->path);
+
+   /* TODO: remove the pnd object from local database */
 
    /* mark removed */
    handle->pnd->flags = 0;
@@ -297,7 +299,7 @@ int pndman_handle_free(pndman_handle *handle)
    return RETURN_OK;
 }
 
-/* \brief perform handle, currently only needed for INSTALL handles */
+/* \brief Perform handle, currently only needed for INSTALL handles */
 int pndman_handle_perform(pndman_handle *handle)
 {
    DEBUG("pndman_handle_perform");
@@ -367,17 +369,21 @@ int pndman_download()
 
 /* \brief Commit handle's state to ram
  * remember to call pndman_commit afterwards! */
-int pndman_handle_commit(pndman_handle *handle)
+int pndman_handle_commit(pndman_handle *handle, pndman_repository *local)
 {
    if (!handle)         return RETURN_FAIL;
    if (!handle->pnd)    return RETURN_FAIL;
+   if (!local)          return RETURN_FAIL;
    DEBUG("pndman handle commit");
 
+   /* make this idiot proof */
+   local = _pndman_repository_first(local);
+
    if ((handle->flags & PNDMAN_HANDLE_REMOVE))
-      if (_pndman_handle_remove(handle) != RETURN_OK)
+      if (_pndman_handle_remove(handle, local) != RETURN_OK)
          return RETURN_FAIL;
    if ((handle->flags & PNDMAN_HANDLE_INSTALL))
-      if (_pndman_handle_install(handle) != RETURN_OK)
+      if (_pndman_handle_install(handle, local) != RETURN_OK)
          return RETURN_FAIL;
 
    return RETURN_OK;
