@@ -146,12 +146,8 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
    if (!device || !device->exist) return RETURN_FAIL;
 
    /* find local db and read it first */
-   r = repo;
-   for (; r; r = r->next)
-      if (!strcmp(r->name, LOCAL_DB_NAME)) {
-         _pndman_db_commit_local(r, device);
-         break;
-      }
+   repo = _pndman_repository_first(repo);
+   _pndman_db_commit_local(repo, device);
 
    /* check appdata */
    appdata = _pndman_device_get_appdata(device);
@@ -217,7 +213,7 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
    if (!device || !device->exist)   return RETURN_FAIL;
 
    /* find local db and read it first */
-   if (!strcmp(repo->name, LOCAL_DB_NAME)) {
+   if (!repo->prev) {
       _pndman_db_get_local(repo, device);
       return RETURN_OK;
    }
