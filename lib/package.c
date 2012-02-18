@@ -389,6 +389,71 @@ int _pndman_copy_pnd(pndman_package *pnd, pndman_package *src)
    return RETURN_OK;
 }
 
+/* \brief Internal free of pndman_packages's titles */
+void _pndman_package_free_titles(pndman_package *pnd)
+{
+   pndman_translated  *t, *tn;
+
+   /* free titles */
+   t = pnd->title;
+   for (; t; t = tn)
+   { tn = t->next; free(t); }
+
+   pnd->title = NULL;
+}
+
+/* \brief Internal free of pndman_package's descriptions */
+void _pndman_package_free_descriptions(pndman_package *pnd)
+{
+   pndman_translated  *t, *tn;
+
+   /* free descriptions */
+   t = pnd->description;
+   for (; t; t = tn)
+   { tn = t->next; free(t); }
+
+   pnd->description = NULL;
+}
+
+/* \brief Internal free of pndman_package's previewpics */
+void _pndman_package_free_previewpics(pndman_package *pnd)
+{
+   pndman_previewpic  *p, *pn;
+
+   /* free previewpics */
+   p = pnd->previewpic;
+   for (; p; p = pn)
+   { pn = p->next; free(p); }
+
+   pnd->previewpic = NULL;
+}
+
+/* \brief Internal free of pndman_package's licenses */
+void _pndman_package_free_licenses(pndman_package *pnd)
+{
+   pndman_license  *l, *ln;
+
+   /* free licenses */
+   l = pnd->license;
+   for (; l; l = ln)
+   { ln = l->next; free(l); }
+
+   pnd->license = NULL;
+}
+
+/* \brief Internal free of pndman_package's categories */
+void _pndman_package_free_categories(pndman_package *pnd)
+{
+   pndman_category  *c, *cn;
+
+   /* free categoires */
+   c = pnd->category;
+   for (; c; c = cn)
+   { cn = c->next; free(c); }
+
+   pnd->category = NULL;
+}
+
 /* \brief Internal free of pndman_application's titles
  * NOTE: Used by PXML parser */
 void _pndman_application_free_titles(pndman_application *app)

@@ -54,13 +54,22 @@ static int _json_set_previewpics(pndman_package *pnd, json_t *object)
    pndman_previewpic *c;
    json_t *element;
    unsigned int p;
+   char src[PND_PATH];
 
    if (!object)                  return RETURN_FAIL;
    if (!json_is_array(object))   return RETURN_FAIL;
+
+   memset(src, 0, PND_PATH);
    for (p = 0; p != json_array_size(object); ++p) {
       element = json_array_get(object, p);
+
+      /* check fail */
+      if (_json_set_string(src, element, PND_PATH) != RETURN_OK)
+         continue;
+
+      /* copy */
       if ((c = _pndman_package_new_previewpic(pnd)))
-         _json_set_string(c->src, element, PND_PATH);
+         memcpy(c->src, src, PND_PATH);
    }
 
    return RETURN_OK;
@@ -72,13 +81,22 @@ static int _json_set_licenses(pndman_package *pnd, json_t *object)
    pndman_license *l;
    json_t *element;
    unsigned int p;
+   char name[PND_SHRT_STR];
 
    if (!object)                  return RETURN_FAIL;
    if (!json_is_array(object))   return RETURN_FAIL;
+
+   memset(name, 0, PND_SHRT_STR);
    for (p = 0; p != json_array_size(object); ++p) {
       element = json_array_get(object, p);
+
+      /* check fail */
+      if (_json_set_string(name, element, PND_SHRT_STR) != RETURN_OK)
+         continue;
+
+      /* copy */
       if ((l = _pndman_package_new_license(pnd)))
-         _json_set_string(l->name, element, PND_SHRT_STR);
+         memcpy(l->name, name, PND_SHRT_STR);
    }
 
    return RETURN_OK;
@@ -87,16 +105,27 @@ static int _json_set_licenses(pndman_package *pnd, json_t *object)
 /* \brief helper license source setter (licenses must be set first!) */
 static int _json_set_sources(pndman_package *pnd, json_t *object)
 {
-   pndman_license *l;
+   pndman_license *l, *l2;
    json_t *element;
    unsigned int p;
+   char url[PND_STR];
 
    if (!object)                  return RETURN_FAIL;
    if (!json_is_array(object))   return RETURN_FAIL;
-   l = pnd->license;
+   if (!(l = pnd->license))      return RETURN_FAIL;
+
+   memset(url, 0, PND_STR);
    for (p = 0; l && p != json_array_size(object); ++p) {
       element = json_array_get(object, p);
-      _json_set_string(l->sourcecodeurl, element, PND_STR);
+
+      /* check fail */
+      if (_json_set_string(url, element, PND_STR) != RETURN_OK) {
+         l = l->next;
+         continue;
+      }
+
+      /* copy */
+      memcpy(l->sourcecodeurl, url, PND_STR);
       l = l->next;
    }
 
@@ -109,17 +138,26 @@ static int _json_set_categories(pndman_package *pnd, json_t *object)
    pndman_category *c = NULL;
    json_t *element;
    unsigned int p;
+   char cat[PND_SHRT_STR];
 
    if (!object)                  return RETURN_FAIL;
    if (!json_is_array(object))   return RETURN_FAIL;
+
+   memset(cat, 0, PND_SHRT_STR);
    for (p = 0; p != json_array_size(object); ++p) {
       element = json_array_get(object, p);
 
+      /* check fail */
+      if (_json_set_string(cat, element, PND_SHRT_STR) != RETURN_OK)
+         continue;
+
+      /* copy either main or sub */
       if (!c) {
-         if ((c = _pndman_package_new_category(pnd)))
-            _json_set_string(c->main, element, PND_SHRT_STR);
+         if ((c = _pndman_package_new_category(pnd))) {
+            memcpy(c->main, cat, PND_SHRT_STR);
+         } else break;
       } else {
-         _json_set_string(c->sub, element, PND_SHRT_STR);
+         memcpy(c->sub, cat, PND_SHRT_STR);
          c = NULL;
       }
    }
@@ -141,16 +179,22 @@ static int _json_set_localization(pndman_package *pnd, json_t *object)
       key      = json_object_iter_key(iter);
       element  = json_object_iter_value(iter);
 
+      /* bad element? */
+      if (!element) {
+         iter = json_object_iter_next(object, iter);
+         continue;
+      }
+
       /* add title */
       if ((t = _pndman_package_new_title(pnd))) {
-         strncpy(t->lang, key, PND_SHRT_STR);
-         _json_set_string(t->string, json_object_get(element, "title"), PND_STR);
+            strncpy(t->lang, key, PND_SHRT_STR);
+            _json_set_string(t->string, json_object_get(element, "title"), PND_STR);
       }
 
       /* add description */
       if ((t = _pndman_package_new_description(pnd))) {
-         strncpy(t->lang, key, PND_SHRT_STR);
-         _json_set_string(t->string, json_object_get(element, "description"), PND_STR);
+            strncpy(t->lang, key, PND_SHRT_STR);
+            _json_set_string(t->string, json_object_get(element, "description"), PND_STR);
       }
 
       /* next */
@@ -201,6 +245,13 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       _json_set_string(path, json_object_get(package, "path"), PND_PATH);
       pnd = _pndman_repository_new_pnd_check(id, path, repo);
       if (!pnd) return RETURN_FAIL;
+
+      /* free old titles and descriptions (if instance or old) */
+      _pndman_package_free_titles(pnd);
+      _pndman_package_free_descriptions(pnd);
+      _pndman_package_free_previewpics(pnd);
+      _pndman_package_free_licenses(pnd);
+      _pndman_package_free_categories(pnd);
 
       memcpy(pnd->id,     id,  PND_ID);
       memcpy(pnd->path, path,  PND_PATH);
