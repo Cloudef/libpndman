@@ -9,10 +9,14 @@
 /* \brief Init version struct */
 static void _pndman_init_version(pndman_version *ver)
 {
-   strncpy(ver->major,   "0", PND_VER-1);
-   strncpy(ver->minor,   "0", PND_VER-1);
-   strncpy(ver->release, "0", PND_VER-1);
-   strncpy(ver->build,   "0", PND_VER-1);
+   memset(ver->major,  0, PND_VER);
+   memset(ver->minor,  0, PND_VER);
+   memset(ver->release,0, PND_VER);
+   memset(ver->build,  0, PND_VER);
+   strcpy(ver->major,   "0");
+   strcpy(ver->minor,   "0");
+   strcpy(ver->release, "0");
+   strcpy(ver->build,   "0");
    ver->type = PND_VERSION_RELEASE;
 }
 
