@@ -41,7 +41,7 @@ static char* test_device()
 
 int main()
 {
-   pndman_device device;
+   pndman_device device, *d;
    pndman_package *pnd;
    pndman_repository repository, *repo;
    pndman_handle handle[H_COUNT+1];
@@ -130,6 +130,11 @@ int main()
    i = 0;
    for (; i != H_COUNT; ++i)
       pndman_handle_free(&handle[i]);
+
+   /* commit all repositories to every device */
+   d = &device;
+   for (; d; d = d->next)
+      pndman_commit(&repository, d);
 
    pndman_repository_free_all(&repository);
    pndman_device_free_all(&device);
