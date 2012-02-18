@@ -59,7 +59,7 @@ pndman_package* _pndman_repository_new_pnd(pndman_repository *repo)
 /* \brief check duplicate pnd on repo, return that pnd if found, else return new */
 pndman_package* _pndman_repository_new_pnd_check(char *id, char *path, pndman_repository *repo)
 {
-   pndman_package *pnd;
+   pndman_package *pnd, *pni;
 
    for (pnd = repo->pnd; pnd; pnd = pnd->next) {
       if (!strcmp(id, pnd->id)) {
@@ -67,9 +67,11 @@ pndman_package* _pndman_repository_new_pnd_check(char *id, char *path, pndman_re
          if (!repo->prev) {
             if (strcmp(path, pnd->path)) {
                /* create instance here, path differs! */
-               pnd->next_installed = _pndman_new_pnd();
-               if (!pnd->next_installed) return NULL;
-               pnd->next_installed->next = pnd->next;
+               for (pni = pnd; pni->next_installed; pni = pni->next_installed);
+               pni->next_installed = _pndman_new_pnd();
+               if (!pni->next_installed) return NULL;
+               pni->next_installed->next = pni->next;
+               return pni->next_installed;
             } else
                return pnd; /* this is the same pnd as installed locally */
          } else
