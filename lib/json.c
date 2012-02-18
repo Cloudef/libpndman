@@ -179,6 +179,28 @@ static int _pndman_json_repo_header(json_t *repo_header, pndman_repository *repo
    return RETURN_OK;
 }
 
+/* \brief check duplicate pnd on repo, return that pnd if found, else return new */
+static pndman_package* _pndman_check_duplicate(char *id, char *path, pndman_repository *repo)
+{
+   pndman_package *pnd;
+
+   for (pnd = repo->pnd; pnd; pnd = pnd->next) {
+      if (!strcmp(id, pnd->id)) {
+         /* if local repository, create instance */
+         if (!repo->prev) {
+            if (strcmp(path, pnd->path)) {
+               /* create instance here, path differs! */
+            } else
+               return pnd; /* this is the same pnd as installed locally */
+         } else
+            return pnd; /* remote repository can't have instances :) */
+      }
+   }
+
+   /* create new pnd */
+   return _pndman_repository_new_pnd(repo);
+}
+
 /* \brief json parse repository packages */
 static int _pndman_json_process_packages(json_t *packages, pndman_repository *repo)
 {
@@ -186,21 +208,32 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
    pndman_package *pnd;
    unsigned int p;
 
+   char id[PND_ID];
+   char path[PND_PATH];
+   memset(id,   0, PND_ID);
+   memset(path, 0, PND_PATH);
+
    p = 0;
    for (; p != json_array_size(packages); ++p) {
       package = json_array_get(packages, p);
       if (!json_is_object(package)) continue;
 
-      /* INFO READ HERE */
+      /* these are needed for checking duplicate pnd's */
+      _json_set_string(id,   json_object_get(package,"id"),    PND_ID);
+      _json_set_string(path, json_object_get(package, "path"), PND_PATH);
+      pnd = _pndman_check_duplicate(id, path, repo);
+
       pnd = _pndman_repository_new_pnd(repo);
       if (!pnd) return RETURN_FAIL;
-      _json_set_string(pnd->id,           json_object_get(package,"id"),      PND_ID);
+
+      memcpy(pnd->id,     id,  PND_ID);
+      memcpy(pnd->path, path,  PND_PATH);
+      _json_set_string(pnd->md5,          json_object_get(package,"md5"),     PND_STR);
       _json_set_string(pnd->url,          json_object_get(package,"uri"),     PND_STR);
       _json_set_version(&pnd->version,    json_object_get(package,"version"));
       _json_set_localization(pnd,         json_object_get(package,"localizations"));
       _json_set_string(pnd->info,         json_object_get(package,"info"),    PND_INFO);
       _json_set_number((double*)&pnd->size, json_object_get(package, "size"));
-      _json_set_string(pnd->md5,          json_object_get(package,"md5"),     PND_MD5);
       _json_set_number((double*)&pnd->modified_time, json_object_get(package, "modified_time"));
       _json_set_number((double*)&pnd->rating, json_object_get(package, "rating"));
       _json_set_author(&pnd->author,      json_object_get(package,"author"));
@@ -298,6 +331,13 @@ int _pndman_json_commit(pndman_repository *r, FILE *f)
    fprintf(f, "\"packages\":["); /* packages */
    for (p = r->pnd; p; p = p->next) {
       fprintf(f, "{");
+
+      /* local repository */
+      if (!r->prev) {
+         _fkeyf(f, "path", p->path, 1);
+         fprintf(f, "\"flags\":%d,", p->flags);
+      }
+
       _fkeyf(f, "id", p->id, 1);
       _fkeyf(f, "uri", p->url, 1);
 
