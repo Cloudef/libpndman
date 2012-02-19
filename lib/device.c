@@ -138,18 +138,19 @@ static int _pndman_device_new_if_exist(pndman_device **device, char *check_exist
 /* \brief Free one device */
 static int _pndman_device_free(pndman_device *device)
 {
-   pndman_device *deleted;
+   pndman_device *deleted, *d;
    assert(device);
 
    /* avoid freeing the first device */
    if (device->prev) {
       /* set previous device point to the next device */
-      device->prev->next    = device->next;
+      device->prev->next = device->next;
 
       /* set next point back to the previous device */
       if (device->next)
          device->next->prev = device->prev;
 
+      /* free the actual device */
       free(device);
    }
    else {
@@ -162,15 +163,18 @@ static int _pndman_device_free(pndman_device *device)
          device->available  = device->next->available;
          device->exist      = device->next->exist;
 
+         /* store the deleted */
          deleted = device->next;
-         device->next = deleted->next;
 
+         /* update next pointer for reference */
+         device->next = deleted->next;
          if (device->next)
             device->next->prev = device;
 
+         /* free the actual device */
          free(deleted);
       }
-      else pndman_device_init(device);
+      else pndman_device_init(device); /* first device */
    }
 
    return RETURN_OK;
