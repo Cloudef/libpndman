@@ -6,6 +6,13 @@
 
 #include "pndman.h"
 #include "package.h"
+#include "repository.h"
+#include "device.h"
+
+#ifdef __linux__
+#  include <sys/stat.h>
+#  include <dirent.h>
+#endif
 
 #define PXML_START_TAG "<PXML"
 #define PXML_END_TAG   "</PXML>"
@@ -872,6 +879,180 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
    }
 }
 
+/* \brief Process crawl */
+static int _pndman_crawl_process(char *pnd_file, pxml_parse *data)
+{
+   char PXML[PXML_MAX_SIZE];
+   size_t size;
+   assert(pnd_file && data);
+
+   if (_fetch_pxml_from_pnd(pnd_file, PXML, &size) != RETURN_OK)
+      return RETURN_FAIL;
+
+   /* parse */
+   if (_pxml_pnd_parse(data, PXML, size) != RETURN_OK)
+      return RETURN_FAIL;
+   _pxml_pnd_post_process(data->pnd);
+
+   /* add path to the pnd */
+   strncpy(data->pnd->path, pnd_file, PATH_MAX-1);
+
+   return RETURN_OK;
+}
+
+/* \brief Crawl directory */
+static int _pndman_crawl_dir(char *path, pndman_package *list)
+{
+   char tmp[PATH_MAX];
+   pxml_parse data;
+   pndman_package *pnd;
+
+#ifdef __linux__
+   DIR *dp;
+   struct dirent *ep;
+#elif __WIN32__
+   WIN32_FIND_DATA dp;
+   HANDLE hFind;
+#endif
+
+   assert(path && list);
+
+   /* init parse data */
+   data.app   = NULL;
+   data.data  = NULL;
+   data.bckward_title = 1; /* backwards compatibility with PXML titles */
+   data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
+   data.state = PXML_PARSE_DEFAULT;
+   pnd = NULL;
+
+#ifdef __linux__
+   dp = opendir(path);
+   if (!dp) return RETURN_FAIL;
+
+   while (ep = readdir(dp)) {
+      if (!strstr(ep->d_name, ".pnd")) continue;
+      strcpy(tmp, path);
+      strncat(tmp, "/", PATH_MAX-1);
+      strncat(tmp, ep->d_name, PATH_MAX-1);
+
+      /* how to create new pnd? */
+      if (!pnd)
+         pnd = list;
+      else {
+         for(; pnd && pnd->next; pnd = pnd->next);
+         pnd->next = _pndman_new_pnd();
+         if (!pnd->next) continue;
+      }
+
+      /* crawl */
+      data.pnd = pnd;
+      _pndman_crawl_process(tmp, &data);
+   }
+#elif __WIN32__
+   strcpy(tmp, path);
+   strncat(tmp, "/*.pnd", PATH_MAX-1);
+
+   if ((hFind = FindFirstFile(tmp, &dp)) == INVALID_HANDLE_VALUE)
+      return RETURN_FAIL;
+
+   do {
+      strcpy(tmp, path);
+      strncat(tmp, "/", PATH_MAX-1);
+      strncat(tmp, dp.cFileName, PATH_MAX-1);
+
+      /* how to create new pnd? */
+      if (!pnd)
+         pnd = list;
+      else {
+         for(; pnd && pnd->next; pnd = pnd->next);
+         pnd->next = _pndman_new_pnd();
+         if (!pnd->next) continue;
+      }
+
+      /* crawl */
+      _pndman_crawl_process(tmp, &data);
+   } while (FindNextFile(hFind, &dp));
+   FindClose(hFind);
+#endif
+
+   return RETURN_FAIL;
+}
+
+/* \brief Crawl to pndman_package list */
+static int _pndman_crawl_to_pnd_list(pndman_device *device, pndman_package *list)
+{
+   char tmp[PATH_MAX];
+   char tmp2[PATH_MAX];
+   assert(device && list);
+
+   if (!strlen(device->appdata))
+      return RETURN_FAIL;
+
+   memset(tmp,  0, PATH_MAX);
+
+   /* pandora root */
+   strncpy(tmp, device->mount,   PATH_MAX-1);
+   strncat(tmp, "/pandora",      PATH_MAX-1);
+
+   /* desktop */
+   strcpy(tmp2, tmp);
+   strncat(tmp2, "/desktop", PATH_MAX-1);
+   _pndman_crawl_dir(tmp2, list);
+
+   /* menu */
+   strcpy(tmp2, tmp);
+   strncat(tmp2, "/menu", PATH_MAX-1);
+   _pndman_crawl_dir(tmp2, list);
+
+   /* apps */
+   strcpy(tmp2, tmp);
+   strncat(tmp2, "/apps", PATH_MAX-1);
+   _pndman_crawl_dir(tmp2, list);
+
+   return RETURN_OK;
+}
+
+/* \brief crawl to repository */
+static int _pndman_crawl_to_repository(pndman_device *device, pndman_repository *local)
+{
+   pndman_package *list, *p, *pnd;
+   assert(device && local);
+
+   list = _pndman_new_pnd();
+   if (!list)
+      return RETURN_FAIL;
+
+   /* crawl pnds to list */
+   if (_pndman_crawl_to_pnd_list(device, list) != RETURN_OK) {
+      _pndman_free_pnd(list);
+      return RETURN_FAIL;
+   }
+
+   /* merge pnd's to repo */
+   for (p = list; p; p = p->next) {
+      pnd = _pndman_repository_new_pnd_check(p->id, p->path, local);
+      if (!pnd) continue;
+      _pndman_copy_pnd(pnd, p);
+      pnd->flags = PND_INSTALLED; /* it's obiviously installed :) */
+   }
+
+   /* free list */
+   _pndman_free_pnd(list);
+
+   return RETURN_OK;
+}
+
+/* API */
+
+/* \brief crawl pnds to local repository */
+int pndman_crawl(pndman_device *device, pndman_repository *local)
+{
+   if (!device) return RETURN_FAIL;
+   if (!local)  return RETURN_FAIL;
+   local = _pndman_repository_first(local);
+   return _pndman_crawl_to_repository(device, local);
+}
+
 /* \brief
  * Stub test function */
 int pnd_do_something(char *pnd_file)
@@ -889,6 +1070,7 @@ int pnd_do_something(char *pnd_file)
    memset(PXML, 0, PXML_MAX_SIZE);
    _fetch_pxml_from_pnd(pnd_file, PXML, &size);
    test = _pndman_new_pnd();
+   if (!test) return RETURN_FAIL;
 
    pxml_parse data;
    data.pnd   = test;
