@@ -2,7 +2,6 @@
 #include <string.h>
 #include <assert.h>
 #include <jansson.h>
-
 #include "pndman.h"
 #include "package.h"
 #include "repository.h"

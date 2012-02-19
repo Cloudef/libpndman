@@ -3,7 +3,6 @@
 #include <string.h>
 #include <malloc.h>
 #include <assert.h>
-
 #include "pndman.h"
 #include "package.h"
 #include "device.h"

@@ -8,6 +8,7 @@
 #include "repository.h"
 #include "device.h"
 #include "curl.h"
+#include "md5.h"
 
 /* TODO: add download statistics
  * Actual file download
@@ -170,6 +171,7 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    char filename[PATH_MAX];
    char tmp[PATH_MAX];
    char *appdata;
+   char *md5;
    pndman_package *pnd;
    DEBUG("handle install");
 
@@ -178,6 +180,26 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
        !(handle->flags & PNDMAN_HANDLE_INSTALL_MENU)    &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_APPS))
       return RETURN_FAIL;
+
+   /* check appdata */
+   appdata = _pndman_device_get_appdata(handle->device);
+   if (!appdata) return RETURN_FAIL;
+
+   /* complete handle's path */
+   snprintf(tmp, PATH_MAX-1, "%s/%p", appdata, handle);
+
+   /* check MD5 */
+   md5 = _pndman_md5(tmp);
+   if (!md5 && !(handle->flags & PNDMAN_HANDLE_FORCE))
+      return RETURN_FAIL;
+
+   /* do check against remote */
+   if (md5 && strcmp(md5, handle->pnd->md5)) {
+      if (!(handle->flags & PNDMAN_HANDLE_FORCE))
+         return RETURN_FAIL;
+      else
+         DEBUG("MD5 differ, but force anyways");
+   }
 
    /* get install directory */
    strncpy(install, handle->device->mount, PATH_MAX-1);
@@ -210,11 +232,6 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    if (handle->file) fclose(handle->file);
    handle->file = NULL;
 
-   /* check appdata */
-   appdata = _pndman_device_get_appdata(handle->device);
-   if (!appdata) return RETURN_FAIL;
-
-   snprintf(tmp, PATH_MAX-1, "%s/%p", appdata, handle);
    DEBUGP("install: %s\n", install);
    DEBUGP("from: %s\n", tmp);
    if (_pndman_move_file(tmp, install) != RETURN_OK)

@@ -3,8 +3,7 @@
 #include <assert.h>
 #include <malloc.h>
 #include <stdint.h>
-#include "curl/curl.h"
-
+#include <curl/curl.h>
 #include "pndman.h"
 #include "package.h"
 #include "repository.h"
