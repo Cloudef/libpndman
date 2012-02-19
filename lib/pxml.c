@@ -951,6 +951,7 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
       /* assign pnd to list */
       if (!p) {
          _pndman_copy_pnd(list, pnd);
+         _pndman_free_pnd(pnd);
          p = list;
       } else {
          for (p = list; p && p->next; p = p->next);

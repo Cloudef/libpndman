@@ -35,7 +35,7 @@ static char* test_device()
 
 int main()
 {
-   pndman_device device, *d;
+   pndman_device *device, *d;
    int device_count;
    int i;
    char *cwd;
@@ -56,17 +56,16 @@ int main()
       err("pndman_init failed");
 
    /* add some devices */
-   pndman_device_init(&device);
-   if (pndman_device_add(cwd, &device) == -1)
+   if (!(device = pndman_device_add(cwd, NULL)))
       err("failed to add device, does it exist?");
-   pndman_device_detect(&device);
-   if (pndman_device_add(cwd, &device) == 0)
+   pndman_device_detect(device);
+   if (pndman_device_add(cwd, device))
       err("second device add should fail!");
 
    /* print devices */
    puts("");
    device_count = 0;
-   for(d = &device; d; d = d->next) {
+   for(d = device; d; d = d->next) {
       printf("%12s : %24s : %zu : %zu : %zu\n",
             d->device, d->mount, d->size, d->free, d->available);
       device_count++;
@@ -77,32 +76,33 @@ int main()
    if (device_count > 1) {
       /* go to the middle device and free it */
       i = 0;
-      d = &device;
+      d = device;
       for(; i < device_count / 2; ++i)
          d = d->next;
-      pndman_device_free(d);
+      device = pndman_device_free(d);
 
       /* print devices */
       puts("");
-      for(d = &device; d; d = d->next)
+      for(d = device; d; d = d->next)
          printf("%12s : %24s : %zu : %zu : %zu\n",
                d->device, d->mount, d->size, d->free, d->available);
       puts("");
    }
 
    /* free first device */
-   pndman_device_free(&device);
+   device = pndman_device_free(device);
 
    /* print devices */
    puts("");
-   for(d = &device; d; d = d->next)
+   for(d = device; d; d = d->next)
       printf("%12s : %24s : %zu : %zu : %zu\n",
             d->device, d->mount, d->size, d->free, d->available);
    puts("");
 
    /* free everything */
-   pndman_device_free_all(&device);
+   pndman_device_free_all(device);
 
+   free(cwd);
    if (pndman_quit() == -1)
       err("pndman_quit failed");
 

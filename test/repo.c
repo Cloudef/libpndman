@@ -37,9 +37,9 @@ static char* test_device()
 
 int main()
 {
-   pndman_repository repository, *r;
-   pndman_device     device, *d;
-   pndman_package   *pnd;
+   pndman_repository *repository, *r;
+   pndman_device     *device, *d;
+   pndman_package    *pnd;
    pndman_sync_handle handle[1]; /* we should have only one remote repository */
    unsigned int x;
    char *cwd;
@@ -57,20 +57,22 @@ int main()
       err("pndman_init failed");
 
    /* add device */
-   pndman_device_init(&device);
-   if (pndman_device_add(cwd, &device) == -1)
+   if (!(device = pndman_device_add(cwd, NULL)))
       err("failed to add device, check that it exists");
 
    /* add repository */
-   pndman_repository_init(&repository);
-   if (pndman_repository_add(REPO_URL, &repository) == -1)
+   repository = pndman_repository_init();
+   if (!repository)
+      err("failed to allocate repository list");
+
+   if (!pndman_repository_add(REPO_URL, repository))
       err("failed to add "REPO_URL", :/");
-   if (pndman_repository_add(REPO_URL, &repository) == 0)
+   if (pndman_repository_add(REPO_URL, repository))
       err("second repo add should fail!");
 
-   r = &repository; x = 0;
+   r = repository; x = 0;
    for (; r; r = r->next) {
-      d = &device;
+      d = device;
       for (; d; d = d->next) pndman_read_from_device(r, d);
 
       /* skip the local repository */
@@ -97,7 +99,7 @@ int main()
       pndman_sync_request_free(&handle[x]);
 
    puts("");
-   r = &repository;
+   r = repository;
    for (; r; r = r->next)
    {
       printf("%s :\n", r->name);
@@ -122,13 +124,13 @@ int main()
    puts("");
 
    /* commit all repositories to every device */
-   d = &device;
+   d = device;
    for (; d; d = d->next)
-      pndman_commit(&repository, d);
+      pndman_commit(repository, d);
 
    /* free everything */
-   pndman_repository_free_all(&repository);
-   pndman_device_free_all(&device);
+   pndman_repository_free_all(repository);
+   pndman_device_free_all(device);
 
    free(cwd);
    if (pndman_quit() == -1)

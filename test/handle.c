@@ -41,9 +41,9 @@ static char* test_device()
 
 int main()
 {
-   pndman_device device, *d;
+   pndman_device *device, *d;
    pndman_package *pnd;
-   pndman_repository repository, *repo;
+   pndman_repository *repository, *repo;
    pndman_handle handle[H_COUNT+1];
    pndman_sync_handle sync_handle;
    int i;
@@ -61,20 +61,15 @@ int main()
    if (pndman_init() == -1)
       err("pndman_init failed");
 
-   pndman_device_init(&device);
-   if (pndman_device_add(cwd, &device) == -1)
+   if (!(device = pndman_device_add(cwd, NULL)))
       err("failed to add device, check that it exists");
 
-   pndman_repository_init(&repository);
-   if (pndman_repository_add(REPO_URL, &repository) == -1)
+   repository = pndman_repository_init();
+   if (!(repo = pndman_repository_add(REPO_URL, repository)))
       err("failed to add repository "REPO_URL", :/");
 
-   /* the repository we added, is the next one.
-    * first repository is always the local repository */
-   repo = repository.next;
-
    /* read from device, then sync the repository we added */
-   pndman_read_from_device(repo, &device);
+   pndman_read_from_device(repo, device);
    pndman_sync_request(&sync_handle, repo);
    while (pndman_sync() > 0) {
       if (sync_handle.done) {
@@ -94,7 +89,7 @@ int main()
    for (; i != H_COUNT; ++i) {
       pndman_handle_init((char*)pnd->id, &handle[i]);
       handle[i].pnd    = pnd; /* lets download the first pnd from repository */
-      handle[i].device = &device;
+      handle[i].device = device;
       handle[i].flags  = PNDMAN_HANDLE_INSTALL | PNDMAN_HANDLE_INSTALL_MENU;
       if (pndman_handle_perform(&handle[i]) == -1)
          err("failed to perform handle");
@@ -112,7 +107,7 @@ int main()
          printf("DONE: %s\n", handle[i].name);
 
          /* handle is downloaded, "commit" it, (installs) */
-         if (pndman_handle_commit(&handle[i], &repository) != 0)
+         if (pndman_handle_commit(&handle[i], repository) != 0)
             printf("commit failed for: %s\n", handle[i].name);
 
          /* reset done and free */
@@ -132,12 +127,12 @@ int main()
       pndman_handle_free(&handle[i]);
 
    /* commit all repositories to every device */
-   d = &device;
+   d = device;
    for (; d; d = d->next)
-      pndman_commit(&repository, d);
+      pndman_commit(repository, d);
 
-   pndman_repository_free_all(&repository);
-   pndman_device_free_all(&device);
+   pndman_repository_free_all(repository);
+   pndman_device_free_all(device);
 
    free(cwd);
    if (pndman_quit() == -1)

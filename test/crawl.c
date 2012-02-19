@@ -35,9 +35,9 @@ static char* test_device()
 
 int main()
 {
-   pndman_repository repository, *r;
-   pndman_device     device;
-   pndman_package   *pnd;
+   pndman_repository *repository, *r;
+   pndman_device     *device;
+   pndman_package    *pnd;
    char *cwd;
 
    cwd = test_device();
@@ -50,19 +50,20 @@ int main()
       err("pndman_init failed");
 
    /* add device */
-   pndman_device_init(&device);
-   if (pndman_device_add(cwd, &device) == -1)
+   if (!(device = pndman_device_add(cwd, NULL)))
       err("failed to add device, check that it exists");
 
    /* add repository */
-   pndman_repository_init(&repository);
+   repository = pndman_repository_init();
+   if (!repository)
+      err("allocating repo list failed");
 
    /* crawl pnds to local repository */
-   if (pndman_crawl(&device, &repository) == -1)
+   if (pndman_crawl(device, repository) == -1)
       err("crawling failed");
 
    puts("");
-   r = &repository;
+   r = repository;
    for (; r; r = r->next)
    {
       printf("%s :\n", r->name);
@@ -86,8 +87,8 @@ int main()
    puts("");
 
    /* free everything */
-   pndman_repository_free_all(&repository);
-   pndman_device_free_all(&device);
+   pndman_repository_free_all(repository);
+   pndman_device_free_all(device);
 
    free(cwd);
    if (pndman_quit() == -1)

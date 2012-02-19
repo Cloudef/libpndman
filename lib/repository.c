@@ -134,6 +134,8 @@ static pndman_repository* _pndman_repository_new(pndman_repository **repo)
 static pndman_repository* _pndman_repository_new_if_exist(pndman_repository **repo, char *check_existing)
 {
    pndman_repository *r;
+
+   if (!*repo) return *repo = _pndman_repository_init();
    if (check_existing) {
       r = _pndman_repository_first(*repo);
       for(; r; r = r->next) {
@@ -163,19 +165,18 @@ static pndman_repository* _pndman_repository_free(pndman_repository *repo)
 
    /* set previous repo point to the next repo */
    if (repo->prev)
-      repo->prev->next    = repo->next;
+      repo->prev->next = repo->next;
 
    /* set next point back to the previous repo */
    if (repo->next)
       repo->next->prev = repo->prev;
 
    /* get first repo */
-   first = _pndman_repository_first(repo);
+   first = repo->prev ? _pndman_repository_first(repo) : repo->next;
 
    /* free the repository */
    _pndman_repository_free_pnd_all(repo);
    free(repo);
-
    return first;
 }
 
@@ -185,8 +186,8 @@ static int _pndman_repository_free_all(pndman_repository *repo)
    pndman_repository *next;
    assert(repo);
 
-   /* find the last repo */
-   repo = _pndman_repository_last(repo);
+   /* find the first repo */
+   repo = _pndman_repository_first(repo);
 
    /* free everything */
    for(; repo; repo = next) {

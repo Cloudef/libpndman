@@ -292,7 +292,6 @@ pndman_repository* pndman_repository_init();
 pndman_repository* pndman_repository_add(char *url, pndman_repository *list);
 pndman_repository* pndman_repository_free(pndman_repository *repo);
 int pndman_repository_free_all(pndman_repository *repo);
-pndman_device* pndman_device_init();
 pndman_device* pndman_device_add(char *path, pndman_device *list);
 pndman_device* pndman_device_detect(pndman_device *device);
 pndman_device* pndman_device_free(pndman_device *device);

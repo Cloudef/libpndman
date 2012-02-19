@@ -18,8 +18,25 @@
 #include "repository.h"
 #include "device.h"
 
-/* used also internally */
-pndman_device *pndman_device_init();
+/* \brief creates new device */
+static pndman_device* _pndman_device_init()
+{
+   pndman_device *device;
+
+   device = malloc(sizeof(pndman_device));
+   if (!device) return NULL;
+
+   memset(device->device, 0, PATH_MAX);
+   memset(device->mount,  0, PATH_MAX);
+   memset(device->appdata,0, PATH_MAX);
+   device->size      = 0;
+   device->free      = 0;
+   device->available = 0;
+   device->next = NULL;
+   device->prev = NULL;
+
+   return device;
+}
 
 /* \brief Find first device */
 static inline pndman_device* _pndman_device_first(pndman_device *device)
@@ -106,7 +123,7 @@ static pndman_device* _pndman_device_new(pndman_device **device)
 
    /* find last device */
    *device = _pndman_device_last(*device);
-   new = pndman_device_init();
+   new = _pndman_device_init();
    if (!new) return NULL;
 
    /* set defaults */
@@ -121,6 +138,7 @@ static pndman_device* _pndman_device_new_if_exist(pndman_device **device, char *
 {
    pndman_device *d;
 
+   if (!*device) return *device = _pndman_device_init();
    if (check_existing) {
       d = _pndman_device_first(*device);
       for(; d; d = d->next) {
@@ -147,11 +165,10 @@ static pndman_device* _pndman_device_free(pndman_device *device)
       device->next->prev = device->prev;
 
    /* get first item */
-   first = _pndman_device_first(device);
+   first = device->prev ? _pndman_device_first(device) : device->next;
 
    /* free the actual device */
    free(device);
-
    return first;
 }
 
@@ -161,7 +178,7 @@ static int _pndman_device_free_all(pndman_device *device)
    pndman_device *next;
    assert(device);
 
-   /* find the last device */
+   /* find the first device */
    device = _pndman_device_first(device);
 
    /* free everything */
@@ -247,7 +264,7 @@ static pndman_device* _pndman_device_add(char *path, pndman_device *device)
       return NULL;
 
    /* create new if needed */
-   if (_pndman_device_new_if_exist(&device, mnt.mnt_dir) != RETURN_OK)
+   if (!_pndman_device_new_if_exist(&device, mnt.mnt_dir))
       return NULL;
 
    /* fill device struct */
@@ -404,27 +421,6 @@ char* _pndman_device_get_appdata(pndman_device *device)
 
 /* API */
 
-/* \brief Initialize device list, returns device, NULL when can't alloc */
-pndman_device* pndman_device_init()
-{
-   pndman_device *device;
-   DEBUG("pndman device init");
-
-   device = malloc(sizeof(pndman_device));
-   if (!device) return NULL;
-
-   memset(device->device, 0, PATH_MAX);
-   memset(device->mount,  0, PATH_MAX);
-   memset(device->appdata,0, PATH_MAX);
-   device->size      = 0;
-   device->free      = 0;
-   device->available = 0;
-   device->next = NULL;
-   device->prev = NULL;
-
-   return device;
-}
-
 /* \brief Add all found devices */
 pndman_device* pndman_device_detect(pndman_device *device)
 {
@@ -437,7 +433,6 @@ pndman_device* pndman_device_detect(pndman_device *device)
 pndman_device* pndman_device_add(char *path, pndman_device *device)
 {
    DEBUG("pndman device add");
-   if (!device) return NULL;
    return _pndman_device_add(path, device);
 }
 
