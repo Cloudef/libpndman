@@ -161,8 +161,7 @@ static int _pndman_repository_add(char *url, pndman_repository *repo)
 static int _pndman_repository_free(pndman_repository *repo)
 {
    pndman_repository *deleted;
-
-   if (!repo) return RETURN_FAIL;
+   assert(repo);
 
    /* avoid freeing the first repo */
    if (repo->prev) {
@@ -205,8 +204,7 @@ static int _pndman_repository_free(pndman_repository *repo)
 static int _pndman_repository_free_all(pndman_repository *repo)
 {
    pndman_repository *prev;
-
-   if (!repo) return RETURN_FAIL;
+   assert(repo);
 
    /* find the last repo */
    repo = _pndman_repository_last(repo);

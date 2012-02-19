@@ -163,7 +163,7 @@ static int _pndman_device_free(pndman_device *device)
          device->exist      = device->next->exist;
 
          deleted = device->next;
-         device->next       = deleted->next;
+         device->next = deleted->next;
 
          if (device->next)
             device->next->prev = device;
