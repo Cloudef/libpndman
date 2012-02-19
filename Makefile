@@ -20,7 +20,7 @@ MINGW := 0
 X86 := 0
 
 # depencies for pndman
-LIB_LIBS := -lexpat `pkg-config --libs libcurl jansson openssl`
+LIB_LIBS := -lexpat `pkg-config --libs libcurl jansson`
 
 # git info
 VERSION = `git rev-parse HEAD`
@@ -37,6 +37,8 @@ ifeq (${MINGW},1)
    CFLAGS += -DCURL_STATICLIB
    LIB_LIBS += -static -static-libgcc -mwindows
    LIB_LIBS += -lssl -lcrypto -lz -lws2_32 -lmingw32 -lkernel32
+else
+   LIB_LIBS += `pkg-config --libs openssl`
 endif
 
 ifeq (${X86},1)
