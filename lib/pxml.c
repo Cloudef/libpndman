@@ -9,6 +9,7 @@
 #include "package.h"
 #include "repository.h"
 #include "device.h"
+#include "md5.h"
 
 #ifdef __linux__
 #  include <sys/stat.h>
@@ -875,6 +876,7 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
 static int _pndman_crawl_process(char *pnd_file, pxml_parse *data)
 {
    char PXML[PXML_MAX_SIZE];
+   char *md5;
    size_t size;
    assert(pnd_file && data);
 
@@ -888,6 +890,13 @@ static int _pndman_crawl_process(char *pnd_file, pxml_parse *data)
 
    /* add path to the pnd */
    strncpy(data->pnd->path, pnd_file, PATH_MAX-1);
+
+   /* add md5 to the pnd */
+   md5 = _pndman_md5(pnd_file);
+   if (md5) {
+      strncpy(data->pnd->md5, md5, PND_MD5);
+      free(md5);
+   }
 
    return RETURN_OK;
 }
