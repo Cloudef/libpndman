@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <string.h>
 #include <expat.h>
 #include <assert.h>
@@ -146,11 +147,7 @@ static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
    FILE     *pnd;
    char     s[LINE_MAX];
    size_t   pos;
-#ifdef __linux__
-   int      ret;
-#else
    char     *ret;
-#endif
 
    /* open PND */
    pnd = fopen(pnd_file, "rb");
@@ -160,29 +157,19 @@ static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
    /* set && seek to end */
    memset(s,  0, LINE_MAX);
    fseek(pnd, 0, SEEK_END); pos = ftell(pnd) - 512; fseek(pnd, pos, SEEK_SET);
-#ifdef __linux__
-   for (; (ret = fread(s, PXML_TAG_SIZE, 1, pnd)) && memcmp(s, PXML_START_TAG, strlen(PXML_START_TAG));
-          fseek(pnd, --pos, SEEK_SET));
-#else
    for (; (ret = fgets(s, PXML_TAG_SIZE, pnd)) && memcmp(s, PXML_START_TAG, strlen(PXML_START_TAG));
           fseek(pnd, --pos, SEEK_SET));
-#endif
 
    /* Yatta! PXML start found ^_^ */
    /* PXML does not define standard XML, so add those to not confuse expat */
    strncpy(PXML, XML_HEADER, PXML_MAX_SIZE-1);
 
    /* read until end tag */
-#ifdef __linux__
-   for (; ret && memcmp(s, PXML_END_TAG, strlen(PXML_END_TAG)); ret = fread(s, LINE_MAX-1, 1, pnd))
-      strncat(PXML, s, PXML_MAX_SIZE-1);
-#else
    for (; ret && memcmp(s, PXML_END_TAG, strlen(PXML_END_TAG)); ret = fgets(s, LINE_MAX-1, pnd))
       strncat(PXML, s, PXML_MAX_SIZE-1);
-#endif
 
    /* and we are done, was it so hard libpnd? */
-   strncat(PXML, s, PXML_MAX_SIZE-1);
+   strncat(PXML, PXML_END_TAG, PXML_MAX_SIZE-1);
 
    /* store size */
    *size = strlen(PXML);
@@ -776,8 +763,13 @@ static int _pxml_pnd_parse(pxml_parse *data, char *PXML, size_t size)
 
    /* parse XML */
    ret = RETURN_OK;
-   if (XML_Parse(xml, PXML, size, 1) == 0)
+   if (XML_Parse(xml, PXML, size, 1) == XML_STATUS_ERROR)
       ret = RETURN_FAIL;
+
+   if (ret == RETURN_FAIL) {
+      DEBUG(PXML);
+      exit(EXIT_FAILURE);
+   }
 
    /* free the parser */
    XML_ParserFree(xml);
@@ -905,7 +897,8 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
 {
    char tmp[PATH_MAX];
    pxml_parse data;
-   pndman_package *pnd;
+   pndman_package *pnd, *p;
+   int ret;
 
 #ifdef __linux__
    DIR *dp;
@@ -918,16 +911,14 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
    assert(path && list);
 
    /* init parse data */
-   data.app   = NULL;
-   data.data  = NULL;
    data.bckward_title = 1; /* backwards compatibility with PXML titles */
    data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
-   data.state = PXML_PARSE_DEFAULT;
-   pnd = NULL;
+   pnd = NULL; p = NULL;
+   ret = 0;
 
 #ifdef __linux__
    dp = opendir(path);
-   if (!dp) return RETURN_FAIL;
+   if (!dp) return 0;
 
    while (ep = readdir(dp)) {
       if (!strstr(ep->d_name, ".pnd")) continue;
@@ -935,47 +926,71 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
       strncat(tmp, "/", PATH_MAX-1);
       strncat(tmp, ep->d_name, PATH_MAX-1);
 
-      /* how to create new pnd? */
-      if (!pnd)
-         pnd = list;
-      else {
-         for(; pnd && pnd->next; pnd = pnd->next);
-         pnd->next = _pndman_new_pnd();
-         if (!pnd->next) continue;
-      }
+      /* create pnd */
+      pnd = _pndman_new_pnd();
+      if (!pnd) continue;
 
       /* crawl */
-      data.pnd = pnd;
-      _pndman_crawl_process(tmp, &data);
+      data.pnd   = pnd;
+      data.app   = NULL;
+      data.data  = NULL;
+      data.state = PXML_PARSE_DEFAULT;
+      if (_pndman_crawl_process(tmp, &data) != RETURN_OK) {
+         _pndman_free_pnd(pnd);
+         continue;
+      }
+
+      /* assign pnd to list */
+      if (!p) {
+         _pndman_copy_pnd(list, pnd);
+         p = list;
+      } else {
+         for (p = list; p && p->next; p = p->next);
+         p->next = pnd;
+      }
+      ++ret;
    }
+   closedir(dp);
 #elif __WIN32__
    strcpy(tmp, path);
    strncat(tmp, "/*.pnd", PATH_MAX-1);
 
    if ((hFind = FindFirstFile(tmp, &dp)) == INVALID_HANDLE_VALUE)
-      return RETURN_FAIL;
+      return 0;
 
    do {
       strcpy(tmp, path);
       strncat(tmp, "/", PATH_MAX-1);
       strncat(tmp, dp.cFileName, PATH_MAX-1);
 
-      /* how to create new pnd? */
-      if (!pnd)
-         pnd = list;
-      else {
-         for(; pnd && pnd->next; pnd = pnd->next);
-         pnd->next = _pndman_new_pnd();
-         if (!pnd->next) continue;
-      }
+      /* create pnd */
+      pnd = _pndman_new_pnd();
+      if (!pnd) continue;
 
       /* crawl */
-      _pndman_crawl_process(tmp, &data);
+      data.pnd   = pnd;
+      data.app   = NULL;
+      data.data  = NULL;
+      data.state = PXML_PARSE_DEFAULT;
+      if (_pndman_crawl_process(tmp, &data) != RETURN_OK) {
+         _pndman_free_pnd(pnd);
+         continue;
+      }
+
+      /* assign pnd to list */
+      if (!p) {
+         _pndman_copy_pnd(list, pnd);
+         p = list;
+      } else {
+         for (; p && p->next; p = p->next);
+         p->next = pnd;
+      }
+      ++ret;
    } while (FindNextFile(hFind, &dp));
    FindClose(hFind);
 #endif
 
-   return RETURN_FAIL;
+   return ret;
 }
 
 /* \brief Crawl to pndman_package list */
@@ -983,10 +998,8 @@ static int _pndman_crawl_to_pnd_list(pndman_device *device, pndman_package *list
 {
    char tmp[PATH_MAX];
    char tmp2[PATH_MAX];
+   int ret = 0;
    assert(device && list);
-
-   if (!strlen(device->appdata))
-      return RETURN_FAIL;
 
    memset(tmp,  0, PATH_MAX);
 
@@ -994,28 +1007,33 @@ static int _pndman_crawl_to_pnd_list(pndman_device *device, pndman_package *list
    strncpy(tmp, device->mount,   PATH_MAX-1);
    strncat(tmp, "/pandora",      PATH_MAX-1);
 
+   /* can't access */
+   if (access(tmp, F_OK) != 0)
+      return RETURN_FAIL;
+
    /* desktop */
    strcpy(tmp2, tmp);
    strncat(tmp2, "/desktop", PATH_MAX-1);
-   _pndman_crawl_dir(tmp2, list);
+   ret += _pndman_crawl_dir(tmp2, list);
 
    /* menu */
    strcpy(tmp2, tmp);
    strncat(tmp2, "/menu", PATH_MAX-1);
-   _pndman_crawl_dir(tmp2, list);
+   ret += _pndman_crawl_dir(tmp2, list);
 
    /* apps */
    strcpy(tmp2, tmp);
    strncat(tmp2, "/apps", PATH_MAX-1);
-   _pndman_crawl_dir(tmp2, list);
+   ret += _pndman_crawl_dir(tmp2, list);
 
-   return RETURN_OK;
+   return ret;
 }
 
-/* \brief crawl to repository */
+/* \brief crawl to repository, return number of pnd's found, and -1 on error */
 static int _pndman_crawl_to_repository(pndman_device *device, pndman_repository *local)
 {
-   pndman_package *list, *p, *pnd;
+   pndman_package *list, *p, *n, *pnd;
+   int ret;
    assert(device && local);
 
    list = _pndman_new_pnd();
@@ -1023,28 +1041,35 @@ static int _pndman_crawl_to_repository(pndman_device *device, pndman_repository 
       return RETURN_FAIL;
 
    /* crawl pnds to list */
-   if (_pndman_crawl_to_pnd_list(device, list) != RETURN_OK) {
-      _pndman_free_pnd(list);
-      return RETURN_FAIL;
+   ret = _pndman_crawl_to_pnd_list(device, list);
+
+   /* either crawl failed, or no pnd's found */
+   if (ret <= 0) {
+      for (p = list; p; p = n) {
+         n = p->next;
+         _pndman_free_pnd(p);
+      }
+      return ret;
    }
 
    /* merge pnd's to repo */
-   for (p = list; p; p = p->next) {
+   for (p = list; p; p = n) {
       pnd = _pndman_repository_new_pnd_check(p->id, p->path, local);
       if (!pnd) continue;
       _pndman_copy_pnd(pnd, p);
       pnd->flags = PND_INSTALLED; /* it's obiviously installed :) */
+
+      /* free */
+      n = p->next;
+      _pndman_free_pnd(p);
    }
 
-   /* free list */
-   _pndman_free_pnd(list);
-
-   return RETURN_OK;
+   return ret;
 }
 
 /* API */
 
-/* \brief crawl pnds to local repository */
+/* \brief crawl pnds to local repository, returns number of pnd's found, and -1 on error */
 int pndman_crawl(pndman_device *device, pndman_repository *local)
 {
    if (!device) return RETURN_FAIL;
@@ -1081,7 +1106,11 @@ int pnd_do_something(char *pnd_file)
    data.state = PXML_PARSE_DEFAULT;
 
    /* parse */
-   _pxml_pnd_parse(&data, PXML, size);
+   if (_pxml_pnd_parse(&data, PXML, size) != RETURN_OK) {
+      DEBUG("Your code sucks, fix it!");
+      _pndman_free_pnd(test);
+      exit(EXIT_FAILURE);
+   }
    _pxml_pnd_post_process(test);
 
    /* debug filled PND */
@@ -1093,7 +1122,8 @@ int pnd_do_something(char *pnd_file)
    DEBUGP("ID:       %s\n", test->id);
    if (!strlen(test->id)) {
       DEBUG("Your code sucks, fix it!");
-      exit(0);
+      _pndman_free_pnd(test);
+      exit(EXIT_FAILURE);
    }
 
    /* titles */

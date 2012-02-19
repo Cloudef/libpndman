@@ -58,7 +58,7 @@ int main()
    pndman_repository_init(&repository);
 
    /* crawl pnds to local repository */
-   if (pndman_crawl(&device, &repository) != 0)
+   if (pndman_crawl(&device, &repository) == -1)
       err("crawling failed");
 
    puts("");
