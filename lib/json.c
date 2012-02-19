@@ -105,7 +105,7 @@ static int _json_set_licenses(pndman_package *pnd, json_t *object)
 /* \brief helper license source setter (licenses must be set first!) */
 static int _json_set_sources(pndman_package *pnd, json_t *object)
 {
-   pndman_license *l, *l2;
+   pndman_license *l;
    json_t *element;
    unsigned int p;
    char url[PND_STR];

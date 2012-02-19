@@ -36,10 +36,8 @@ static char* test_device()
 int main()
 {
    pndman_repository repository, *r;
-   pndman_device     device, *d;
+   pndman_device     device;
    pndman_package   *pnd;
-   pndman_sync_handle handle[1]; /* we should have only one remote repository */
-   unsigned int x;
    char *cwd;
 
    cwd = test_device();
