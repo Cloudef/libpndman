@@ -185,9 +185,11 @@ static int _pndman_repository_free(pndman_repository *repo)
          repo->exist    = repo->next->exist;
          repo->pnd      = repo->next->pnd;
 
-         deleted     = repo->next;
-         repo->next  = deleted->next;
+         /* store the deleted */
+         deleted = repo->next;
 
+         /* update next pointer for reference */
+         repo->next = deleted->next;
          if (repo->next)
             repo->next->prev = repo;
 
