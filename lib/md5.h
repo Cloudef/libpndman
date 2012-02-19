@@ -13,3 +13,5 @@ char* _pndman_md5(char *file);
 #endif
 
 #endif /* PNDMAN_MD5_H */
+
+/* vim: set ts=8 sw=3 tw=0 :*/

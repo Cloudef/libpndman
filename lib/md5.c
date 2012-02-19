@@ -61,3 +61,5 @@ char* _pndman_md5(char *file)
    _pndman_bytes2hex(digest, sizeof(digest), md5, sizeof(md5));
    return md5;
 }
+
+/* vim: set ts=8 sw=3 tw=0 :*/
