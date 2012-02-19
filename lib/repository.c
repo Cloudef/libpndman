@@ -177,6 +177,10 @@ static int _pndman_repository_free(pndman_repository *repo)
       free(repo);
    }
    else {
+      /* freeing first repository clears all pnd's */
+      _pndman_repository_free_pnd_all(repo);
+      return RETURN_OK;
+#if 0
       if (repo->next) {
          /* copy next to this and free the next */
          strcpy(repo->url,     repo->next->url);
@@ -199,6 +203,7 @@ static int _pndman_repository_free(pndman_repository *repo)
          free(deleted);
       }
       else _pndman_repository_init(repo); /* first repository */
+#endif
    }
 
    return RETURN_OK;
