@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <time.h>
 #include <jansson.h>
 #include "pndman.h"
 #include "package.h"
@@ -300,8 +301,11 @@ int _pndman_json_process(pndman_repository *repo, FILE *data)
          else DEBUGP("WARN: No packages array for: %s\n", repo->url);
       }
    } else DEBUGP("WARN: Bad repo header for: %s\n", repo->url);
-
    json_decref(root);
+
+   /* update timestamp */
+   repo->timestamp = time(0);
+
    return RETURN_OK;
 }
 
