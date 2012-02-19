@@ -172,6 +172,7 @@ static int _pndman_repository_free(pndman_repository *repo)
       if (repo->next)
          repo->next->prev = repo->prev;
 
+      /* free the rpository */
       _pndman_repository_free_pnd_all(repo);
       free(repo);
    }
@@ -193,10 +194,11 @@ static int _pndman_repository_free(pndman_repository *repo)
          if (repo->next)
             repo->next->prev = repo;
 
+         /* free the copied repository */
          _pndman_repository_free_pnd_all(deleted);
          free(deleted);
       }
-      else _pndman_repository_init(repo);
+      else _pndman_repository_init(repo); /* first repository */
    }
 
    return RETURN_OK;
