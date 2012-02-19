@@ -18,8 +18,8 @@
 #include "repository.h"
 #include "device.h"
 
-/* used also by internal functions */
-int pndman_device_init(pndman_device *device);
+/* used also internally */
+pndman_device *pndman_device_init();
 
 /* \brief Find first device */
 static inline pndman_device* _pndman_device_first(pndman_device *device)
@@ -99,129 +99,103 @@ static int _pndman_device_check_pnd_tree(pndman_device *device)
 }
 
 /* \brief Allocate next device */
-static int _pndman_device_new(pndman_device **device)
+static pndman_device* _pndman_device_new(pndman_device **device)
 {
    pndman_device *new;
    assert(device);
 
    /* find last device */
    *device = _pndman_device_last(*device);
-   new = calloc(1, sizeof(pndman_device));
-   if (!new) return RETURN_FAIL;
+   new = pndman_device_init();
+   if (!new) return NULL;
 
    /* set defaults */
-   pndman_device_init(new);
    new->prev       = *device;
    (*device)->next = new;
    *device         = new;
-   return RETURN_OK;
+   return *device;
 }
 
 /* \brief Allocate new if exists */
-static int _pndman_device_new_if_exist(pndman_device **device, char *check_existing)
+static pndman_device* _pndman_device_new_if_exist(pndman_device **device, char *check_existing)
 {
    pndman_device *d;
 
    if (check_existing) {
       d = _pndman_device_first(*device);
-      for(; d && d->exist; d = d->next) {
+      for(; d; d = d->next) {
          // DEBUGP("%s == %s\n", d->mount, check_existing);
-         if (!strcmp(d->mount, check_existing)) return RETURN_FAIL;
+         if (!strcmp(d->mount, check_existing)) return NULL;
       }
    }
 
-   *device = _pndman_device_last(*device);
-   if (!(*device)->exist) return RETURN_OK;
    return _pndman_device_new(device);
 }
 
-/* \brief Free one device */
-static int _pndman_device_free(pndman_device *device)
+/* \brief Free one device, returns the pointer to first device */
+static pndman_device* _pndman_device_free(pndman_device *device)
 {
-   pndman_device *deleted, *d;
+   pndman_device *first;
    assert(device);
 
-   /* avoid freeing the first device */
-   if (device->prev) {
-      /* set previous device point to the next device */
+   /* set previous device point to the next device */
+   if (device->prev)
       device->prev->next = device->next;
 
-      /* set next point back to the previous device */
-      if (device->next)
-         device->next->prev = device->prev;
+   /* set next point back to the previous device */
+   if (device->next)
+      device->next->prev = device->prev;
 
-      /* free the actual device */
-      free(device);
-   }
-   else {
-      if (device->next) {
-         /* copy next to this and free the next */
-         strcpy(device->device, device->next->device);
-         strcpy(device->mount,  device->next->mount);
-         device->size       = device->next->size;
-         device->free       = device->next->free;
-         device->available  = device->next->available;
-         device->exist      = device->next->exist;
+   /* get first item */
+   first = _pndman_device_first(device);
 
-         /* store the deleted */
-         deleted = device->next;
+   /* free the actual device */
+   free(device);
 
-         /* update next pointer for reference */
-         device->next = deleted->next;
-         if (device->next)
-            device->next->prev = device;
-
-         /* free the actual device */
-         free(deleted);
-      }
-      else pndman_device_init(device); /* first device */
-   }
-
-   return RETURN_OK;
+   return first;
 }
 
 /* \brief Free all devices */
 static int _pndman_device_free_all(pndman_device *device)
 {
-   pndman_device *prev;
+   pndman_device *next;
    assert(device);
 
    /* find the last device */
-   device = _pndman_device_last(device);
+   device = _pndman_device_first(device);
 
    /* free everything */
-   for(; device->prev; device = prev) {
-      prev = device->prev;
+   for(; device; device = next) {
+      next = device->next;
       free(device);
    }
-   pndman_device_init(device);
 
    return RETURN_OK;
 }
 
 /* \brief Stat absolute path, and fill the device struct according to that. */
-static int _pndman_device_add_absolute(char *path, pndman_device *device)
+static pndman_device* _pndman_device_add_absolute(char *path, pndman_device *device)
 {
 #ifdef __linux__
    struct stat st;
    struct statvfs fs;
 
-   if (stat(path, &st) != 0) return RETURN_FAIL;
+   if (stat(path, &st) != 0) return NULL;
    if (!S_ISDIR(st.st_mode)) {
       DEBUGP("%s: is not a directory\n", path);
-      return RETURN_FAIL;
+      return NULL;
    }
 
    /* check for permissions */
    if (access(path, R_OK | W_OK) != 0)
-      return RETURN_FAIL;
+      return NULL;
 
    if (statvfs(path, &fs) != 0)
-      return RETURN_FAIL;
+      return NULL;
 
    /* create new if needed */
-   if (_pndman_device_new_if_exist(&device, path) != RETURN_OK)
-      return RETURN_FAIL;
+   if (!_pndman_device_new_if_exist(&device, path))
+      return NULL;
 
    /* fill device struct */
    strncpy(device->mount,  path, PATH_MAX-1);
@@ -229,19 +203,18 @@ static int _pndman_device_add_absolute(char *path, pndman_device *device)
    device->free      = fs.f_bfree  * fs.f_bsize;
    device->size      = fs.f_blocks * fs.f_bsize;
    device->available = fs.f_bavail * fs.f_bsize;
-   device->exist     = 1;
    _strip_slash(device->device);
    _strip_slash(device->mount);
 #endif
 
-   return RETURN_OK;
+   return device;
 }
 
 /* \brief
  * Check that path is a correct device, mount point or absolute path,
  * and fill the details to device struct according to that.
  */
-static int _pndman_device_add(char *path, pndman_device *device)
+static pndman_device* _pndman_device_add(char *path, pndman_device *device)
 {
 #ifdef __linux__
    FILE *mtab;
@@ -250,7 +223,7 @@ static int _pndman_device_add(char *path, pndman_device *device)
    struct statfs fs;
    char strings[4096];
 
-   if (!path) return RETURN_FAIL;
+   if (!path) return NULL;
    mtab = setmntent(LINUX_MTAB, "r");
    memset(strings, 0, 4096);
    while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
@@ -268,14 +241,14 @@ static int _pndman_device_add(char *path, pndman_device *device)
 
    /* check for read && write permissions */
    if (access(mnt.mnt_dir, R_OK | W_OK) != 0)
-      return RETURN_FAIL;
+      return NULL;
 
    if (statfs(mnt.mnt_dir, &fs) != 0)
-      return RETURN_FAIL;
+      return NULL;
 
    /* create new if needed */
    if (_pndman_device_new_if_exist(&device, mnt.mnt_dir) != RETURN_OK)
-      return RETURN_FAIL;
+      return NULL;
 
    /* fill device struct */
    strncpy(device->mount,  mnt.mnt_dir,    PATH_MAX-1);
@@ -283,7 +256,6 @@ static int _pndman_device_add(char *path, pndman_device *device)
    device->free      = fs.f_bfree  * fs.f_bsize;
    device->size      = fs.f_blocks * fs.f_bsize;
    device->available = fs.f_bavail * fs.f_bsize;
-   device->exist     = 1;
    _strip_slash(device->device);
    _strip_slash(device->mount);
 #elif __WIN32__
@@ -305,7 +277,7 @@ static int _pndman_device_add(char *path, pndman_device *device)
       return RETURN_FAIL;
 
    /* create new if needed */
-   if (_pndman_device_new_if_exist(&device, szDrive) != RETURN_OK)
+   if (!_pndman_device_new_if_exist(&device, szDrive))
       return RETURN_FAIL;
 
    /* fill device struct */
@@ -317,26 +289,25 @@ static int _pndman_device_add(char *path, pndman_device *device)
    device->free      = bytes_free.QuadPart;
    device->size      = bytes_size.QuadPart;
    device->available = bytes_available.QuadPart;
-   device->exist     = 1;
    _strip_slash(device->device);
    _strip_slash(device->mount);
 #endif
 
-   return RETURN_OK;
+   return device;
 }
 
 /* \brief Detect devices and fill them automatically. */
-static int _pndman_device_detect(pndman_device *device)
+static pndman_device* _pndman_device_detect(pndman_device *device)
 {
+   pndman_device *first;
 #ifdef __linux__
    FILE *mtab;
    struct mntent *m;
    struct mntent mnt;
    struct statfs fs;
    char strings[4096];
-   int ret;
 
-   ret = RETURN_OK;
+   first = device;
    mtab = setmntent(LINUX_MTAB, "r");
    memset(strings, 0, 4096);
    while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
@@ -350,17 +321,16 @@ static int _pndman_device_detect(pndman_device *device)
             if (access(mnt.mnt_dir, R_OK | W_OK) == -1)
                continue;
 
-            if ((ret = _pndman_device_new_if_exist(&device, mnt.mnt_dir)) != RETURN_OK)
+            if (!_pndman_device_new_if_exist(&device, mnt.mnt_dir))
                break;
 
-            DEBUGP("%s: %d\n", mnt.mnt_dir, device->exist);
+            DEBUGP("%s\n", mnt.mnt_dir);
 
             strncpy(device->mount,  mnt.mnt_dir,    PATH_MAX-1);
             strncpy(device->device, mnt.mnt_fsname, PATH_MAX-1);
             device->free      = fs.f_bfree  * fs.f_bsize;
             device->size      = fs.f_blocks * fs.f_bsize;
             device->available = fs.f_bavail * fs.f_bsize;
-            device->exist     = 1;
             _strip_slash(device->device);
             _strip_slash(device->mount);
          }
@@ -374,13 +344,13 @@ static int _pndman_device_detect(pndman_device *device)
    char szDrive[3] = { ' ', ':', '\0' };
    char *p;
    ULARGE_INTEGER bytes_free, bytes_available, bytes_size;
-   int ret;
 
    memset(szTemp, 0, 512);
    if (!GetLogicalDriveStrings(511, szTemp))
       return RETURN_FAIL;
 
-   ret = RETURN_OK; p = szTemp;
+   first = device;
+   p = szTemp;
    while (*p) {
       *szDrive = *p;
 
@@ -393,7 +363,7 @@ static int _pndman_device_detect(pndman_device *device)
             &bytes_available, &bytes_size, &bytes_free))
          { while (*p++); continue; }
 
-         if ((ret = _pndman_device_new_if_exist(&device, szDrive)) != RETURN_OK)
+         if (!_pndman_device_new_if_exist(&device, szDrive))
             break;
 
          DEBUGP("%s : %s\n", szDrive, szName);
@@ -403,7 +373,6 @@ static int _pndman_device_detect(pndman_device *device)
          device->free      = bytes_free.QuadPart;
          device->size      = bytes_size.QuadPart;
          device->available = bytes_available.QuadPart;
-         device->exist     = 1;
          _strip_slash(device->device);
          _strip_slash(device->mount);
       }
@@ -415,7 +384,8 @@ static int _pndman_device_detect(pndman_device *device)
 #  error "No device support for your OS"
 #endif
 
-   return ret;
+   if (first->next) first = first->next;
+   return first;
 }
 
 /* INTERNAL */
@@ -434,11 +404,14 @@ char* _pndman_device_get_appdata(pndman_device *device)
 
 /* API */
 
-/* \brief Initialize device list, call this only once after declaring pndman_device */
-int pndman_device_init(pndman_device *device)
+/* \brief Initialize device list, returns device, NULL when can't alloc */
+pndman_device* pndman_device_init()
 {
+   pndman_device *device;
    DEBUG("pndman device init");
-   if (!device) return RETURN_FAIL;
+
+   device = malloc(sizeof(pndman_device));
+   if (!device) return NULL;
 
    memset(device->device, 0, PATH_MAX);
    memset(device->mount,  0, PATH_MAX);
@@ -446,34 +419,33 @@ int pndman_device_init(pndman_device *device)
    device->size      = 0;
    device->free      = 0;
    device->available = 0;
-   device->exist     = 0;
    device->next = NULL;
    device->prev = NULL;
 
-   return RETURN_OK;
+   return device;
 }
 
 /* \brief Add all found devices */
-int pndman_device_detect(pndman_device *device)
+pndman_device* pndman_device_detect(pndman_device *device)
 {
    DEBUG("pndman device detect");
-   if (!device) return RETURN_FAIL;
+   if (!device) return NULL;
    return _pndman_device_detect(device);
 }
 
 /* \brief Add new device */
-int pndman_device_add(char *path, pndman_device *device)
+pndman_device* pndman_device_add(char *path, pndman_device *device)
 {
    DEBUG("pndman device add");
-   if (!device) return RETURN_FAIL;
+   if (!device) return NULL;
    return _pndman_device_add(path, device);
 }
 
 /* \brief Free one device */
-int pndman_device_free(pndman_device *device)
+pndman_device* pndman_device_free(pndman_device *device)
 {
    DEBUG("pndman device free");
-   if (!device) return RETURN_FAIL;
+   if (!device) return NULL;
    return _pndman_device_free(device);
 }
 

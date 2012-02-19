@@ -25,9 +25,6 @@ typedef struct pndman_repository
 
    pndman_package *pnd;
    struct pndman_repository *next, *prev;
-
-   /* internal */
-   int exist;
 } pndman_repository;
 
 pndman_repository* _pndman_repository_first(pndman_repository *repo);

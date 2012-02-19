@@ -212,7 +212,6 @@ typedef struct pndman_repository
 
    pndman_package *pnd;
    struct pndman_repository *next, *prev;
-   const int exist;
 } pndman_repository;
 
 /*! \brief
@@ -227,7 +226,6 @@ typedef struct pndman_device
 
    char appdata[PATH_MAX];
    struct pndman_device *next, *prev;
-   const int exist;
 } pndman_device;
 
 /* \brief curl_write_result struct for storing curl result to memory */
@@ -290,14 +288,14 @@ int pndman_quit();
  * These are very likely to change.
  * I'm just defining them here, since I'm getting sick of implict declaration warnings.
  * So no need to document these here yet. */
-int pndman_repository_init(pndman_repository *repo);
-int pndman_repository_add(char *url, pndman_repository *repo);
-int pndman_repository_free(pndman_repository *repo);
+pndman_repository* pndman_repository_init();
+pndman_repository* pndman_repository_add(char *url, pndman_repository *list);
+pndman_repository* pndman_repository_free(pndman_repository *repo);
 int pndman_repository_free_all(pndman_repository *repo);
-int pndman_device_init(pndman_device *device);
-int pndman_device_add(char *path, pndman_device *device);
-int pndman_device_detect(pndman_device *device);
-int pndman_device_free(pndman_device *device);
+pndman_device* pndman_device_init();
+pndman_device* pndman_device_add(char *path, pndman_device *list);
+pndman_device* pndman_device_detect(pndman_device *device);
+pndman_device* pndman_device_free(pndman_device *device);
 int pndman_device_free_all(pndman_device *device);
 int pndman_handle_init(char *name, pndman_handle *handle);
 int pndman_handle_perform(pndman_handle *handle);

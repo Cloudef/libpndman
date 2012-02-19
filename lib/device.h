@@ -13,9 +13,6 @@ typedef struct pndman_device
 
    char appdata[PATH_MAX];
    struct pndman_device *next, *prev;
-
-   /* internal */
-   int exist;
 } pndman_device;
 
 char* _pndman_device_get_appdata(pndman_device *device);

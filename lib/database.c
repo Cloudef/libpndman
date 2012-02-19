@@ -109,8 +109,7 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
    FILE *f;
    char db_path[PATH_MAX];
    char *appdata;
-
-   if (!device || !device->exist) return RETURN_FAIL;
+   assert(device);
 
    /* check appdata */
    appdata = _pndman_device_get_appdata(device);
@@ -136,8 +135,7 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
    pndman_repository *r;
    char db_path[PATH_MAX];
    char *appdata;
-
-   if (!device || !device->exist) return RETURN_FAIL;
+   assert(device);
 
    /* find local db and read it first */
    repo = _pndman_repository_first(repo);
@@ -171,9 +169,7 @@ static int _pndman_db_get_local(pndman_repository *repo, pndman_device *device)
    FILE *f;
    char db_path[PATH_MAX];
    char *appdata;
-
-   assert(repo);
-   if (!device || !device->exist)   return RETURN_FAIL;
+   assert(repo && device);
 
    /* check appdata */
    appdata = _pndman_device_get_appdata(device);
@@ -203,8 +199,7 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
    char *ret;
    char *appdata;
    int  parse = 0;
-
-   if (!device || !device->exist)   return RETURN_FAIL;
+   assert(device);
 
    /* find local db and read it first */
    if (!repo->prev) {

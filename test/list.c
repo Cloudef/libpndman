@@ -4,10 +4,29 @@
 #include <time.h>
 #include "pndman.h"
 
+pndman_device* getLast(pndman_device* d)
+{
+   pndman_device* last = d;
+   while(last->next) last = last->next;
+   return last;
+}
+
 int main()
 {
    pndman_device device, *d;
    pndman_repository repo, *r;
+
+   pndman_device_init(&device);
+   pndman_device_add("/tmp", &device);
+   pndman_device* d1 = getLast(&device);
+   pndman_device_add("/media/Storage", &device);
+   pndman_device* d2 = getLast(&device);
+   pndman_device_add("/media/Anime", &device);
+   pndman_device* d3 = getLast(&device);
+
+   pndman_device_free(d1);
+   pndman_device_free(d2);
+   pndman_device_free(d3);
 
    pndman_device_init(&device);
    pndman_device_add("/tmp", &device);
