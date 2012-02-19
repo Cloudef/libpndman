@@ -20,7 +20,7 @@ MINGW := 0
 X86 := 0
 
 # depencies for pndman
-LIB_LIBS := -lexpat `pkg-config --libs libcurl jansson`
+LIB_LIBS := -lexpat `pkg-config --libs libcurl jansson openssl`
 
 # git info
 VERSION = `git rev-parse HEAD`
