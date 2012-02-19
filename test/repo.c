@@ -104,6 +104,7 @@ int main()
       printf("   UPD: %s\n", r->updates);
       printf("   URL: %s\n", r->url);
       printf("   VER: %s\n", r->version);
+      printf("   TIM: %lu\n", r->timestamp);
       puts("");
 
       /* print only local repo packages if any,
