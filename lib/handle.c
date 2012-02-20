@@ -20,12 +20,12 @@
 /* \brief flags for handle to determite what to do */
 typedef enum pndman_handle_flags
 {
-   PNDMAN_HANDLE_INSTALL = 0x01,
-   PNDMAN_HANDLE_REMOVE  = 0x02,
-   PNDMAN_HANDLE_FORCE   = 0x04,
-   PNDMAN_HANDLE_INSTALL_DESKTOP = 0x08,
-   PNDMAN_HANDLE_INSTALL_MENU    = 0x10,
-   PNDMAN_HANDLE_INSTALL_APPS    = 0x12,
+   PNDMAN_HANDLE_INSTALL         = 0x001,
+   PNDMAN_HANDLE_REMOVE          = 0x002,
+   PNDMAN_HANDLE_FORCE           = 0x004,
+   PNDMAN_HANDLE_INSTALL_DESKTOP = 0x008,
+   PNDMAN_HANDLE_INSTALL_MENU    = 0x010,
+   PNDMAN_HANDLE_INSTALL_APPS    = 0x020,
 } pndman_handle_flags;
 
 /* \brief pndman_handle struct */
