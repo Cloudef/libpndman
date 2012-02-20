@@ -27,7 +27,7 @@ typedef enum _RETURN_STATUS
 
 static void _R(void)
 {
-#ifdef __linux__
+#ifndef __WIN32__
    printf("\33[31m");
 #else
    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -38,7 +38,7 @@ static void _R(void)
 
 static void _G(void)
 {
-#ifdef __linux__
+#ifndef __WIN32__
    printf("\33[32m");
 #else
    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -49,7 +49,7 @@ static void _G(void)
 
 static void _Y(void)
 {
-#ifdef __linux__
+#ifndef __WIN32__
    printf("\33[33m");
 #else
    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -60,7 +60,7 @@ static void _Y(void)
 
 static void _B(void)
 {
-#ifdef __linux__
+#ifndef __WIN32__
    printf("\33[34m");
 #else
    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -71,7 +71,7 @@ static void _B(void)
 
 static void _W(void)
 {
-#ifdef __linux__
+#ifndef __WIN32__
    printf("\33[37m");
 #else
    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -82,7 +82,7 @@ static void _W(void)
 
 static void _N(void)
 {
-#ifdef __linux__
+#ifndef __WIN32__
    printf("\33[0m");
 #else
    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
