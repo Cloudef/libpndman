@@ -168,7 +168,6 @@ static _HELPER_FLAGS getsync(char c)
 
 static _HELPER_FLAGS getremove(char c)
 {
-   puts("asd");
    if (c == 'n') return A_NOSAVE;
    return 0;
 }
