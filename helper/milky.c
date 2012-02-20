@@ -139,6 +139,7 @@ static _HELPER_FLAGS getglob(char c)
    else if (c == 'f')   return GB_FORCE;
    return 0;
 }
+
 static _HELPER_FLAGS getop(char c)
 {
    if (c == 'S')        return OP_SYNC;
