@@ -129,7 +129,7 @@ int main()
    /* commit all repositories to every device */
    d = device;
    for (; d; d = d->next)
-      pndman_commit(repository, d);
+      pndman_commit_all(repository, d);
 
    pndman_repository_free_all(repository);
    pndman_device_free_all(device);

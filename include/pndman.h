@@ -305,7 +305,7 @@ int pndman_read_from_device(pndman_repository *repo, pndman_device *device);
 int pndman_sync();
 int pndman_sync_request(pndman_sync_handle *handle, pndman_repository *repo);
 int pndman_sync_request_free(pndman_sync_handle *handle);
-int pndman_commit(pndman_repository *repo, pndman_device *device);
+int pndman_commit_all(pndman_repository *repo, pndman_device *device);
 int pndman_crawl(pndman_device *device, pndman_repository *local);
 
 /* test thing, for surely */

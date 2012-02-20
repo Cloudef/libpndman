@@ -390,7 +390,7 @@ int pndman_sync_request_free(pndman_sync_handle *handle)
 }
 
 /* \brief commits _all_ repositories to specific device */
-int pndman_commit(pndman_repository *repo, pndman_device *device)
+int pndman_commit_all(pndman_repository *repo, pndman_device *device)
 {
    DEBUG("pndman_commit_database");
    if (!repo || !device) return RETURN_FAIL;
