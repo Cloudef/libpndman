@@ -283,19 +283,19 @@ static pndman_device* _pndman_device_add(char *path, pndman_device *device)
 
    memset(szName, 0, PATH_MAX);
    if (!QueryDosDevice(szDrive, szName, PATH_MAX-1))
-      return RETURN_FAIL;
+      return NULL;
 
    /* check for read && write perms */
    if (access(path, R_OK | W_OK) == -1)
-      return RETURN_FAIL;
+      return NULL;
 
    if (!GetDiskFreeSpaceEx(szDrive,
         &bytes_available, &bytes_size, &bytes_free))
-      return RETURN_FAIL;
+      return NULL;
 
    /* create new if needed */
    if (!_pndman_device_new_if_exist(&device, szDrive))
-      return RETURN_FAIL;
+      return NULL;
 
    /* fill device struct */
    if (strlen(path) > 3 && strcmp(szDrive, path))
@@ -364,7 +364,7 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
 
    memset(szTemp, 0, 512);
    if (!GetLogicalDriveStrings(511, szTemp))
-      return RETURN_FAIL;
+      return NULL;
 
    first = device;
    p = szTemp;
