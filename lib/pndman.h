@@ -1,8 +1,10 @@
 #ifndef PNDMAN_PNDMAN_H
 #define PNDMAN_PNDMAN_H
 
-#define DEBUG(x)      puts(x)
-#define DEBUGP(x,...) printf(x,##__VA_ARGS__)
+#define DEBUG(x)        puts(x)
+#define DEBUGP(x,...)   printf(x,##__VA_ARGS__)
+#define DEBFAIL(x)      { DEBUG(x); return EXIT_FAILURE; }
+#define DEBFAILP(x,...) { printf(x,##__VA_ARGS__); return EXIT_FAILURE; }
 
 /* \brief appdata directory to store, temporary downland and database data */
 #define PNDMAN_APPDATA "libpndman"
