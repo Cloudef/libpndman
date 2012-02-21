@@ -188,15 +188,23 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    /* complete handle's path */
    snprintf(tmp, PATH_MAX-1, "%s/%p", appdata, handle);
 
+   /* close the download file, so we can move it, and md5 check */
+   if (handle->file) fclose(handle->file);
+   handle->file = NULL;
+
    /* check MD5 */
    md5 = _pndman_md5(tmp);
    if (!md5 && !(handle->flags & PNDMAN_HANDLE_FORCE))
       return RETURN_FAIL;
 
+   DEBUGP("R: %s L: %s\n", handle->pnd->md5, md5);
+
    /* do check against remote */
    if (md5 && strcmp(md5, handle->pnd->md5)) {
-      if (!(handle->flags & PNDMAN_HANDLE_FORCE))
+      if (!(handle->flags & PNDMAN_HANDLE_FORCE)) {
+         DEBUG("MD5 check fail");
          return RETURN_FAIL;
+      }
       else
          DEBUG("MD5 differ, but force anyways");
    }
@@ -227,10 +235,6 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    pnd = _pndman_repository_new_pnd_check(handle->pnd->id, handle->pnd->path, local);
    if (!pnd) return RETURN_FAIL;
    _pndman_copy_pnd(pnd, handle->pnd);
-
-   /* close the download file, so we can move it */
-   if (handle->file) fclose(handle->file);
-   handle->file = NULL;
 
    DEBUGP("install: %s\n", install);
    DEBUGP("from: %s\n", tmp);

@@ -255,7 +255,7 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
 
       memcpy(pnd->id,     id,  PND_ID);
       memcpy(pnd->path, path,  PND_PATH);
-      _json_set_string(pnd->md5,          json_object_get(package,"md5"),     PND_STR);
+      _json_set_string(pnd->md5,          json_object_get(package,"md5"),     PND_MD5);
       _json_set_string(pnd->url,          json_object_get(package,"uri"),     PND_STR);
       _json_set_version(&pnd->version,    json_object_get(package,"version"));
       _json_set_localization(pnd,         json_object_get(package,"localizations"));

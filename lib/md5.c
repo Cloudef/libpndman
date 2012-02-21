@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <malloc.h>
+#include <string.h>
 #include <openssl/md5.h>
 #include "pndman.h"
 
@@ -58,7 +59,8 @@ char* _pndman_md5(char *file)
    md5 = malloc(MD5_DIGEST_LENGTH * 2 + 1);
    if (!md5) return NULL;
 
-   _pndman_bytes2hex(digest, sizeof(digest), md5, sizeof(md5));
+   memset(md5, 0, MD5_DIGEST_LENGTH * 2 + 1);
+   _pndman_bytes2hex(digest, MD5_DIGEST_LENGTH, md5, MD5_DIGEST_LENGTH * 2 + 1);
    return md5;
 }
 

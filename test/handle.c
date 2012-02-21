@@ -5,8 +5,8 @@
 #include "pndman.h"
 
 #define REPO_URL "http://repo.openpandora.org/includes/get_data.php"
-#define H_COUNT 5 /* handle count */
-#define D_AGAIN 2 /* how many times to download again?
+#define H_COUNT 1 /* handle count */
+#define D_AGAIN 0 /* how many times to download again?
                      tests adding new downloads to the same queue, while others are active */
 
 /* by default, download count should be 7 */

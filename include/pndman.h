@@ -22,7 +22,7 @@
 #define PND_VER      8
 #define PND_STR      256
 #define PND_SHRT_STR 24
-#define PND_MD5      32
+#define PND_MD5      33
 #define PND_INFO     1024
 #define PND_PATH     PATH_MAX
 #define REPO_URL     LINE_MAX
