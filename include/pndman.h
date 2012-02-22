@@ -305,6 +305,9 @@ int pndman_init();
  */
 int pndman_quit();
 
+const char* pndman_git_head();
+const char* pndman_git_commit();
+
 /* Current API functions
  * These are very likely to change.
  * I'm just defining them here, since I'm getting sick of implict declaration warnings.
