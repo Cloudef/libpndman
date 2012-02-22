@@ -350,9 +350,6 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
             device->available = fs.f_bavail * fs.f_bsize;
             _strip_slash(device->device);
             _strip_slash(device->mount);
-
-            /* NULL passed */
-            if (!first) first = device;
          }
       }
       m = NULL;
@@ -395,9 +392,6 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
          device->available = bytes_available.QuadPart;
          _strip_slash(device->device);
          _strip_slash(device->mount);
-
-         /* NULL passed */
-         if (!first) first = device;
       }
 
       /* go to the next NULL character. */
@@ -407,7 +401,8 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
 #  error "No device support for your OS"
 #endif
 
-   if (first->next) first = first->next;
+   if (first && first->next)  first = first->next;
+   else if (device)           first = _pndman_device_first(device);
    return first;
 }
 
