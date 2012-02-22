@@ -122,6 +122,8 @@ static pndman_device* setroot(char *root, pndman_device *list)
    assert(root);
    for (d = list; d; d = d->next)
       if (!strcmp(root, d->mount) || !strcmp(root, d->device)) return d;
+   if ((d = pndman_device_add(root, list))) return d;
+   _R(); printf("Failed to root: %s\n", root); _N();
    return NULL;
 }
 
@@ -176,15 +178,15 @@ static _USR_TARGET* addtarget(char *id, _USR_TARGET **list)
  *    \_/\_/  |_| \_\/_/   \_\_|   |_|   |_____|_| \_\
  */
 
-typedef struct _USRDATA
+typedef struct _USR_DATA
 {
    pndman_device     *dlist;
    pndman_device     *root;
    pndman_repository *rlist;
    _USR_TARGET       *tlist;
-} _USRDATA;
+} _USR_DATA;
 
-static void init_usrdata(_USRDATA *data)
+static void init_usrdata(_USR_DATA *data)
 {
    data->dlist = NULL; data->root  = NULL;
    data->rlist = NULL; data->tlist = NULL;
@@ -192,12 +194,12 @@ static void init_usrdata(_USRDATA *data)
 
 static void _addtarget(char *id, void **data)
 {
-   addtarget(id, &((_USRDATA*)*data)->tlist);
+   addtarget(id, &((_USR_DATA*)*data)->tlist);
 }
 
 static void _setroot(char *root, void **data)
 {
-   ((_USRDATA*)*data)->root = setroot(root, ((_USRDATA*)*data)->dlist);
+   ((_USR_DATA*)*data)->root = setroot(root, ((_USR_DATA*)*data)->dlist);
 }
 
 /*     _    ____   ____ _   _ __  __ _____ _   _ _____ ____
@@ -209,6 +211,7 @@ static void _setroot(char *root, void **data)
 
 #define _PASSARG(x) { x(narg, data); *skipn = 1; return 0; }
 #define _PASSTHS(x) { x(arg, data); return 0; }
+#define _PASSFLG(x) { return x; }
 static const char* _G_ARG  = "vft";          /* global arguments */
 static const char* _OP_ARG = "SURQCVh";      /* operations */
 static const char* _S_ARG  = "scilyupmda";   /* sync operation arguments */
@@ -217,24 +220,24 @@ static const char* _Q_ARG  = "scilu";        /* query operation arguments */
 
 typedef enum _HELPER_FLAGS
 {
-   GB_FORCE    = 0x000001, OP_SYNC      = 0x000002,
-   OP_UPGRADE  = 0x000004, OP_REMOVE    = 0x000008,
-   OP_QUERY    = 0x000010, OP_CLEAN     = 0x000020,
-   OP_VERSION  = 0x000040, OP_HELP      = 0x000080,
-   A_SEARCH    = 0x000100, A_CATEGORY   = 0x000200,
-   A_INFO      = 0x000400, A_LIST       = 0x000800,
-   A_REFRESH   = 0x001000, A_UPGRADE    = 0x002000,
-   A_CRAWL     = 0x004000, A_MENU       = 0x008000,
-   A_DESKTOP   = 0x010000, A_APPS       = 0x020000,
-   A_NOSAVE    = 0x040000,
+   GB_FORCE    = 0x000001, OP_YAOURT    = 0x000002,
+   OP_SYNC     = 0x000004, OP_UPGRADE   = 0x000008,
+   OP_REMOVE   = 0x000010, OP_QUERY     = 0x000020,
+   OP_CLEAN    = 0x000040, OP_VERSION   = 0x000080,
+   OP_HELP     = 0x000100, A_SEARCH     = 0x000200,
+   A_CATEGORY  = 0x000400, A_INFO       = 0x000800,
+   A_LIST      = 0x001000, A_REFRESH    = 0x002000,
+   A_UPGRADE   = 0x004000, A_CRAWL      = 0x008000,
+   A_MENU      = 0x010000, A_DESKTOP    = 0x020000,
+   A_APPS      = 0x040000, A_NOSAVE     = 0x080000,
 } _HELPER_FLAGS;
 
 static int hasop(unsigned int flags)
 {
-   return ((flags & OP_SYNC)   || (flags & OP_UPGRADE) ||
-           (flags & OP_REMOVE) || (flags & OP_QUERY)   ||
-           (flags & OP_CLEAN)  || (flags & OP_VERSION) ||
-           (flags & OP_HELP));
+   return ((flags & OP_YAOURT)  || (flags & OP_SYNC)    ||
+           (flags & OP_REMOVE)  || (flags & OP_UPGRADE) ||
+           (flags & OP_CLEAN)   || (flags & OP_QUERY)   ||
+           (flags & OP_VERSION) || (flags & OP_HELP));
 }
 
 typedef _HELPER_FLAGS (*_set_func)(char, char*, int*, void**);
@@ -304,8 +307,9 @@ static unsigned int parse(_set_func func, const char *ref, char *arg, char *narg
 
 static unsigned int parsearg(char *arg, char *narg, unsigned int flags, int *skipn, void **data)
 {
-   if (!strncmp(arg, "-r", 2)) _PASSARG(_setroot);    /* argument with argument */
-   if (arg[0] != '-')          _PASSTHS(_addtarget);  /* not argument */
+   if (!strncmp(arg, "-r", 2))      _PASSARG(_setroot);     /* argument with argument */
+   if (!strncmp(arg, "--help", 6))  _PASSFLG(OP_HELP);      /* another way of calling help */
+   if (arg[0] != '-')               _PASSTHS(_addtarget);   /* not argument */
    flags |= parse(getglob, _G_ARG, arg, narg, skipn, data);
    if (!hasop(flags))       flags |= parse(getop, _OP_ARG, arg, narg, skipn, data);
    if ((flags & OP_SYNC))   flags |= parse(getsync, _S_ARG, arg, narg, skipn, data);
@@ -325,6 +329,185 @@ static unsigned int parseargs(int argc, char **argv, void *data)
    return flags;
 }
 
+/*  ___ _   _ ____  _   _ _____
+ * |_ _| \ | |  _ \| | | |_   _|
+ *  | ||  \| | |_) | | | | | |
+ *  | || |\  |  __/| |_| | | |
+ * |___|_| \_|_|    \___/  |_|
+ */
+
+static int rootdialog(_USR_DATA *data)
+{
+   unsigned int i, s;
+   char response[32];
+   pndman_device *d;
+
+   i = 0;
+   fflush(stdout);
+   puts("");
+   _Y(); puts("Sir! You haven't selected your mount where to store PND's yet."); _N();
+   _B(); for (d = data->dlist; d; d = d->next) printf("%d. %s\n", ++i, d->mount); _N();
+   _Y(); printf("> "); _N();
+   fflush(stdout);
+
+   if (!fgets(response, sizeof(response), stdin))
+      return RETURN_FAIL;
+
+   if ((s = strtol(response, (char **) NULL, 10)) <= 0)
+      return RETURN_FAIL;
+
+   /* good answer got, set root */
+   i = 0;
+   for (d = data->dlist; d; d = d->next)
+      if (++i==s) {
+         data->root = d;
+         return RETURN_OK;
+      }
+
+   return RETURN_FAIL;
+}
+
+/*  ____  ____   ___   ____ _____ ____ ____
+ * |  _ \|  _ \ / _ \ / ___| ____/ ___/ ___|
+ * | |_) | |_) | | | | |   |  _| \___ \___ \
+ * |  __/|  _ <| |_| | |___| |___ ___) |__) |
+ * |_|   |_| \_\\___/ \____|_____|____/____/
+ */
+
+static int yaourtprocess(unsigned int flags, _USR_DATA *data)
+{
+   return RETURN_OK;
+}
+
+static int syncprocess(unsigned int flags, _USR_DATA *data)
+{
+   return RETURN_OK;
+}
+
+static int upgradeprocess(unsigned int flags, _USR_DATA *data)
+{
+   return RETURN_OK;
+}
+
+static int removeprocess(unsigned int flags, _USR_DATA *data)
+{
+   return RETURN_OK;
+}
+
+static int queryprocess(unsigned int flags, _USR_DATA *data)
+{
+   return RETURN_OK;
+}
+
+static int cleanprocess(unsigned int flags, _USR_DATA *data)
+{
+   return RETURN_OK;
+}
+
+static int version(unsigned int flags, _USR_DATA *data)
+{
+   _Y(); printf("libpndman && milkyhelper\n\n");
+   _B(); printf("https://github.com/Cloudef/libpndman\n"); _W();
+   printf("~ %s\n", pndman_git_head());
+   printf("~ %s\n\n", pndman_git_commit());
+   _W(); printf("~ "); _R(); printf("Cloudef"); printf("\n");
+   _Y(); printf("<o/ "); _G(); printf("DISCO!\n"); _N();
+   return RETURN_OK;
+}
+
+static int help(unsigned int flags, _USR_DATA *data)
+{
+   _R(); printf("Read the source code for help.\n"); _N();
+   return RETURN_OK;
+}
+
+/*  _____ _        _    ____ ____
+ * |  ___| |      / \  / ___/ ___|
+ * | |_  | |     / _ \| |  _\___ \
+ * |  _| | |___ / ___ \ |_| |___) |
+ * |_|   |_____/_/   \_\____|____/
+*/
+
+static int sanitycheck(unsigned int *flags, _USR_DATA *data)
+{
+   /* expections to sanity checks */
+   if ((*flags & OP_VERSION) || (*flags & OP_HELP))
+      return RETURN_OK;
+
+   /* check target list, NOTE: OP_CLEAN && OP_QUERY can perform without targets */
+   if (!data->tlist && (!(*flags & OP_CLEAN) && !(*flags & OP_QUERY))) {
+      _R(); puts("No targets specified."); _N();
+      return RETURN_FAIL;
+   } else *flags |= OP_YAOURT;
+
+   /* check flags */
+   if (!*flags || !hasop(*flags)) {
+      _R(); puts("No operation specified."); _N();
+      return RETURN_FAIL;
+   }
+
+   /* no root, ask for it */
+   if (!data->root)
+      if (rootdialog(data) != RETURN_OK) {
+         _R(); puts("\nBad device selected, exiting.."); _N();
+         return RETURN_FAIL;
+      }
+
+   return RETURN_OK;
+}
+
+static int processflags(unsigned int flags, _USR_DATA *data)
+{
+   _USR_TARGET *t;
+   int ret = RETURN_FAIL;
+
+   /* sanity check */
+   if (sanitycheck(&flags, data) != RETURN_OK)
+      return RETURN_FAIL;
+
+   _B();
+   if ((flags & OP_YAOURT))   puts("::YAOURT");
+   if ((flags & OP_SYNC))     puts("::SYNC");
+   if ((flags & OP_UPGRADE))  puts("::UPGRADE");
+   if ((flags & OP_REMOVE))   puts("::REMOVE");
+   if ((flags & OP_QUERY))    puts("::QUERY");
+   if ((flags & OP_CLEAN))    puts("::CLEAN");
+   if ((flags & OP_VERSION))  puts("::VERSION");
+   if ((flags & OP_HELP))     puts("::HELP");
+   _Y();
+   if ((flags & GB_FORCE))    puts(";;FORCE");
+   _G();
+   if ((flags & A_SEARCH))    puts("->SEARCH");
+   if ((flags & A_CATEGORY))  puts("->CATEGORY");
+   if ((flags & A_INFO))      puts("->INFO");
+   if ((flags & A_LIST))      puts("->LIST");
+   if ((flags & A_REFRESH))   puts("->REFRESH");
+   if ((flags & A_UPGRADE))   puts("->UPGRADE");
+   if ((flags & A_CRAWL))     puts("->CRAWL");
+   if ((flags & A_NOSAVE))    puts("->NOSAVE");
+   _R();
+   if ((flags & A_MENU))      puts("[MENU]");
+   if ((flags & A_DESKTOP))   puts("[DESKTOP]");
+   if ((flags & A_APPS))      puts("[APPS]");
+   _N();
+
+   _W();
+   if (data->tlist) puts("\nTargets:");
+   for (t = data->tlist; t; t = t->next) puts(t->id);
+   _N();
+
+   /* logic */
+   if ((flags & OP_YAOURT))         ret = yaourtprocess(flags, data);
+   else if ((flags & OP_SYNC))      ret = syncprocess(flags, data);
+   else if ((flags & OP_UPGRADE))   ret = upgradeprocess(flags, data);
+   else if ((flags & OP_REMOVE))    ret = removeprocess(flags, data);
+   else if ((flags & OP_QUERY))     ret = queryprocess(flags, data);
+   else if ((flags & OP_CLEAN))     ret = cleanprocess(flags, data);
+   else if ((flags & OP_VERSION))   ret = version(flags, data);
+   else if ((flags & OP_HELP))      ret = help(flags, data);
+   return ret;
+}
+
 /*  __  __    _    ___ _   _
  * |  \/  |  / \  |_ _| \ | |
  * | |\/| | / _ \  | ||  \| |
@@ -334,9 +517,13 @@ static unsigned int parseargs(int argc, char **argv, void *data)
 
 int main(int argc, char **argv)
 {
-   unsigned int flags = 0;
-   _USRDATA data;
+   int ret;
+   unsigned int flags;
+   _USR_DATA data;
    _USR_TARGET *t, *tn;
+
+   /* by default, we fail :) */
+   ret = EXIT_FAILURE;
 
    /* init */
    if (pndman_init() != RETURN_OK) {
@@ -344,43 +531,19 @@ int main(int argc, char **argv)
       return EXIT_FAILURE;
    }
 
-   /* parse arguments */
+   /* init userdata */
    init_usrdata(&data);
-   flags = parseargs(argc, argv, &data);
-   if (!flags) {
-      _R(); puts("no flags"); _N();
+   data.dlist = pndman_device_detect(NULL);
+   if (!data.dlist) {
+      _R(); puts("failed to detect devices.."); _N();
    } else {
-      _B();
-      if ((flags & OP_SYNC))     puts("::SYNC");
-      if ((flags & OP_UPGRADE))  puts("::UPGRADE");
-      if ((flags & OP_REMOVE))   puts("::REMOVE");
-      if ((flags & OP_QUERY))    puts("::QUERY");
-      if ((flags & OP_CLEAN))    puts("::CLEAN");
-      if ((flags & OP_VERSION))  puts("::VERSION");
-      if ((flags & OP_HELP))     puts("::HELP");
-      _Y();
-      if ((flags & GB_FORCE))    puts(";;FORCE");
-      _G();
-      if ((flags & A_SEARCH))    puts("->SEARCH");
-      if ((flags & A_CATEGORY))  puts("->CATEGORY");
-      if ((flags & A_INFO))      puts("->INFO");
-      if ((flags & A_LIST))      puts("->LIST");
-      if ((flags & A_REFRESH))   puts("->REFRESH");
-      if ((flags & A_UPGRADE))   puts("->UPGRADE");
-      if ((flags & A_CRAWL))     puts("->CRAWL");
-      if ((flags & A_NOSAVE))    puts("->NOSAVE");
-      _R();
-      if ((flags & A_MENU))      puts("[MENU]");
-      if ((flags & A_DESKTOP))   puts("[DESKTOP]");
-      if ((flags & A_APPS))      puts("[APPS]");
-      _N();
+      /* parse arguments */
+      flags = parseargs(argc, argv, &data);
+      ret   = processflags(flags, &data) == RETURN_OK ? EXIT_SUCCESS : EXIT_FAILURE;
    }
 
-   /* list targets */
-   _W();
-   if (!data.tlist) puts("No targets!");
-   else for (t = data.tlist; t; t = t->next) puts(t->id);
-   _N();
+   /* free devices */
+   pndman_device_free_all(data.dlist);
 
    /* free targets */
    for (t = data.tlist; t; t = tn)
@@ -392,7 +555,7 @@ int main(int argc, char **argv)
       return EXIT_FAILURE;
    }
 
-   return EXIT_SUCCESS;
+   return ret;
 }
 
 /* vim: set ts=8 sw=3 tw=0 :*/
