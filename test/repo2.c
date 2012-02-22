@@ -1,7 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include "pndman.h"
+
 int main()
 {
    pndman_repository *repo, *r;
@@ -13,17 +15,23 @@ int main()
    r = repo;
    for (; r; r = r->next) ++c;
    pndman_sync_handle handle[c]; r = repo;
-   for (c = 0; r; r = r->next) pndman_sync_request(&handle[c++], r);
+   for (c = 0; r; r = r->next) pndman_sync_request(&handle[c++], PNDMAN_SYNC_FULL, r);
+
+   puts("");
    while (pndman_sync() > 0) {
       r = repo;
       for (c = 0; r; r = r->next) {
-         if (handle[c].done) {
+         printf("%s [%.2f/%.2f]%s", handle[c].repository->url,
+                handle[c].progress.download/1048576, handle[c].progress.total_to_download/1048576,
+                handle[c].progress.done?"\n":"\r"); fflush(stdout);
+         if (handle[c].progress.done) {
             printf("%s : DONE!\n", handle[c].repository->name);
             pndman_sync_request_free(&handle[c]);
          }
          c++;
       }
    }
+   puts("");
 
    r = repo;
    for (c = 0; r; r = r->next) pndman_sync_request_free(&handle[c++]);

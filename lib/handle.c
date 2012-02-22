@@ -35,10 +35,10 @@ typedef struct pndman_handle
    char           error[LINE_MAX];
    pndman_package *pnd;
    pndman_device  *device;
-   unsigned int flags;
+   unsigned int   flags;
+   curl_progress  progress;
 
-   /* info */
-   int            done;
+   /* internal */
    curl_request   request;
    FILE           *file;
 } pndman_handle;
@@ -122,8 +122,9 @@ static int _pndman_handle_download(pndman_handle *handle)
    curl_easy_setopt(handle->request.curl, CURLOPT_HEADERFUNCTION, curl_write_request);
    curl_easy_setopt(handle->request.curl, CURLOPT_WRITEFUNCTION, curl_write_file);
    curl_easy_setopt(handle->request.curl, CURLOPT_CONNECTTIMEOUT, CURL_TIMEOUT);
-   //curl_easy_setopt(handle->request.curl, CURLOPT_NOPROGRESS, 0);
-   //curl_easy_setopt(handle->request.curl, CURLOPT_PROGRESSFUNCTION, curl_progress_func);
+   curl_easy_setopt(handle->request.curl, CURLOPT_NOPROGRESS, 0);
+   curl_easy_setopt(handle->request.curl, CURLOPT_PROGRESSFUNCTION, curl_progress_func);
+   curl_easy_setopt(handle->request.curl, CURLOPT_PROGRESSDATA, &handle->progress);
    curl_easy_setopt(handle->request.curl, CURLOPT_WRITEHEADER, &handle->request);
    curl_easy_setopt(handle->request.curl, CURLOPT_WRITEDATA, handle->file);
 
@@ -287,7 +288,7 @@ int pndman_handle_init(char *name, pndman_handle *handle)
    strncpy(handle->name, name, HANDLE_NAME-1);
    memset(handle->error, 0, LINE_MAX);
    handle->flags = 0;
-   handle->done  = 0;
+   curl_init_progress(&handle->progress);
 
    return RETURN_OK;
 }
@@ -330,6 +331,9 @@ int pndman_handle_perform(pndman_handle *handle)
    if (!handle)         return RETURN_FAIL;
    if (!handle->pnd)    return RETURN_FAIL;
    if (!handle->flags)  return RETURN_FAIL;
+
+   /* reset done */
+   handle->progress.done = 0;
 
    if ((handle->flags & PNDMAN_HANDLE_INSTALL))
       if (_pndman_handle_download(handle) != RETURN_OK)
@@ -386,7 +390,7 @@ int pndman_download()
    while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left))) {
       curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &handle);
       if (msg->msg == CURLMSG_DONE)
-         handle->done = 1;
+         handle->progress.done = 1;
    }
 
    /* it's okay to get rid of this */

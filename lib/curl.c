@@ -17,8 +17,10 @@ size_t curl_write_file(void *data, size_t size, size_t nmemb, FILE *file)
 }
 
 /* \brief progressbar */
-int curl_progress_func(void* data, double TotalToDownload, double NowDownloaded, double TotalToUpload, double NowUploaded)
+int curl_progress_func(curl_progress *ptr, double total_to_download, double download, double total_to_upload, double upload)
 {
+   ptr->download           = download;
+   ptr->total_to_download  = total_to_download;
    return 0;
 }
 
@@ -64,6 +66,15 @@ void curl_free_request(curl_request *request)
    request->curl        = NULL;
    request->result.data = NULL;
    request->result.pos  = 0;
+}
+
+/* \brief initialize the progress struct */
+void curl_init_progress(curl_progress *progress)
+{
+   assert(progress);
+   progress->download = 0;
+   progress->total_to_download = 0;
+   progress->done = 0;
 }
 
 /* vim: set ts=8 sw=3 tw=0 :*/

@@ -34,6 +34,12 @@
 extern "C" {
 #endif
 
+/* \brief flags for sync request to determite what to do */
+typedef enum pndman_sync_flags
+{
+   PNDMAN_SYNC_FULL = 0x001,
+} pndman_sync_flags;
+
 /* \brief flags for handle to determite what to do */
 typedef enum pndman_handle_flags
 {
@@ -242,6 +248,14 @@ typedef struct curl_request
    const void              *curl;
 } curl_request;
 
+/* \brief struct for holding progression data of curl handle */
+typedef struct curl_progress
+{
+   const double download;
+   const double total_to_download;
+   const char done;
+} curl_progress;
+
 /*! \brief
  * COMMON
  * Struct for PND transiction
@@ -252,12 +266,14 @@ typedef struct pndman_handle
    const char     error[LINE_MAX];
    pndman_package *pnd;
    pndman_device  *device;
-   unsigned int flags;
+   unsigned int   flags;
 
-   /* info */
-   int            done;
-   curl_request   request;
-   const void     *file;
+   /* progress */
+   const curl_progress  progress;
+
+   /* internal */
+   const curl_request   request;
+   const void           *file;
 } pndman_handle;
 
 /* \brief
@@ -267,7 +283,12 @@ typedef struct pndman_sync_handle
 {
    const char           error[LINE_MAX];
    pndman_repository    *repository;
-   int                  done;
+
+   /* unlike handles, these get set on function */
+   const unsigned int   flags;
+
+   /* progress */
+   const curl_progress  progress;
 
    /* internal */
    const void           *file;
@@ -303,7 +324,7 @@ int pndman_handle_free(pndman_handle *handle);
 int pndman_download();
 int pndman_read_from_device(pndman_repository *repo, pndman_device *device);
 int pndman_sync();
-int pndman_sync_request(pndman_sync_handle *handle, pndman_repository *repo);
+int pndman_sync_request(pndman_sync_handle *handle, unsigned int flags, pndman_repository *repo);
 int pndman_sync_request_free(pndman_sync_handle *handle);
 int pndman_commit_all(pndman_repository *repo, pndman_device *device);
 int pndman_crawl(pndman_device *device, pndman_repository *local);

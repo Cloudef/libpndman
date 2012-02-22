@@ -15,6 +15,14 @@ typedef struct curl_write_result
    int   pos;
 } curl_write_result;
 
+/* \brief struct for holding progression data of curl handle */
+typedef struct curl_progress
+{
+   double download;
+   double total_to_download;
+   char done;
+} curl_progress;
+
 /* \brief struct for holding internal request data */
 typedef struct curl_request
 {
@@ -26,13 +34,15 @@ typedef struct curl_request
 size_t curl_write_file(void *data, size_t size, size_t nmemb, FILE *file);
 
 /* \brief progressbar */
-int curl_progress_func(void* ptr, double TotalToDownload, double NowDownloaded, double TotalToUpload, double NowUploaded);
+int curl_progress_func(curl_progress *ptr, double total_to_download, double download, double total_to_upload, double upload);
 
 /* \brief write response */
 size_t curl_write_request(void *data, size_t size, size_t nmemb, curl_request *request);
 
 int curl_init_request(curl_request *request);
 void curl_free_request(curl_request *request);
+
+void curl_init_progress(curl_progress *progress);
 
 #ifdef __cplusplus
 }

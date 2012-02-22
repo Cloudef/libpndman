@@ -77,7 +77,7 @@ int main()
 
       /* skip the local repository */
       if (x) {
-         if (pndman_sync_request(&handle[x-1], r) != 0)
+         if (pndman_sync_request(&handle[x-1], 0, r) != 0)
             err("pndman_sync_request failed");
       }
       ++x;
@@ -85,14 +85,19 @@ int main()
 
    /* sync repositories
     * in real use should check error (-1) */
+   puts("");
    while (pndman_sync() > 0) {
       for (x = 0; x != 1; ++x) {
-         if (handle[x].done) {
+         printf("%s [%.2f/%.2f]%s", handle[x].repository->url,
+                handle[x].progress.download/1048576, handle[x].progress.total_to_download/1048576,
+                handle[x].progress.done?"\n":"\r"); fflush(stdout);
+         if (handle[x].progress.done) {
             printf("%s : DONE!\n", handle[x].repository->name);
             pndman_sync_request_free(&handle[x]);
          }
       }
    }
+   puts("");
 
    /* make sure all sync handles are freed */
    for (x = 0; x != 1; ++x)

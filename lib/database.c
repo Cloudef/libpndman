@@ -11,12 +11,23 @@
 #include "curl.h"
 #include "json.h"
 
+/* \brief flags for sync request to determite what to do */
+typedef enum pndman_sync_flags
+{
+   PNDMAN_SYNC_FULL = 0x001,
+} pndman_sync_flags;
+
 /* \brief sync handle struct */
 typedef struct pndman_sync_handle
 {
    char                 error[LINE_MAX];
    pndman_repository    *repository;
-   int                  done;
+
+   /* get set on function */
+   unsigned int         flags;
+
+   /* progress */
+   curl_progress        progress;
 
    /* internal */
    FILE                 *file;
@@ -62,7 +73,7 @@ static int _pndman_new_sync_handle(pndman_sync_handle *object, pndman_repository
    }
 
    /* check wether, to do merging or full sync */
-   if (strlen(repo->updates) && repo->timestamp) {
+   if (strlen(repo->updates) && repo->timestamp && !(object->flags & PNDMAN_SYNC_FULL)) {
       snprintf(timestamp, REPO_TIMESTAMP-1, "%lu", repo->timestamp);
       url = str_replace(repo->updates, "%time%", timestamp);
    } else url = strdup(repo->url);
@@ -80,8 +91,9 @@ static int _pndman_new_sync_handle(pndman_sync_handle *object, pndman_repository
    curl_easy_setopt(object->curl, CURLOPT_PRIVATE, object);
    curl_easy_setopt(object->curl, CURLOPT_WRITEFUNCTION, curl_write_file);
    curl_easy_setopt(object->curl, CURLOPT_CONNECTTIMEOUT, CURL_TIMEOUT);
-   //curl_easy_setopt(handle->curl, CURLOPT_NOPROGRESS, 0);
-   //curl_easy_setopt(handle->curl, CURLOPT_PROGRESSFUNCTION, curl_progress_func);
+   curl_easy_setopt(object->curl, CURLOPT_NOPROGRESS, 0);
+   curl_easy_setopt(object->curl, CURLOPT_PROGRESSFUNCTION, curl_progress_func);
+   curl_easy_setopt(object->curl, CURLOPT_PROGRESSDATA, &object->progress);
    curl_easy_setopt(object->curl, CURLOPT_WRITEDATA, object->file);
 
    /* add to multi interface */
@@ -288,7 +300,7 @@ static int _pndman_sync_perform()
    while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left))) {
       curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &handle);
       if (msg->msg == CURLMSG_DONE) { /* DONE */
-         handle->done = 1;
+         handle->progress.done = 1;
          _pndman_json_process(handle->repository, handle->file);
       }
    }
@@ -305,13 +317,14 @@ static void _pndman_query_cleanup(void)
 }
 
 /* \brief request for synchorization for this repository */
-static int _pndman_repository_sync_request(pndman_sync_handle *handle, pndman_repository *repo)
+static int _pndman_repository_sync_request(pndman_sync_handle *handle, unsigned int flags, pndman_repository *repo)
 {
    /* init */
    handle->repository = repo;
-   handle->done = 0;
-   handle->curl = NULL;
-   handle->file = NULL;
+   handle->curl   = NULL;
+   handle->file   = NULL;
+   handle->flags  = flags;
+   curl_init_progress(&handle->progress);
    memset(handle->error, 0, LINE_MAX);
 
    /* no valid url == FAIL, same for local repository, this is expected */
@@ -374,11 +387,11 @@ int pndman_read_from_device(pndman_repository *repo, pndman_device *device)
 
 /* \brief request synchorization for repository
  * call this for each repository you want to sync before pndman_sync */
-int pndman_sync_request(pndman_sync_handle *handle, pndman_repository *repo)
+int pndman_sync_request(pndman_sync_handle *handle, unsigned int flags, pndman_repository *repo)
 {
    DEBUG("pndman_sync_request");
    if (!repo || !handle) return RETURN_FAIL;
-   return _pndman_repository_sync_request(handle, repo);
+   return _pndman_repository_sync_request(handle, flags, repo);
 }
 
 /* \brief free sync request */
