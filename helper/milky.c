@@ -426,7 +426,7 @@ static int help(unsigned int flags, _USR_DATA *data)
  * | |_  | |     / _ \| |  _\___ \
  * |  _| | |___ / ___ \ |_| |___) |
  * |_|   |_____/_/   \_\____|____/
-*/
+ */
 
 static int sanitycheck(unsigned int *flags, _USR_DATA *data)
 {
