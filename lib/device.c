@@ -350,6 +350,9 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
             device->available = fs.f_bavail * fs.f_bsize;
             _strip_slash(device->device);
             _strip_slash(device->mount);
+
+            /* NULL passed */
+            if (!first) first = device;
          }
       }
       m = NULL;
@@ -392,6 +395,9 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
          device->available = bytes_available.QuadPart;
          _strip_slash(device->device);
          _strip_slash(device->mount);
+
+         /* NULL passed */
+         if (!first) first = device;
       }
 
       /* go to the next NULL character. */
@@ -425,7 +431,6 @@ char* _pndman_device_get_appdata(pndman_device *device)
 pndman_device* pndman_device_detect(pndman_device *device)
 {
    DEBUG("pndman device detect");
-   if (!device) return NULL;
    return _pndman_device_detect(device);
 }
 
