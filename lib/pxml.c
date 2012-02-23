@@ -111,36 +111,6 @@ typedef struct pxml_parse
 } pxml_parse;
 
 /* \brief
- * Convert string to uppercase
- * Returns allocated string, so remember free it */
-static char *upstr(char *s)
-{
-   int i; char* p = malloc(strlen(s) + 1);
-   if (!p) return NULL;
-
-   strcpy( p, s ); i = 0;
-
-   for (; i != strlen(p); i++)
-      p[i] = (char)toupper(p[i]);
-
-   return p;
-}
-
-/* \brief
- * Strcmp without case sensitivity */
-static int _pxml_strcmp(char *s1, char *s2)
-{
-   int ret; char *u1, *u2;
-   u1 = upstr(s1); if (!u1) return 1;
-   u2 = upstr(s2); if (!u2) { free(u1); return 1; }
-
-   ret = memcmp(u1, u2, strlen(u1));
-   free(u1); free(u2);
-
-   return ret;
-}
-
-/* \brief
  * Get PXML out of PND  */
 static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
 {
@@ -246,7 +216,7 @@ static void _pxml_pnd_exec_tag(pndman_exec *exec, char **attrs)
       /* <exec background= */
       if (!memcmp(attrs[i], PXML_BACKGROUND_ATTR, strlen(PXML_BACKGROUND_ATTR)))
       {
-         if (!_pxml_strcmp(attrs[++i], PND_TRUE)) exec->background = 1;
+         if (!strcasecmp(attrs[++i], PND_TRUE)) exec->background = 1;
       }
       /* <exec startdir= */
       else if (!memcmp(attrs[i], PXML_STARTDIR_ATTR, strlen(PXML_STARTDIR_ATTR)))
@@ -266,9 +236,9 @@ static void _pxml_pnd_exec_tag(pndman_exec *exec, char **attrs)
       else if (!memcmp(attrs[i], PXML_X11_ATTR, strlen(PXML_X11_ATTR)))
       {
          ++i;
-         if (!_pxml_strcmp(attrs[i], PND_X11_REQ))          exec->x11 = PND_EXEC_REQ;
-         else if (!_pxml_strcmp(attrs[i], PND_X11_STOP))    exec->x11 = PND_EXEC_STOP;
-         else if (!_pxml_strcmp(attrs[i], PND_X11_IGNORE))  exec->x11 = PND_EXEC_IGNORE;
+         if (!strcasecmp(attrs[i], PND_X11_REQ))          exec->x11 = PND_EXEC_REQ;
+         else if (!strcasecmp(attrs[i], PND_X11_STOP))    exec->x11 = PND_EXEC_STOP;
+         else if (!strcasecmp(attrs[i], PND_X11_IGNORE))  exec->x11 = PND_EXEC_IGNORE;
       }
    }
 }
@@ -405,9 +375,9 @@ static void _pxml_pnd_version_tag(pndman_version *ver, char **attrs)
       else if (!memcmp(attrs[i], PXML_TYPE_ATTR, strlen(PXML_TYPE_ATTR)))
       {
          ++i;
-         if (!_pxml_strcmp(PND_TYPE_RELEASE, attrs[i]))    ver->type = PND_VERSION_RELEASE;
-         else if (!_pxml_strcmp(PND_TYPE_BETA, attrs[i]))  ver->type = PND_VERSION_BETA;
-         else if (!_pxml_strcmp(PND_TYPE_ALPHA, attrs[i])) ver->type = PND_VERSION_ALPHA;
+         if (!strcasecmp(PND_TYPE_RELEASE, attrs[i]))    ver->type = PND_VERSION_RELEASE;
+         else if (!strcasecmp(PND_TYPE_BETA, attrs[i]))  ver->type = PND_VERSION_BETA;
+         else if (!strcasecmp(PND_TYPE_ALPHA, attrs[i])) ver->type = PND_VERSION_ALPHA;
       }
    }
 }
