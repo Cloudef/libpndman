@@ -24,7 +24,7 @@
 /* use colors? */
 char _USE_COLORS  = 1;
 
-/* verbose level */
+/* verbose level? */
 char _VERBOSE     = 0;
 
 typedef enum _RETURN_STATUS
