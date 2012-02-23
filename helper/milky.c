@@ -3,10 +3,13 @@
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
+#include <ctype.h>
 #include "pndman.h"
 
 #ifdef WIN32
-   #include <windows.h>
+#  include <windows.h>
+#elif __linux__
+#  include <limits.h>
 #endif
 
 /*   ____ _____ _   _ _____ ____      _    _
@@ -29,6 +32,24 @@ typedef enum _RETURN_STATUS
    RETURN_TRUE    =  1,
    RETURN_FALSE   = !RETURN_TRUE
 } _RETURN_STATUS;
+
+#define PND_ID 256
+typedef struct _USR_TARGET
+{
+   char                 id[PND_ID];
+   pndman_package       *pnd;
+   struct _USR_TARGET   *next;
+   struct _USR_TARGET   *prev;
+} _USR_TARGET;
+
+typedef struct _USR_DATA
+{
+   unsigned int      flags;
+   pndman_device     *dlist;
+   pndman_device     *root;
+   pndman_repository *rlist;
+   _USR_TARGET       *tlist;
+} _USR_DATA;
 
 /*   ____ ___  _     ___  ____  ____
  *  / ___/ _ \| |   / _ \|  _ \/ ___|
@@ -109,6 +130,164 @@ static void _N(void)
 #endif
 }
 
+/*  _   _ _____ ___ _
+ * | | | |_   _|_ _| |
+ * | | | | | |  | || |
+ * | |_| | | |  | || |___
+ *  \___/  |_| |___|_____|
+ */
+
+static char* strtrim(char *str)
+{
+   char *pch = str;
+
+   /* check if we need trimming */
+   if (!str || *str == '\0') return str;
+
+   /* trim from left */
+   while (isspace((unsigned char)*pch)) ++pch;
+   if (pch != str)   memmove(str, pch, (strlen(pch) + 1));
+
+   /* this string is empty, return */
+   if (*str == '\0') return str;
+
+   /* trim from right */
+   pch = (str + (strlen(str) - 1));
+   while (isspace((unsigned char)*pch)) --pch;
+
+   *++pch = '\0';
+   return str;
+}
+
+/*   ____ ___  _   _ _____ ___ ____
+ *  / ___/ _ \| \ | |  ___|_ _/ ___|
+ * | |  | | | |  \| | |_   | | |  _
+ * | |__| |_| | |\  |  _|  | | |_| |
+ *  \____\___/|_| \_|_|   |___\____|
+ *
+ * __        ______      _    ____  ____  _____ ____
+ * \ \      / /  _ \    / \  |  _ \|  _ \| ____|  _ \
+ *  \ \ /\ / /| |_) |  / _ \ | |_) | |_) |  _| | |_) |
+ *   \ V  V / |  _ <  / ___ \|  __/|  __/| |___|  _ <
+ *    \_/\_/  |_| \_\/_/   \_\_|   |_|   |_____|_| \_\
+ */
+
+static int _addrepository(char **argv, int argc, void **data)
+{
+   if (!argc) return RETURN_FAIL;
+   if (!(pndman_repository_add(argv[0], ((_USR_DATA*)*data)->rlist)))
+      return RETURN_FAIL;
+   return RETURN_OK;
+}
+
+static int _addignore(char **argv, int argc, void **data)
+{
+   return RETURN_OK;
+}
+
+static int _dontmerge(char **argv, int argc, void **data)
+{
+   return RETURN_OK;
+}
+
+/*   ____ ___  _   _ _____ ___ ____
+ *  / ___/ _ \| \ | |  ___|_ _/ ___|
+ * | |  | | | |  \| | |_   | | |  _
+ * | |__| |_| | |\  |  _|  | | |_| |
+ *  \____\___/|_| \_|_|   |___\____|
+ */
+
+#define _CONFIG_SEPERATOR  ' '
+#define _CONFIG_COMMENT    '#'
+#define _CONFIG_QUOTE      '\"'
+#define _CONFIG_MAX_VAR    24
+#define _CONFIG_KEY_LEN    24
+#define _CONFIG_ARG_LEN    256
+
+typedef int (*_CONFIG_FUNC)(char **argv, int argc, void **data);
+typedef struct _CONFIG_KEYS
+{
+   const char     key[_CONFIG_KEY_LEN];
+   _CONFIG_FUNC   func;
+} _CONFIG_KEYS;
+
+/* configuration options */
+static _CONFIG_KEYS _CONFIG_KEY[] = {
+   { "repository", _addrepository },
+   { "ignore", _addignore },
+   { "dontmerge", _dontmerge },
+};
+
+static int readconfig_arg(const char *key, _CONFIG_FUNC func, void **data, char *line)
+{
+   int i, p, argc, in_quote;
+   char *argv[_CONFIG_MAX_VAR];
+
+   /* reset args */
+   for (i = 0; i != _CONFIG_MAX_VAR; ++i) {
+      if (!(argv[i] = malloc(_CONFIG_ARG_LEN))) {
+         for (; i >= 0; --i) free(argv[i]);
+         return RETURN_FAIL;
+      }
+      memset(argv[i], 0, _CONFIG_ARG_LEN);
+   }
+
+   /* check if we have any arguments to parse */
+   i = strlen(key) + 1;
+   if (strlen(line) < i) {
+      func(argv, 0, data);
+      for (i = 0; i != _CONFIG_MAX_VAR; ++i) free(argv[i]);
+      return RETURN_OK;
+   }
+
+   /* get args */
+   in_quote = 0; p = 0; argc = 0;
+   for (; i != strlen(line); ++i) {
+      if (line[i] == _CONFIG_QUOTE) in_quote = !in_quote; /* check quote */
+      /* check for seperator, and switch argument if:
+       * we are not inside quote
+       * we actually have something in our argument */
+      else if (line[i] == _CONFIG_SEPERATOR && !in_quote && p) {
+         if (++argc==_CONFIG_MAX_VAR) break;    /* next argument, or break on argument limit */
+         p = 0;                                 /* flush */
+      }
+      /* read character to argument if:
+       * it's not a seperator, expect if we are inside a quote */
+      else if (line[i] != _CONFIG_SEPERATOR || in_quote)
+         argv[argc][p++] = line[i];
+   }
+   if (p) ++argc; /* final argument */
+
+   /* execute the function */
+   func(argv, argc, data);
+   for (i = 0; i != _CONFIG_MAX_VAR; ++i) free(argv[i]);
+   return RETURN_OK;
+}
+
+static int readconfig(const char *path, void *data)
+{
+   unsigned int i;
+   char line[LINE_MAX];
+   FILE *f;
+
+   if (!(f = fopen(path, "r")))
+         return RETURN_FAIL;
+
+   while (fgets(line, LINE_MAX, f)) {
+      strtrim(line); /* trim */
+      if (!strlen(line) || line[0] == _CONFIG_COMMENT) continue; /* skip comments */
+      for (i = 0; _CONFIG_KEY[i].key; ++i) {
+         if (!strncmp(_CONFIG_KEY[i].key, line, strlen(_CONFIG_KEY[i].key))) {
+            readconfig_arg(_CONFIG_KEY[i].key, _CONFIG_KEY[i].func, &data, line);
+            break;
+         }
+      }
+   }
+   fclose(f);
+
+   return RETURN_OK;
+}
+
 /*  ____  _______     _____ ____ _____ ____
  * |  _ \| ____\ \   / /_ _/ ___| ____/ ___|
  * | | | |  _|  \ \ / / | | |   |  _| \___ \
@@ -133,15 +312,6 @@ static pndman_device* setroot(char *root, pndman_device *list)
  *   | |/ ___ \|  _ <| |_| | |___  | |  ___) |
  *   |_/_/   \_\_| \_\\____|_____| |_| |____/
  */
-
-#define PND_ID 256
-typedef struct _USR_TARGET
-{
-   char                 id[PND_ID];
-   pndman_package       *pnd;
-   struct _USR_TARGET   *next;
-   struct _USR_TARGET   *prev;
-} _USR_TARGET;
 
 static _USR_TARGET* addtarget(char *id, _USR_TARGET **list)
 {
@@ -178,28 +348,21 @@ static _USR_TARGET* addtarget(char *id, _USR_TARGET **list)
  *    \_/\_/  |_| \_\/_/   \_\_|   |_|   |_____|_| \_\
  */
 
-typedef struct _USR_DATA
-{
-   pndman_device     *dlist;
-   pndman_device     *root;
-   pndman_repository *rlist;
-   _USR_TARGET       *tlist;
-} _USR_DATA;
-
 static void init_usrdata(_USR_DATA *data)
 {
+   data->flags = 0;
    data->dlist = NULL; data->root  = NULL;
    data->rlist = NULL; data->tlist = NULL;
 }
 
-static void _addtarget(char *id, void **data)
+static void _addtarget(char *id, _USR_DATA *data)
 {
-   addtarget(id, &((_USR_DATA*)*data)->tlist);
+   addtarget(id, &data->tlist);
 }
 
-static void _setroot(char *root, void **data)
+static void _setroot(char *root, _USR_DATA *data)
 {
-   ((_USR_DATA*)*data)->root = setroot(root, ((_USR_DATA*)*data)->dlist);
+   data->root = setroot(root, data->dlist);
 }
 
 /*     _    ____   ____ _   _ __  __ _____ _   _ _____ ____
@@ -209,9 +372,9 @@ static void _setroot(char *root, void **data)
  * /_/   \_\_| \_\\____|\___/|_|  |_|_____|_| \_| |_| |____/
  */
 
-#define _PASSARG(x) { x(narg, data); *skipn = 1; return 0; }
-#define _PASSTHS(x) { x(arg, data); return 0; }
-#define _PASSFLG(x) { return x; }
+#define _PASSARG(x) { x(narg, data); *skipn = 1; return; }
+#define _PASSTHS(x) { x(arg, data); return; }
+#define _PASSFLG(x) { data->flags |= x; return; }
 static const char* _G_ARG  = "vft";          /* global arguments */
 static const char* _OP_ARG = "SURQCVh";      /* operations */
 static const char* _S_ARG  = "scilyupmda";   /* sync operation arguments */
@@ -230,6 +393,7 @@ typedef enum _HELPER_FLAGS
    A_UPGRADE   = 0x004000, A_CRAWL      = 0x008000,
    A_MENU      = 0x010000, A_DESKTOP    = 0x020000,
    A_APPS      = 0x040000, A_NOSAVE     = 0x080000,
+   S_NOMERGE   = 0x100000,
 } _HELPER_FLAGS;
 
 static int hasop(unsigned int flags)
@@ -240,8 +404,8 @@ static int hasop(unsigned int flags)
            (flags & OP_VERSION) || (flags & OP_HELP));
 }
 
-typedef _HELPER_FLAGS (*_set_func)(char, char*, int*, void**);
-static _HELPER_FLAGS getglob(char c, char *arg, int *skipn, void **data)
+typedef _HELPER_FLAGS (*_PARSE_FUNC)(char, char*, int*, _USR_DATA*);
+static _HELPER_FLAGS getglob(char c, char *arg, int *skipn, _USR_DATA *data)
 {
    if (c == 'v')        ++_VERBOSE;
    else if (c == 'f')   return GB_FORCE;
@@ -249,7 +413,7 @@ static _HELPER_FLAGS getglob(char c, char *arg, int *skipn, void **data)
    return 0;
 }
 
-static _HELPER_FLAGS getop(char c, char *arg, int *skipn, void **data)
+static _HELPER_FLAGS getop(char c, char *arg, int *skipn, _USR_DATA *data)
 {
    if (c == 'S')        return OP_SYNC;
    else if (c == 'U')   return OP_UPGRADE;
@@ -261,7 +425,7 @@ static _HELPER_FLAGS getop(char c, char *arg, int *skipn, void **data)
    return 0;
 }
 
-static _HELPER_FLAGS getsync(char c, char *arg, int *skipn, void **data)
+static _HELPER_FLAGS getsync(char c, char *arg, int *skipn, _USR_DATA *data)
 {
    if (c == 's')        return A_SEARCH;
    else if (c == 'c')   return A_CATEGORY;
@@ -276,13 +440,13 @@ static _HELPER_FLAGS getsync(char c, char *arg, int *skipn, void **data)
    return 0;
 }
 
-static _HELPER_FLAGS getremove(char c, char *arg, int *skipn, void **data)
+static _HELPER_FLAGS getremove(char c, char *arg, int *skipn, _USR_DATA *data)
 {
    if (c == 'n') return A_NOSAVE;
    return 0;
 }
 
-static _HELPER_FLAGS getquery(char c, char *arg, int *skipn, void **data)
+static _HELPER_FLAGS getquery(char c, char *arg, int *skipn, _USR_DATA *data)
 {
    if (c == 's')        return A_SEARCH;
    else if (c == 'c')   return A_CATEGORY;
@@ -292,41 +456,36 @@ static _HELPER_FLAGS getquery(char c, char *arg, int *skipn, void **data)
    return 0;
 }
 
-static unsigned int parse(_set_func func, const char *ref, char *arg, char *narg, int *skipn, void **data)
+static void parse(_PARSE_FUNC func, const char *ref, char *arg, char *narg, int *skipn, _USR_DATA *data)
 {
    int x, y;
-   unsigned int flags = 0;
    for (y = 0; y != strlen(ref); ++y)
       for (x = 0; x != strlen(arg); ++x)
          if (arg[x] == ref[y]) {
-            flags |= func(ref[y], narg, skipn, data);
-            if (func == getop) return flags; /* only one OP */
+            data->flags |= func(ref[y], narg, skipn, data);
+            if (func == getop) return; /* only one OP */
          }
-   return flags;
 }
 
-static unsigned int parsearg(char *arg, char *narg, unsigned int flags, int *skipn, void **data)
+static void parsearg(char *arg, char *narg, int *skipn, _USR_DATA *data)
 {
    if (!strncmp(arg, "-r", 2))      _PASSARG(_setroot);     /* argument with argument */
    if (!strncmp(arg, "--help", 6))  _PASSFLG(OP_HELP);      /* another way of calling help */
    if (arg[0] != '-')               _PASSTHS(_addtarget);   /* not argument */
-   flags |= parse(getglob, _G_ARG, arg, narg, skipn, data);
-   if (!hasop(flags))       flags |= parse(getop, _OP_ARG, arg, narg, skipn, data);
-   if ((flags & OP_SYNC))   flags |= parse(getsync, _S_ARG, arg, narg, skipn, data);
-   if ((flags & OP_REMOVE)) flags |= parse(getremove, _R_ARG, arg, narg, skipn, data);
-   if ((flags & OP_QUERY))  flags |= parse(getquery, _Q_ARG, arg, narg, skipn, data);
-   return flags;
+   parse(getglob, _G_ARG, arg, narg, skipn, data);
+   if (!hasop(data->flags))         parse(getop, _OP_ARG, arg, narg, skipn, data);
+   if ((data->flags & OP_SYNC))     parse(getsync, _S_ARG, arg, narg, skipn, data);
+   if ((data->flags & OP_REMOVE))   parse(getremove, _R_ARG, arg, narg, skipn, data);
+   if ((data->flags & OP_QUERY))    parse(getquery, _Q_ARG, arg, narg, skipn, data);
 }
 
-static unsigned int parseargs(int argc, char **argv, void *data)
+static void parseargs(int argc, char **argv, _USR_DATA *data)
 {
    int i, skipn = 0;
-   unsigned int flags = 0;
    for (i = 1; i != argc; ++i) {
-      if (!skipn) flags |= parsearg(argv[i], argc==i+1 ? NULL:argv[i+1], flags, &skipn, &data);
+      if (!skipn) parsearg(argv[i], argc==i+1 ? NULL:argv[i+1], &skipn, data);
       else skipn = 0;
    }
-   return flags;
 }
 
 /*  ___ _   _ ____  _   _ _____
@@ -374,37 +533,37 @@ static int rootdialog(_USR_DATA *data)
  * |_|   |_| \_\\___/ \____|_____|____/____/
  */
 
-static int yaourtprocess(unsigned int flags, _USR_DATA *data)
+static int yaourtprocess(_USR_DATA *data)
 {
    return RETURN_OK;
 }
 
-static int syncprocess(unsigned int flags, _USR_DATA *data)
+static int syncprocess(_USR_DATA *data)
 {
    return RETURN_OK;
 }
 
-static int upgradeprocess(unsigned int flags, _USR_DATA *data)
+static int upgradeprocess(_USR_DATA *data)
 {
    return RETURN_OK;
 }
 
-static int removeprocess(unsigned int flags, _USR_DATA *data)
+static int removeprocess(_USR_DATA *data)
 {
    return RETURN_OK;
 }
 
-static int queryprocess(unsigned int flags, _USR_DATA *data)
+static int queryprocess(_USR_DATA *data)
 {
    return RETURN_OK;
 }
 
-static int cleanprocess(unsigned int flags, _USR_DATA *data)
+static int cleanprocess(_USR_DATA *data)
 {
    return RETURN_OK;
 }
 
-static int version(unsigned int flags, _USR_DATA *data)
+static int version(_USR_DATA *data)
 {
    _Y(); printf("libpndman && milkyhelper\n\n");
    _B(); printf("https://github.com/Cloudef/libpndman\n"); _W();
@@ -415,7 +574,7 @@ static int version(unsigned int flags, _USR_DATA *data)
    return RETURN_OK;
 }
 
-static int help(unsigned int flags, _USR_DATA *data)
+static int help(_USR_DATA *data)
 {
    _R(); printf("Read the source code for help.\n"); _N();
    return RETURN_OK;
@@ -428,20 +587,20 @@ static int help(unsigned int flags, _USR_DATA *data)
  * |_|   |_____/_/   \_\____|____/
  */
 
-static int sanitycheck(unsigned int *flags, _USR_DATA *data)
+static int sanitycheck(_USR_DATA *data)
 {
    /* expections to sanity checks */
-   if ((*flags & OP_VERSION) || (*flags & OP_HELP))
+   if ((data->flags & OP_VERSION) || (data->flags & OP_HELP))
       return RETURN_OK;
 
    /* check target list, NOTE: OP_CLEAN && OP_QUERY can perform without targets */
-   if (!data->tlist && (!(*flags & OP_CLEAN) && !(*flags & OP_QUERY))) {
+   if (!data->tlist && (!(data->flags & OP_CLEAN) && !(data->flags & OP_QUERY))) {
       _R(); puts("No targets specified."); _N();
       return RETURN_FAIL;
-   } else *flags |= OP_YAOURT;
+   } else if (!hasop(data->flags)) data->flags |= OP_YAOURT;
 
    /* check flags */
-   if (!*flags || !hasop(*flags)) {
+   if (!data->flags || !hasop(data->flags)) {
       _R(); puts("No operation specified."); _N();
       return RETURN_FAIL;
    }
@@ -456,39 +615,51 @@ static int sanitycheck(unsigned int *flags, _USR_DATA *data)
    return RETURN_OK;
 }
 
-static int processflags(unsigned int flags, _USR_DATA *data)
+static int processflags(_USR_DATA *data)
 {
    _USR_TARGET *t;
+   pndman_repository *r;
    int ret = RETURN_FAIL;
 
    /* sanity check */
-   if (sanitycheck(&flags, data) != RETURN_OK)
+   if (sanitycheck(data) != RETURN_OK)
       return RETURN_FAIL;
 
+   puts("");
    _B();
-   if ((flags & OP_YAOURT))   puts("::YAOURT");
-   if ((flags & OP_SYNC))     puts("::SYNC");
-   if ((flags & OP_UPGRADE))  puts("::UPGRADE");
-   if ((flags & OP_REMOVE))   puts("::REMOVE");
-   if ((flags & OP_QUERY))    puts("::QUERY");
-   if ((flags & OP_CLEAN))    puts("::CLEAN");
-   if ((flags & OP_VERSION))  puts("::VERSION");
-   if ((flags & OP_HELP))     puts("::HELP");
+   if ((data->flags & OP_YAOURT))   puts("::YAOURT");
+   if ((data->flags & OP_SYNC))     puts("::SYNC");
+   if ((data->flags & OP_UPGRADE))  puts("::UPGRADE");
+   if ((data->flags & OP_REMOVE))   puts("::REMOVE");
+   if ((data->flags & OP_QUERY))    puts("::QUERY");
+   if ((data->flags & OP_CLEAN))    puts("::CLEAN");
+   if ((data->flags & OP_VERSION))  puts("::VERSION");
+   if ((data->flags & OP_HELP))     puts("::HELP");
    _Y();
-   if ((flags & GB_FORCE))    puts(";;FORCE");
+   if ((data->flags & GB_FORCE))    puts(";;FORCE");
    _G();
-   if ((flags & A_SEARCH))    puts("->SEARCH");
-   if ((flags & A_CATEGORY))  puts("->CATEGORY");
-   if ((flags & A_INFO))      puts("->INFO");
-   if ((flags & A_LIST))      puts("->LIST");
-   if ((flags & A_REFRESH))   puts("->REFRESH");
-   if ((flags & A_UPGRADE))   puts("->UPGRADE");
-   if ((flags & A_CRAWL))     puts("->CRAWL");
-   if ((flags & A_NOSAVE))    puts("->NOSAVE");
+   if ((data->flags & A_SEARCH))    puts("->SEARCH");
+   if ((data->flags & A_CATEGORY))  puts("->CATEGORY");
+   if ((data->flags & A_INFO))      puts("->INFO");
+   if ((data->flags & A_LIST))      puts("->LIST");
+   if ((data->flags & A_REFRESH))   puts("->REFRESH");
+   if ((data->flags & A_UPGRADE))   puts("->UPGRADE");
+   if ((data->flags & A_CRAWL))     puts("->CRAWL");
+   if ((data->flags & A_NOSAVE))    puts("->NOSAVE");
    _R();
-   if ((flags & A_MENU))      puts("[MENU]");
-   if ((flags & A_DESKTOP))   puts("[DESKTOP]");
-   if ((flags & A_APPS))      puts("[APPS]");
+   if ((data->flags & A_MENU))      puts("[MENU]");
+   if ((data->flags & A_DESKTOP))   puts("[DESKTOP]");
+   if ((data->flags & A_APPS))      puts("[APPS]");
+   _N();
+   puts("");
+
+   if (data->root) {
+      _B(); printf("Root: %s\n", data->root->mount); _N();
+   }
+
+   _R();
+   if (data->rlist) puts("\nRepositories:");
+   for (r = data->rlist; r; r = r->next) puts(strlen(r->name) ? r->name : r->url);
    _N();
 
    _W();
@@ -497,14 +668,14 @@ static int processflags(unsigned int flags, _USR_DATA *data)
    _N();
 
    /* logic */
-   if ((flags & OP_YAOURT))         ret = yaourtprocess(flags, data);
-   else if ((flags & OP_SYNC))      ret = syncprocess(flags, data);
-   else if ((flags & OP_UPGRADE))   ret = upgradeprocess(flags, data);
-   else if ((flags & OP_REMOVE))    ret = removeprocess(flags, data);
-   else if ((flags & OP_QUERY))     ret = queryprocess(flags, data);
-   else if ((flags & OP_CLEAN))     ret = cleanprocess(flags, data);
-   else if ((flags & OP_VERSION))   ret = version(flags, data);
-   else if ((flags & OP_HELP))      ret = help(flags, data);
+   if ((data->flags & OP_YAOURT))         ret = yaourtprocess(data);
+   else if ((data->flags & OP_SYNC))      ret = syncprocess(data);
+   else if ((data->flags & OP_UPGRADE))   ret = upgradeprocess(data);
+   else if ((data->flags & OP_REMOVE))    ret = removeprocess(data);
+   else if ((data->flags & OP_QUERY))     ret = queryprocess(data);
+   else if ((data->flags & OP_CLEAN))     ret = cleanprocess(data);
+   else if ((data->flags & OP_VERSION))   ret = version(data);
+   else if ((data->flags & OP_HELP))      ret = help(data);
    return ret;
 }
 
@@ -518,7 +689,6 @@ static int processflags(unsigned int flags, _USR_DATA *data)
 int main(int argc, char **argv)
 {
    int ret;
-   unsigned int flags;
    _USR_DATA data;
    _USR_TARGET *t, *tn;
 
@@ -533,14 +703,30 @@ int main(int argc, char **argv)
 
    /* init userdata */
    init_usrdata(&data);
-   data.dlist = pndman_device_detect(NULL);
-   if (!data.dlist) {
-      _R(); puts("failed to detect devices.."); _N();
-   } else {
-      /* parse arguments */
-      flags = parseargs(argc, argv, &data);
-      ret   = processflags(flags, &data) == RETURN_OK ? EXIT_SUCCESS : EXIT_FAILURE;
+
+   /* detect devices */
+   if (!(data.dlist = pndman_device_detect(NULL))) {
+      _R(); puts("Failed to detect devices.."); _N();
    }
+
+   /* get local repository */
+   if (!(data.rlist = pndman_repository_init())) {
+      _R(); puts("Failed to initialize local repository."); _N();
+   }
+
+   /* do logic, if everything ok! */
+   if (data.dlist && data.rlist) {
+      /* read configuration */
+      if (readconfig("milkycfg", &data) == RETURN_OK) {
+
+         /* parse arguments */
+         parseargs(argc, argv, &data);
+         ret = processflags(&data) == RETURN_OK ? EXIT_SUCCESS : EXIT_FAILURE;
+      }
+   }
+
+   /* free repositories */
+   pndman_repository_free_all(data.rlist);
 
    /* free devices */
    pndman_device_free_all(data.dlist);
