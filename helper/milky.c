@@ -363,11 +363,24 @@ typedef enum _HELPER_FLAGS
 
 static int hasop(unsigned int flags)
 {
-   return ((flags & OP_YAOURT)  || (flags & OP_SYNC)    ||
-           (flags & OP_REMOVE)  || (flags & OP_UPGRADE) ||
-           (flags & OP_CRAWL)   || (flags & OP_CLEAN)   ||
-           (flags & OP_QUERY)   || (flags & OP_VERSION) ||
+   return ((flags & OP_YAOURT) || (flags & OP_SYNC)    ||
+           (flags & OP_REMOVE) || (flags & OP_UPGRADE) ||
+           (flags & OP_CRAWL)  || (flags & OP_CLEAN)   ||
+           (flags & OP_QUERY)  || (flags & OP_VERSION) ||
            (flags & OP_HELP));
+}
+
+static int isquery(unsigned int flags)
+{
+   return ((flags & OP_QUERY)   || (flags & A_SEARCH) ||
+           (flags & A_CATEGORY) || (flags & A_LIST)   ||
+           (flags & A_INFO));
+}
+
+static int needtarget(unsigned int flags)
+{
+   return  (!(flags & OP_CLEAN) && !isquery(flags) &&
+            !(flags & A_REFRESH));
 }
 
 typedef _HELPER_FLAGS (*_PARSE_FUNC)(char, char*, int*, _USR_DATA*);
@@ -606,6 +619,9 @@ static int readconfig(const char *path, _USR_DATA *data)
  *                  etc.. color functions. Plus it would allow colors to
  *                  be customized more easily! */
 #define _REPO_WONT_DO_ANYTHING   "There is only local repository available, %s operations won't do anything.\n"
+#define _NO_SYNCED_REPO          "None of repositories is synced. Sync the repositories first.\n"
+#define _REPO_SYNCED             "%s, synchorized succesfully.\n"
+#define _REPO_SYNCED_NOT         "%s, failed to synchorize.\n"
 #define _NO_X_SPECIFIED          "No %s specified.\n"
 #define _BAD_DEVICE_SELECTED     "Bad device selected, exiting..\n"
 #define _PND_IGNORED_FORCE       "Package %s is being ignored. Do you want to force?\n"
@@ -685,12 +701,85 @@ static int _yesno_base(char noconfirm, int yn, char *fmt, ...)
    return ret;
 }
 
+static void progressbar(size_t downloaded, size_t total_to_download)
+{
+   size_t fraction, dots, i, pwdt;
+
+   pwdt     = 40; /* width */
+   if (!total_to_download) {
+      _Y(); for (i = 0; i != (downloaded / 1024) % pwdt; ++i) printf("."); _N();
+      printf("\r");
+      fflush(stdout);
+      return;
+   }
+   fraction = downloaded / total_to_download;
+   dots     = fraction * pwdt;
+
+   _Y(); printf("%3zu%% ", fraction * 100); _W();
+   printf("["); _R();
+   for (i = 0; i != dots; ++i) printf("=");
+   for (     ; i != pwdt; ++i) printf(" ");
+   _W(); printf("]\r"); _N();
+   fflush(stdout);
+}
+
+static void skipdialog(_USR_DATA *data)
+{
+   _USR_TARGET *t, *tn;
+   assert(data);
+
+   for (t = data->tlist; t; t = tn) {
+      tn = t->next;
+      if (checkignore(t->id, data))
+         if (!yesno(data, _PND_IGNORED_FORCE, t->id)) {
+            printf(_WARNING_SKIPPING, t->id);
+            data->tlist = freetarget(t);
+         }
+   }
+}
+
 /*  ____  ____   ___   ____ _____ ____ ____
  * |  _ \|  _ \ / _ \ / ___| ____/ ___/ ___|
  * | |_) | |_) | | | | |   |  _| \___ \___ \
  * |  __/|  _ <| |_| | |___| |___ ___) |__) |
  * |_|   |_| \_\\___/ \____|_____|____/____/
  */
+
+static void syncrepos(pndman_repository *rs, _USR_DATA *data)
+{
+   pndman_repository *r;
+   size_t tdl;  /* total download */
+   size_t ttdl; /* total total to download */
+   int ret;
+   unsigned int c = 0;
+
+   for (r = rs; r; r = r->next) ++c;
+   pndman_sync_handle handle[c]; r = rs;
+   for (c = 0; r; r = r->next) pndman_sync_request(&handle[c++],
+               (data->flags & S_NOMERGE)?PNDMAN_SYNC_FULL:0, r);
+
+   while ((ret = pndman_sync() > 0)) {
+      r = rs; tdl = 0; ttdl = 0;
+      for (c = 0; r; r = r->next) {
+         tdl   = (size_t)handle[c].progress.download;
+         ttdl  = (size_t)handle[c].progress.total_to_download;
+         if (handle[c].progress.done) {
+           _B(); printf(_REPO_SYNCED, handle[c].repository->name); _N();
+         }
+         c++;
+      }
+      progressbar(tdl, ttdl);
+   }
+   NEWLINE();
+
+   r = rs;
+   for (c = 0; r; r = r->next) {
+      if (!handle[c].progress.done) printf(_REPO_SYNCED_NOT, strlen(handle[c].repository->name) ?
+                                           handle[c].repository->name : handle[c].repository->url);
+      pndman_sync_request_free(&handle[c]);
+      c++;
+   }
+}
 
 static void searchrepo(pndman_repository *r)
 {
@@ -717,9 +806,35 @@ static int syncprocess(_USR_DATA *data)
       return RETURN_FAIL;
    }
 
-   if (data->flags & A_SEARCH)
+   /* repository syncing is always the first operation */
+   if (data->flags & A_REFRESH)
+      syncrepos(rs, data);
+
+   /* search */
+   if (isquery(data->flags))  {
       for (r = rs; r && strlen(r->url); r = r->next)
          searchrepo(r);
+      return RETURN_OK;
+   }
+
+   /* everything else needs synced repositories */
+   for (r = rs; r && !r->timestamp; r = r->next);
+   if (!r) {
+      _R(); printf(_NO_SYNCED_REPO); _N();
+      return RETURN_FAIL;
+   }
+
+   /* set PND's for targets here */
+
+   /* ask for ignores */
+   skipdialog(data);
+
+   /* -Su with argument is same as -S */
+   if ((data->flags & A_UPGRADE) && !data->tlist) {
+      return RETURN_OK;
+   }
+
+   /* Actual sync here */
 
    return RETURN_OK;
 }
@@ -786,29 +901,15 @@ static int help(_USR_DATA *data)
 
 static int sanitycheck(_USR_DATA *data)
 {
-   _USR_TARGET *t, *tn;
-
    /* expections to sanity checks */
    if ((data->flags & OP_VERSION) || (data->flags & OP_HELP))
       return RETURN_OK;
 
    /* check target list, NOTE: OP_CLEAN && OP_QUERY can perform without targets */
-   if (!data->tlist && (!(data->flags & OP_CLEAN) && !(data->flags & OP_QUERY))) {
+   if (!data->tlist && needtarget(data->flags)) {
       _R(); printf(_NO_X_SPECIFIED, "targets"); _N();
       return RETURN_FAIL;
    } else if (!hasop(data->flags)) data->flags |= OP_YAOURT;
-
-   /* check ignores, same NOTE as above */
-   if (data->ilist && (!(data->flags & OP_CLEAN) && !(data->flags & OP_QUERY))) {
-      for (t = data->tlist; t; t = tn) {
-         tn = t->next;
-         if (checkignore(t->id, data))
-            if (!yesno(data, _PND_IGNORED_FORCE, t->id)) {
-               printf(_WARNING_SKIPPING, t->id);
-               data->tlist = freetarget(t);
-            }
-      }
-   }
 
    /* check flags */
    if (!data->flags || !hasop(data->flags)) {
