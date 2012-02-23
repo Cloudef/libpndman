@@ -159,135 +159,6 @@ static char* strtrim(char *str)
    return str;
 }
 
-/*   ____ ___  _   _ _____ ___ ____
- *  / ___/ _ \| \ | |  ___|_ _/ ___|
- * | |  | | | |  \| | |_   | | |  _
- * | |__| |_| | |\  |  _|  | | |_| |
- *  \____\___/|_| \_|_|   |___\____|
- *
- * __        ______      _    ____  ____  _____ ____
- * \ \      / /  _ \    / \  |  _ \|  _ \| ____|  _ \
- *  \ \ /\ / /| |_) |  / _ \ | |_) | |_) |  _| | |_) |
- *   \ V  V / |  _ <  / ___ \|  __/|  __/| |___|  _ <
- *    \_/\_/  |_| \_\/_/   \_\_|   |_|   |_____|_| \_\
- */
-
-static int _addrepository(char **argv, int argc, void **data)
-{
-   if (!argc) return RETURN_FAIL;
-   if (!(pndman_repository_add(argv[0], ((_USR_DATA*)*data)->rlist)))
-      return RETURN_FAIL;
-   return RETURN_OK;
-}
-
-static int _addignore(char **argv, int argc, void **data)
-{
-   return RETURN_OK;
-}
-
-static int _dontmerge(char **argv, int argc, void **data)
-{
-   return RETURN_OK;
-}
-
-/*   ____ ___  _   _ _____ ___ ____
- *  / ___/ _ \| \ | |  ___|_ _/ ___|
- * | |  | | | |  \| | |_   | | |  _
- * | |__| |_| | |\  |  _|  | | |_| |
- *  \____\___/|_| \_|_|   |___\____|
- */
-
-#define _CONFIG_SEPERATOR  ' '
-#define _CONFIG_COMMENT    '#'
-#define _CONFIG_QUOTE      '\"'
-#define _CONFIG_MAX_VAR    24
-#define _CONFIG_KEY_LEN    24
-#define _CONFIG_ARG_LEN    256
-
-typedef int (*_CONFIG_FUNC)(char **argv, int argc, void **data);
-typedef struct _CONFIG_KEYS
-{
-   const char     key[_CONFIG_KEY_LEN];
-   _CONFIG_FUNC   func;
-} _CONFIG_KEYS;
-
-/* configuration options */
-static _CONFIG_KEYS _CONFIG_KEY[] = {
-   { "repository", _addrepository },
-   { "ignore", _addignore },
-   { "dontmerge", _dontmerge },
-};
-
-static int readconfig_arg(const char *key, _CONFIG_FUNC func, void **data, char *line)
-{
-   int i, p, argc, in_quote;
-   char *argv[_CONFIG_MAX_VAR];
-
-   /* reset args */
-   for (i = 0; i != _CONFIG_MAX_VAR; ++i) {
-      if (!(argv[i] = malloc(_CONFIG_ARG_LEN))) {
-         for (; i >= 0; --i) free(argv[i]);
-         return RETURN_FAIL;
-      }
-      memset(argv[i], 0, _CONFIG_ARG_LEN);
-   }
-
-   /* check if we have any arguments to parse */
-   i = strlen(key) + 1;
-   if (strlen(line) < i) {
-      func(argv, 0, data);
-      for (i = 0; i != _CONFIG_MAX_VAR; ++i) free(argv[i]);
-      return RETURN_OK;
-   }
-
-   /* get args */
-   in_quote = 0; p = 0; argc = 0;
-   for (; i != strlen(line); ++i) {
-      if (line[i] == _CONFIG_QUOTE) in_quote = !in_quote; /* check quote */
-      /* check for seperator, and switch argument if:
-       * we are not inside quote
-       * we actually have something in our argument */
-      else if (line[i] == _CONFIG_SEPERATOR && !in_quote && p) {
-         if (++argc==_CONFIG_MAX_VAR) break;    /* next argument, or break on argument limit */
-         p = 0;                                 /* flush */
-      }
-      /* read character to argument if:
-       * it's not a seperator, expect if we are inside a quote */
-      else if (line[i] != _CONFIG_SEPERATOR || in_quote)
-         argv[argc][p++] = line[i];
-   }
-   if (p) ++argc; /* final argument */
-
-   /* execute the function */
-   func(argv, argc, data);
-   for (i = 0; i != _CONFIG_MAX_VAR; ++i) free(argv[i]);
-   return RETURN_OK;
-}
-
-static int readconfig(const char *path, void *data)
-{
-   unsigned int i;
-   char line[LINE_MAX];
-   FILE *f;
-
-   if (!(f = fopen(path, "r")))
-         return RETURN_FAIL;
-
-   while (fgets(line, LINE_MAX, f)) {
-      strtrim(line); /* trim */
-      if (!strlen(line) || line[0] == _CONFIG_COMMENT) continue; /* skip comments */
-      for (i = 0; _CONFIG_KEY[i].key; ++i) {
-         if (!strncmp(_CONFIG_KEY[i].key, line, strlen(_CONFIG_KEY[i].key))) {
-            readconfig_arg(_CONFIG_KEY[i].key, _CONFIG_KEY[i].func, &data, line);
-            break;
-         }
-      }
-   }
-   fclose(f);
-
-   return RETURN_OK;
-}
-
 /*  ____  _______     _____ ____ _____ ____
  * |  _ \| ____\ \   / /_ _/ ___| ____/ ___|
  * | | | |  _|  \ \ / / | | |   |  _| \___ \
@@ -482,10 +353,138 @@ static void parsearg(char *arg, char *narg, int *skipn, _USR_DATA *data)
 static void parseargs(int argc, char **argv, _USR_DATA *data)
 {
    int i, skipn = 0;
-   for (i = 1; i != argc; ++i) {
+   for (i = 1; i != argc; ++i)
       if (!skipn) parsearg(argv[i], argc==i+1 ? NULL:argv[i+1], &skipn, data);
       else skipn = 0;
+}
+
+/*   ____ ___  _   _ _____ ___ ____
+ *  / ___/ _ \| \ | |  ___|_ _/ ___|
+ * | |  | | | |  \| | |_   | | |  _
+ * | |__| |_| | |\  |  _|  | | |_| |
+ *  \____\___/|_| \_|_|   |___\____|
+ *
+ * __        ______      _    ____  ____  _____ ____
+ * \ \      / /  _ \    / \  |  _ \|  _ \| ____|  _ \
+ *  \ \ /\ / /| |_) |  / _ \ | |_) | |_) |  _| | |_) |
+ *   \ V  V / |  _ <  / ___ \|  __/|  __/| |___|  _ <
+ *    \_/\_/  |_| \_\/_/   \_\_|   |_|   |_____|_| \_\
+ */
+
+static int _addrepository(char **argv, int argc, _USR_DATA *data)
+{
+   if (!argc) return RETURN_FAIL;
+   if (!(pndman_repository_add(argv[0], data->rlist)))
+      return RETURN_FAIL;
+   return RETURN_OK;
+}
+
+static int _addignore(char **argv, int argc, _USR_DATA *data)
+{
+   return RETURN_OK;
+}
+
+static int _nomerge(char **argv, int argc, _USR_DATA *data)
+{
+   data->flags |= S_NOMERGE;
+   return RETURN_OK;
+}
+
+/*   ____ ___  _   _ _____ ___ ____
+ *  / ___/ _ \| \ | |  ___|_ _/ ___|
+ * | |  | | | |  \| | |_   | | |  _
+ * | |__| |_| | |\  |  _|  | | |_| |
+ *  \____\___/|_| \_|_|   |___\____|
+ */
+
+#define _CONFIG_SEPERATOR  ' '
+#define _CONFIG_COMMENT    '#'
+#define _CONFIG_QUOTE      '\"'
+#define _CONFIG_MAX_VAR    24
+#define _CONFIG_KEY_LEN    24
+#define _CONFIG_ARG_LEN    256
+
+typedef int (*_CONFIG_FUNC)(char **argv, int argc, _USR_DATA *data);
+typedef struct _CONFIG_KEYS
+{
+   const char     key[_CONFIG_KEY_LEN];
+   _CONFIG_FUNC   func;
+} _CONFIG_KEYS;
+
+/* configuration options */
+static _CONFIG_KEYS _CONFIG_KEY[] = {
+   { "repository", _addrepository },
+   { "ignore", _addignore },
+   { "nomerge", _nomerge },
+};
+
+static int readconfig_arg(const char *key, _CONFIG_FUNC func, _USR_DATA *data, char *line)
+{
+   int i, p, argc, in_quote;
+   char *argv[_CONFIG_MAX_VAR];
+
+   /* reset args */
+   for (i = 0; i != _CONFIG_MAX_VAR; ++i) {
+      if (!(argv[i] = malloc(_CONFIG_ARG_LEN))) {
+         for (; i >= 0; --i) free(argv[i]);
+         return RETURN_FAIL;
+      }
+      memset(argv[i], 0, _CONFIG_ARG_LEN);
    }
+
+   /* check if we have any arguments to parse */
+   i = strlen(key) + 1;
+   if (strlen(line) < i) {
+      func(argv, 0, data);
+      for (i = 0; i != _CONFIG_MAX_VAR; ++i) free(argv[i]);
+      return RETURN_OK;
+   }
+
+   /* get args */
+   in_quote = 0; p = 0; argc = 0;
+   for (; i != strlen(line); ++i) {
+      if (line[i] == _CONFIG_QUOTE) in_quote = !in_quote; /* check quote */
+      /* check for seperator, and switch argument if:
+       * we are not inside quote
+       * we actually have something in our argument */
+      else if (line[i] == _CONFIG_SEPERATOR && !in_quote && p) {
+         if (++argc==_CONFIG_MAX_VAR) break;    /* next argument, or break on argument limit */
+         p = 0;                                 /* flush */
+      }
+      /* read character to argument if:
+       * it's not a seperator, expect if we are inside a quote */
+      else if (line[i] != _CONFIG_SEPERATOR || in_quote)
+         argv[argc][p++] = line[i];
+   }
+   if (p) ++argc; /* final argument */
+
+   /* execute the function */
+   func(argv, argc, data);
+   for (i = 0; i != _CONFIG_MAX_VAR; ++i) free(argv[i]);
+   return RETURN_OK;
+}
+
+static int readconfig(const char *path, _USR_DATA *data)
+{
+   unsigned int i;
+   char line[LINE_MAX];
+   FILE *f;
+
+   if (!(f = fopen(path, "r")))
+         return RETURN_FAIL;
+
+   while (fgets(line, LINE_MAX, f)) {
+      strtrim(line); /* trim */
+      if (!strlen(line) || line[0] == _CONFIG_COMMENT) continue; /* skip comments */
+      for (i = 0; _CONFIG_KEY[i].key; ++i)
+         if (!strncmp(_CONFIG_KEY[i].key, line, strlen(_CONFIG_KEY[i].key))) {
+            readconfig_arg(_CONFIG_KEY[i].key, _CONFIG_KEY[i].func, data, line);
+            break;
+         }
+   }
+   fclose(f);
+
+   return RETURN_OK;
 }
 
 /*  ___ _   _ ____  _   _ _____
