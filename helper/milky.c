@@ -310,7 +310,7 @@ static int getcfgpath(char *path)
 static pndman_device* setroot(char *root, pndman_device *list)
 {
    pndman_device *d;
-   assert(root);
+   if (!root) return NULL;
    for (d = list; d; d = d->next)
       if (!strcmp(root, d->mount) || !strcmp(root, d->device)) return d;
    if ((d = pndman_device_add(root, list))) return d;
@@ -502,7 +502,7 @@ static void _setroot(char *root, _USR_DATA *data)
 #define _PASSARG(x) { x(narg, data); *skipn = 1; return; }  /* pass next argument to function */
 #define _PASSTHS(x) { x(arg, data); return; }               /* pass current argument to function */
 #define _PASSFLG(x) { data->flags |= x; return; }           /* pass flag */
-static const char* _G_ARG  = "vft";          /* global arguments */
+static const char* _G_ARG  = "vftr";         /* global arguments */
 static const char* _OP_ARG = "SURQPCVh";     /* operations */
 static const char* _S_ARG  = "scilyumda";    /* sync operation arguments */
 static const char* _R_ARG  = "n";            /* remove operation arguments */
@@ -565,6 +565,7 @@ static _HELPER_FLAGS getglob(char c, char *arg, int *skipn, _USR_DATA *data)
    if (c == 'v')        ++_VERBOSE;
    else if (c == 'f')   return GB_FORCE;
    else if (c == 't')   _USE_COLORS = 0;
+   else if (c == 'r')   _setroot(NULL, data);
    return 0;
 }
 
@@ -630,13 +631,13 @@ static void parse(_PARSE_FUNC func, const char *ref, char *arg, char *narg, int 
 /* determites which type of flags we need to parse */
 static void parsearg(char *arg, char *narg, int *skipn, _USR_DATA *data)
 {
-   if (!strncmp(arg, "-r", 2))            _PASSARG(_setroot);     /* argument with argument */
-   if (!strncmp(arg, "--root", 6))        _PASSARG(_setroot);     /* argument with argument */
-   if (!strncmp(arg, "--help", 6))        _PASSFLG(OP_HELP);      /* another way of calling help */
-   if (!strncmp(arg, "--version", 9))     _PASSFLG(OP_VERSION);   /* another way of calling version */
-   if (!strncmp(arg, "--noconfirm", 11))  _PASSFLG(A_NOCONFIRM);  /* noconfirm option */
-   if (!strncmp(arg, "--nomerge", 9))     _PASSFLG(S_NOMERGE);    /* nomerge option */
-   if (arg[0] != '-')                     _PASSTHS(_addtarget);   /* not argument */
+   if (!strcmp(arg, "-r"))             _PASSARG(_setroot);     /* argument with argument */
+   if (!strcmp(arg, "--root"))         _PASSARG(_setroot);     /* argument with argument */
+   if (!strcmp(arg, "--help"))         _PASSFLG(OP_HELP);      /* another way of calling help */
+   if (!strcmp(arg, "--version"))      _PASSFLG(OP_VERSION);   /* another way of calling version */
+   if (!strcmp(arg, "--noconfirm"))    _PASSFLG(A_NOCONFIRM);  /* noconfirm option */
+   if (!strcmp(arg, "--nomerge"))      _PASSFLG(S_NOMERGE);    /* nomerge option */
+   if (arg[0] != '-')                  _PASSTHS(_addtarget);   /* not argument */
    parse(getglob, _G_ARG, arg, narg, skipn, data);
    if (!hasop(data->flags))         parse(getop, _OP_ARG, arg, narg, skipn, data);
    if ((data->flags & OP_SYNC))     parse(getsync, _S_ARG, arg, narg, skipn, data);
@@ -650,7 +651,7 @@ static void parseargs(int argc, char **argv, _USR_DATA *data)
    assert(data);
    int i, skipn = 0;
    for (i = 1; i != argc; ++i)
-      if (!skipn) parsearg(argv[i], argc==i+1 ? NULL:argv[i+1], &skipn, data);
+      if (!skipn) parsearg(argv[i], argc==i+1?NULL:argv[i+i][0]!='-'?argv[i+1]:NULL, &skipn, data);
       else skipn = 0;
 }
 
