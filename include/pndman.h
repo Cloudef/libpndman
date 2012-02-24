@@ -54,8 +54,7 @@ typedef enum pndman_handle_flags
 /* \brief package state flags */
 typedef enum pndman_package_flags
 {
-   PND_INSTALLED = 0x01,
-   PND_UPDATE    = 0x02,
+   PND_UPDATE    = 0x01,
 } pndman_package_flags;
 
 
