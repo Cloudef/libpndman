@@ -321,14 +321,14 @@ const char* pndman_git_commit();
  * I'm just defining them here, since I'm getting sick of implict declaration warnings.
  * So no need to document these here yet. */
 pndman_repository* pndman_repository_init();
-pndman_repository* pndman_repository_add(char *url, pndman_repository *list);
+pndman_repository* pndman_repository_add(const char *url, pndman_repository *list);
 pndman_repository* pndman_repository_free(pndman_repository *repo);
 int pndman_repository_free_all(pndman_repository *repo);
-pndman_device* pndman_device_add(char *path, pndman_device *list);
+pndman_device* pndman_device_add(const char *path, pndman_device *list);
 pndman_device* pndman_device_detect(pndman_device *device);
 pndman_device* pndman_device_free(pndman_device *device);
 int pndman_device_free_all(pndman_device *device);
-int pndman_handle_init(char *name, pndman_handle *handle);
+int pndman_handle_init(const char *name, pndman_handle *handle);
 int pndman_handle_perform(pndman_handle *handle);
 int pndman_handle_commit(pndman_handle *handle, pndman_repository *local);
 int pndman_handle_free(pndman_handle *handle);

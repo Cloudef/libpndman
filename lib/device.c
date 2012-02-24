@@ -187,7 +187,7 @@ static pndman_device* _pndman_device_new(pndman_device **device)
 }
 
 /* \brief Allocate new if exists */
-static pndman_device* _pndman_device_new_if_exist(pndman_device **device, char *check_existing)
+static pndman_device* _pndman_device_new_if_exist(pndman_device **device, const char *check_existing)
 {
    pndman_device *d;
 
@@ -248,7 +248,7 @@ static int _pndman_device_free_all(pndman_device *device)
 }
 
 /* \brief Stat absolute path, and fill the device struct according to that. */
-static pndman_device* _pndman_device_add_absolute(char *path, pndman_device *device)
+static pndman_device* _pndman_device_add_absolute(const char *path, pndman_device *device)
 {
 #ifdef __linux__
    struct stat st;
@@ -288,7 +288,7 @@ static pndman_device* _pndman_device_add_absolute(char *path, pndman_device *dev
  * Check that path is a correct device, mount point or absolute path,
  * and fill the details to device struct according to that.
  */
-static pndman_device* _pndman_device_add(char *path, pndman_device *device)
+static pndman_device* _pndman_device_add(const char *path, pndman_device *device)
 {
 #ifdef __linux__
    FILE *mtab;
@@ -490,7 +490,7 @@ pndman_device* pndman_device_detect(pndman_device *device)
 }
 
 /* \brief Add new device */
-pndman_device* pndman_device_add(char *path, pndman_device *device)
+pndman_device* pndman_device_add(const char *path, pndman_device *device)
 {
    pndman_device *d;
    DEBUG("pndman device add");

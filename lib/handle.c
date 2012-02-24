@@ -275,7 +275,7 @@ static int _pndman_handle_remove(pndman_handle *handle, pndman_repository *local
 /* API */
 
 /* \brief Allocate new pndman_handle for transfer */
-int pndman_handle_init(char *name, pndman_handle *handle)
+int pndman_handle_init(const char *name, pndman_handle *handle)
 {
    DEBUG("pndman_handle_init");
    if (!handle) return RETURN_FAIL;

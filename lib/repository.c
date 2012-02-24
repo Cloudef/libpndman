@@ -131,7 +131,7 @@ static pndman_repository* _pndman_repository_new(pndman_repository **repo)
 }
 
 /* \brief Allocate new if exists */
-static pndman_repository* _pndman_repository_new_if_exist(pndman_repository **repo, char *check_existing)
+static pndman_repository* _pndman_repository_new_if_exist(pndman_repository **repo, const char *check_existing)
 {
    pndman_repository *r;
 
@@ -148,7 +148,7 @@ static pndman_repository* _pndman_repository_new_if_exist(pndman_repository **re
 }
 
 /* \brief Add new repo */
-static pndman_repository* _pndman_repository_add(char *url, pndman_repository *repo)
+static pndman_repository* _pndman_repository_add(const char *url, pndman_repository *repo)
 {
    if (!_pndman_repository_new_if_exist(&repo, url))
       return NULL;
@@ -214,7 +214,7 @@ pndman_repository* pndman_repository_init()
 }
 
 /* \brief Add new repository */
-pndman_repository* pndman_repository_add(char *url, pndman_repository *repo)
+pndman_repository* pndman_repository_add(const char *url, pndman_repository *repo)
 {
    DEBUG("pndman repo add");
    if (!repo) return NULL;
