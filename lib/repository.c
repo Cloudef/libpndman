@@ -92,11 +92,16 @@ int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *repo)
    pndman_package *p;
    assert(pnd && repo);
 
+   if (repo->pnd == pnd) {
+      repo->pnd = repo->pnd->next;
+      _pndman_free_pnd(pnd);
+      return RETURN_OK;
+   }
    for (p = repo->pnd; p; p = p->next)
       if (p->next == pnd) {
          if (p->next->next) p->next = p->next->next;
          else               p->next = NULL;
-         free(pnd);
+         _pndman_free_pnd(pnd);
          return RETURN_OK;
       }
    return RETURN_FAIL;
