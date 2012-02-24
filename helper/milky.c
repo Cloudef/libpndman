@@ -61,6 +61,16 @@ typedef struct _USR_DATA
    _USR_IGNORE       *ilist;
 } _USR_DATA;
 
+/* initialize _USR_DATA struct */
+static void init_usrdata(_USR_DATA *data)
+{
+   assert(data);
+   data->flags = 0;
+   data->dlist = NULL; data->root  = NULL;
+   data->rlist = NULL; data->tlist = NULL;
+   data->ilist = NULL;
+}
+
 /*   ____ ___  _     ___  ____  ____
  *  / ___/ _ \| |   / _ \|  _ \/ ___|
  * | |  | | | | |  | | | | |_) \___ \
@@ -68,6 +78,7 @@ typedef struct _USR_DATA
  *  \____\___/|_____\___/|_| \_\____/
  */
 
+/* red */
 static void _R(void)
 {
    if (!_USE_COLORS) return;
@@ -80,6 +91,7 @@ static void _R(void)
 #endif
 }
 
+/* green */
 static void _G(void)
 {
    if (!_USE_COLORS) return;
@@ -92,6 +104,7 @@ static void _G(void)
 #endif
 }
 
+/* yellow */
 static void _Y(void)
 {
    if (!_USE_COLORS) return;
@@ -104,6 +117,7 @@ static void _Y(void)
 #endif
 }
 
+/* blue */
 static void _B(void)
 {
    if (!_USE_COLORS) return;
@@ -116,6 +130,7 @@ static void _B(void)
 #endif
 }
 
+/* white */
 static void _W(void)
 {
    if (!_USE_COLORS) return;
@@ -128,6 +143,7 @@ static void _W(void)
 #endif
 }
 
+/* normal */
 static void _N(void)
 {
    if (!_USE_COLORS) return;
@@ -149,6 +165,7 @@ static void _N(void)
  *  \___/  |_| |___|_____|
  */
 
+/* trim string */
 static size_t strtrim(char *str)
 {
    size_t len;
@@ -181,6 +198,7 @@ static size_t strtrim(char *str)
  * |____/|_____|  \_/  |___\____|_____|____/
  */
 
+/* root device where we perform all our operations */
 static pndman_device* setroot(char *root, pndman_device *list)
 {
    pndman_device *d;
@@ -199,7 +217,8 @@ static pndman_device* setroot(char *root, pndman_device *list)
  *   |_/_/   \_\_| \_\\____|_____| |_| |____/
  */
 
-static _USR_TARGET* addtarget(char *id, _USR_TARGET **list)
+/* add target package, which to perform operation on */
+static _USR_TARGET* addtarget(const char *id, _USR_TARGET **list)
 {
    _USR_TARGET *new, *t;
    assert(id);
@@ -221,6 +240,7 @@ static _USR_TARGET* addtarget(char *id, _USR_TARGET **list)
    return new;
 }
 
+/* remove target from list */
 static _USR_TARGET* freetarget(_USR_TARGET *t)
 {
    _USR_TARGET *f;
@@ -232,6 +252,7 @@ static _USR_TARGET* freetarget(_USR_TARGET *t)
    return f == t ? NULL : f;                 /* return first or null */
 }
 
+/* remove all targets */
 static void freetarget_all(_USR_TARGET *t)
 {
    _USR_TARGET *n;
@@ -246,6 +267,7 @@ static void freetarget_all(_USR_TARGET *t)
  * |___\____|_| \_|\___/|_| \_\_____|____/
  */
 
+/* add package which will be ignored from target list */
 static _USR_IGNORE* addignore(char *id, _USR_IGNORE **list)
 {
    _USR_IGNORE *new, *t;
@@ -267,6 +289,7 @@ static _USR_IGNORE* addignore(char *id, _USR_IGNORE **list)
    return new;
 }
 
+/* free ignored package from list */
 static _USR_IGNORE* freeignore(_USR_IGNORE *t)
 {
    _USR_IGNORE *f;
@@ -278,6 +301,7 @@ static _USR_IGNORE* freeignore(_USR_IGNORE *t)
    return f == t ? NULL : f;                 /* return first or null */
 }
 
+/* free all ignored packages */
 static void freeignore_all(_USR_IGNORE *t)
 {
    _USR_IGNORE *n;
@@ -285,15 +309,16 @@ static void freeignore_all(_USR_IGNORE *t)
    for (; t; t = n) { n = t->next; free(t); } /* store next, and free this */
 }
 
-static int checkignore(char *id, _USR_DATA *data)
+/* check if package id is being ignored */
+static int checkignore(const char *id, _USR_DATA *data)
 {
    _USR_TARGET *t;
    _USR_IGNORE *i;
 
    for (i = data->ilist; i; i = i->next)
       for (t = data->tlist; t; t = t->next)
-         if (!strcmp(i->id, t->id)) return 1;
-   return 0;
+         if (!strcmp(i->id, t->id)) return RETURN_TRUE;
+   return RETURN_FALSE;
 }
 
 /*  ____   _    ____  ____  _____
@@ -309,21 +334,14 @@ static int checkignore(char *id, _USR_DATA *data)
  *    \_/\_/  |_| \_\/_/   \_\_|   |_|   |_____|_| \_\
  */
 
-static void init_usrdata(_USR_DATA *data)
-{
-   assert(data);
-   data->flags = 0;
-   data->dlist = NULL; data->root  = NULL;
-   data->rlist = NULL; data->tlist = NULL;
-   data->ilist = NULL;
-}
-
+/* addtarget wrapper for argument parsing */
 static void _addtarget(char *id, _USR_DATA *data)
 {
    assert(data);
    addtarget(id, &data->tlist);
 }
 
+/* setroot wrapper for argument parsing */
 static void _setroot(char *root, _USR_DATA *data)
 {
    assert(data);
@@ -337,15 +355,16 @@ static void _setroot(char *root, _USR_DATA *data)
  * /_/   \_\_| \_\\____|\___/|_|  |_|_____|_| \_| |_| |____/
  */
 
-#define _PASSARG(x) { x(narg, data); *skipn = 1; return; }
-#define _PASSTHS(x) { x(arg, data); return; }
-#define _PASSFLG(x) { data->flags |= x; return; }
+#define _PASSARG(x) { x(narg, data); *skipn = 1; return; }  /* pass next argument to function */
+#define _PASSTHS(x) { x(arg, data); return; }               /* pass current argument to function */
+#define _PASSFLG(x) { data->flags |= x; return; }           /* pass flag */
 static const char* _G_ARG  = "vft";          /* global arguments */
 static const char* _OP_ARG = "SURQPCVh";     /* operations */
 static const char* _S_ARG  = "scilyumda";    /* sync operation arguments */
 static const char* _R_ARG  = "n";            /* remove operation arguments */
 static const char* _Q_ARG  = "scilu";        /* query operation arguments */
 
+/* milkyhelper's operation flags */
 typedef enum _HELPER_FLAGS
 {
    GB_FORCE    = 0x000001, OP_YAOURT    = 0x000002,
@@ -360,7 +379,9 @@ typedef enum _HELPER_FLAGS
    A_APPS      = 0x040000, A_NOSAVE     = 0x080000,
    S_NOMERGE   = 0x100000, A_NOCONFIRM  = 0x200000,
 } _HELPER_FLAGS;
+typedef _HELPER_FLAGS (*_PARSE_FUNC)(char, char*, int*, _USR_DATA*); /* function prototype for parsing flags */
 
+/* do we have operation? */
 static int hasop(unsigned int flags)
 {
    return ((flags & OP_YAOURT) || (flags & OP_SYNC)    ||
@@ -370,6 +391,7 @@ static int hasop(unsigned int flags)
            (flags & OP_HELP));
 }
 
+/* are we querying information? */
 static int isquery(unsigned int flags)
 {
    return ((flags & OP_QUERY)   || (flags & A_SEARCH) ||
@@ -377,13 +399,15 @@ static int isquery(unsigned int flags)
            (flags & A_INFO));
 }
 
+/* do we need targets for our operation? */
 static int needtarget(unsigned int flags)
 {
    return  (!(flags & OP_CLEAN) && !isquery(flags) &&
             !(flags & A_REFRESH));
 }
 
-typedef _HELPER_FLAGS (*_PARSE_FUNC)(char, char*, int*, _USR_DATA*);
+
+/* parse global flags */
 static _HELPER_FLAGS getglob(char c, char *arg, int *skipn, _USR_DATA *data)
 {
    if (c == 'v')        ++_VERBOSE;
@@ -392,6 +416,7 @@ static _HELPER_FLAGS getglob(char c, char *arg, int *skipn, _USR_DATA *data)
    return 0;
 }
 
+/* parse operation flags */
 static _HELPER_FLAGS getop(char c, char *arg, int *skipn, _USR_DATA *data)
 {
    if (c == 'S')        return OP_SYNC;
@@ -405,6 +430,7 @@ static _HELPER_FLAGS getop(char c, char *arg, int *skipn, _USR_DATA *data)
    return 0;
 }
 
+/* parse sync flags */
 static _HELPER_FLAGS getsync(char c, char *arg, int *skipn, _USR_DATA *data)
 {
    if (c == 's')        return A_SEARCH;
@@ -419,12 +445,14 @@ static _HELPER_FLAGS getsync(char c, char *arg, int *skipn, _USR_DATA *data)
    return 0;
 }
 
+/* parse removal flags */
 static _HELPER_FLAGS getremove(char c, char *arg, int *skipn, _USR_DATA *data)
 {
    if (c == 'n') return A_NOSAVE;
    return 0;
 }
 
+/* parse query flags */
 static _HELPER_FLAGS getquery(char c, char *arg, int *skipn, _USR_DATA *data)
 {
    if (c == 's')        return A_SEARCH;
@@ -435,6 +463,7 @@ static _HELPER_FLAGS getquery(char c, char *arg, int *skipn, _USR_DATA *data)
    return 0;
 }
 
+/* passes the information for correct flag parser function, and does extra handling if needed */
 static void parse(_PARSE_FUNC func, const char *ref, char *arg, char *narg, int *skipn, _USR_DATA *data)
 {
    int x, y;
@@ -446,12 +475,14 @@ static void parse(_PARSE_FUNC func, const char *ref, char *arg, char *narg, int 
          }
 }
 
+/* determites which type of flags we need to parse */
 static void parsearg(char *arg, char *narg, int *skipn, _USR_DATA *data)
 {
    if (!strncmp(arg, "-r", 2))            _PASSARG(_setroot);     /* argument with argument */
    if (!strncmp(arg, "--help", 6))        _PASSFLG(OP_HELP);      /* another way of calling help */
    if (!strncmp(arg, "--version", 9))     _PASSFLG(OP_VERSION);   /* another way of calling version */
    if (!strncmp(arg, "--noconfirm", 11))  _PASSFLG(A_NOCONFIRM);  /* noconfirm option */
+   if (!strncmp(arg, "--nomerge", 9))     _PASSFLG(S_NOMERGE);    /* nomerge option */
    if (arg[0] != '-')                     _PASSTHS(_addtarget);   /* not argument */
    parse(getglob, _G_ARG, arg, narg, skipn, data);
    if (!hasop(data->flags))         parse(getop, _OP_ARG, arg, narg, skipn, data);
@@ -460,6 +491,7 @@ static void parsearg(char *arg, char *narg, int *skipn, _USR_DATA *data)
    if ((data->flags & OP_QUERY))    parse(getquery, _Q_ARG, arg, narg, skipn, data);
 }
 
+/* loop for argument parsing, handles argument skipping for arguments with arguments */
 static void parseargs(int argc, char **argv, _USR_DATA *data)
 {
    assert(data);
@@ -482,15 +514,20 @@ static void parseargs(int argc, char **argv, _USR_DATA *data)
  *    \_/\_/  |_| \_\/_/   \_\_|   |_|   |_____|_| \_\
  */
 
+/* configuration wrapper for adding repository */
 static int _addrepository(char **argv, int argc, _USR_DATA *data)
 {
+   pndman_repository *r;
+   pndman_device      *d;
    assert(data);
    if (!argc) return RETURN_FAIL;
-   if (!(pndman_repository_add(argv[0], data->rlist)))
+   if (!(r = pndman_repository_add(argv[0], data->rlist)))
       return RETURN_FAIL;
+   for (d = data->dlist; d; d = d->next) pndman_read_from_device(r, d);
    return RETURN_OK;
 }
 
+/* configuration wrapper for ignoring package */
 static int _addignore(char **argv, int argc, _USR_DATA *data)
 {
    int i;
@@ -499,6 +536,7 @@ static int _addignore(char **argv, int argc, _USR_DATA *data)
    return RETURN_OK;
 }
 
+/* configuration wrapper for setting nomerge option */
 static int _nomerge(char **argv, int argc, _USR_DATA *data)
 {
    assert(data);
@@ -513,6 +551,7 @@ static int _nomerge(char **argv, int argc, _USR_DATA *data)
  *  \____\___/|_| \_|_|   |___\____|
  */
 
+/* configuration syntax settings */
 #define _CONFIG_SEPERATOR  ' '
 #define _CONFIG_COMMENT    '#'
 #define _CONFIG_QUOTE      '\"'
@@ -520,7 +559,7 @@ static int _nomerge(char **argv, int argc, _USR_DATA *data)
 #define _CONFIG_KEY_LEN    24
 #define _CONFIG_ARG_LEN    256
 
-typedef int (*_CONFIG_FUNC)(char **argv, int argc, _USR_DATA *data);
+typedef int (*_CONFIG_FUNC)(char **argv, int argc, _USR_DATA *data); /* setter prototype */
 typedef struct _CONFIG_KEYS
 {
    const char     key[_CONFIG_KEY_LEN];
@@ -535,6 +574,7 @@ static _CONFIG_KEYS _CONFIG_KEY[] = {
    { "<this ends the list>",  NULL },
 };
 
+/* read arguments from key and pass to the function */
 static int readconfig_arg(const char *key, _CONFIG_FUNC func, _USR_DATA *data, char *line)
 {
    int i, p, argc, in_quote;
@@ -581,6 +621,7 @@ static int readconfig_arg(const char *key, _CONFIG_FUNC func, _USR_DATA *data, c
    return RETURN_OK;
 }
 
+/* read keys from configuration file */
 static int readconfig(const char *path, _USR_DATA *data)
 {
    unsigned int i;
@@ -600,7 +641,6 @@ static int readconfig(const char *path, _USR_DATA *data)
          }
    }
    fclose(f);
-
    return RETURN_OK;
 }
 
@@ -622,6 +662,14 @@ static int readconfig(const char *path, _USR_DATA *data)
 #define _NO_SYNCED_REPO          "None of repositories is synced. Sync the repositories first.\n"
 #define _REPO_SYNCED             "%s, synchorized succesfully.\n"
 #define _REPO_SYNCED_NOT         "%s, failed to synchorize.\n"
+#define _PND_NOT_FOUND           "Warning: no such package %s\n"
+#define _UPGRADE_DONE            "Upgraded %s\n"
+#define _UPGRADE_FAIL            "Failed to upgrade %s\n"
+#define _INSTALL_DONE            "Installed %s\n"
+#define _INSTALL_FAIL            "Failed to install %s\n"
+#define _REMOVE_DONE             "Removed %s\n"
+#define _REMOVE_FAIL             "Failed to remove %s\n"
+#define _UNKNOWN_OPERATION       "unknown operation: %s"
 #define _NO_X_SPECIFIED          "No %s specified.\n"
 #define _BAD_DEVICE_SELECTED     "Bad device selected, exiting..\n"
 #define _PND_IGNORED_FORCE       "Package %s is being ignored. Do you want to force?\n"
@@ -636,6 +684,7 @@ static int readconfig(const char *path, _USR_DATA *data)
 /* other customizable */
 #define NEWLINE()                puts("");
 
+/* dialog for asking root device where to perform operations on, when no such device isn't available yet */
 static int rootdialog(_USR_DATA *data)
 {
    unsigned int i, s;
@@ -669,6 +718,7 @@ static int rootdialog(_USR_DATA *data)
    return RETURN_FAIL;
 }
 
+/* Yes/No question dialog */
 static int _yesno_dialog(char noconfirm, char yn, char *fmt, va_list args)
 {
    char response[32];
@@ -680,27 +730,28 @@ static int _yesno_dialog(char noconfirm, char yn, char *fmt, va_list args)
 
    fflush(stdout);
    if (!fgets(response, sizeof(response), stdin))
-      return 0;
+      return RETURN_FALSE;
 
    if (!strtrim(response)) return yn;
-   if (!strcasecmp(response, "Y") || !strcasecmp(response, "YES"))   return 1;
-   if (!strcasecmp(response, "N") || !strcasecmp(response, "NO"))    return 0;
-   return 0;
+   if (!strcasecmp(response, "Y") || !strcasecmp(response, "YES"))   return RETURN_TRUE;
+   if (!strcasecmp(response, "N") || !strcasecmp(response, "NO"))    return RETURN_FALSE;
+   return RETURN_FALSE;
 }
 
-#define yesno(c, x, ...) _yesno_base(c->flags & A_NOCONFIRM, 1, x, ##__VA_ARGS__)
-#define noyes(c, x, ...) _yesno_base(c->flags & A_NOCONFIRM, 0, x, ##__VA_ARGS__)
+#define yesno(c, x, ...) _yesno_base(c->flags & A_NOCONFIRM, 1, x, ##__VA_ARGS__) /* shows [Y/n] dialog, Y = default */
+#define noyes(c, x, ...) _yesno_base(c->flags & A_NOCONFIRM, 0, x, ##__VA_ARGS__) /* shows [y/N] dialog, N = default */
+
+/* base for macro */
 static int _yesno_base(char noconfirm, int yn, char *fmt, ...)
 {
-   int ret;
-   va_list args;
-
+   int ret; va_list args;
    va_start(args, fmt);
    ret = _yesno_dialog(noconfirm, yn, fmt, args);
    va_end(args);
    return ret;
 }
 
+/* show progressbar, shows dots instead when total_to_download is not known */
 static void progressbar(size_t downloaded, size_t total_to_download)
 {
    size_t fraction, dots, i, pwdt;
@@ -723,6 +774,7 @@ static void progressbar(size_t downloaded, size_t total_to_download)
    fflush(stdout);
 }
 
+/* ask whether to skip ignored packages that where still passed as target by user */
 static void skipdialog(_USR_DATA *data)
 {
    _USR_TARGET *t, *tn;
@@ -745,11 +797,11 @@ static void skipdialog(_USR_DATA *data)
  * |_|   |_| \_\\___/ \____|_____|____/____/
  */
 
+/* synchorize repositories */
 static void syncrepos(pndman_repository *rs, _USR_DATA *data)
 {
    pndman_repository *r;
-   size_t tdl;  /* total download */
-   size_t ttdl; /* total total to download */
+   size_t tdl, ttdl; /* total download, total total to download */
    int ret;
    unsigned int c = 0;
 
@@ -766,7 +818,7 @@ static void syncrepos(pndman_repository *rs, _USR_DATA *data)
          if (handle[c].progress.done) {
            _B(); printf(_REPO_SYNCED, handle[c].repository->name); _N();
          }
-         c++;
+         ++c;
       }
       progressbar(tdl, ttdl);
    }
@@ -777,34 +829,151 @@ static void syncrepos(pndman_repository *rs, _USR_DATA *data)
       if (!handle[c].progress.done) printf(_REPO_SYNCED_NOT, strlen(handle[c].repository->name) ?
                                            handle[c].repository->name : handle[c].repository->url);
       pndman_sync_request_free(&handle[c]);
-      c++;
+      ++c;
    }
 }
 
-static void searchrepo(pndman_repository *r)
+/* search repository */
+static int searchrepo(pndman_repository *r)
 {
    pndman_package *p;
    assert(r);
 
    /* lame search for now */
    for (p = r->pnd; p; p = p->next) puts(p->id);
-}
-
-static int yaourtprocess(_USR_DATA *data)
-{
    return RETURN_OK;
 }
 
+/* get pnd from target id */
+static int targetpnd(pndman_repository *r, _USR_DATA *data)
+{
+   pndman_package *p;
+   _USR_TARGET    *t;
+   assert(r && data);
+   for (t = data->tlist; t; t = t->next)
+      for (; r; r = r->next) {
+         for (p = r->pnd; p; p = p->next)
+            if (strstr(p->id, t->id)) { t->pnd = p; break; }
+         if (r == data->rlist) break; /* we only want local repository */
+      }
+   for (t = data->tlist; t; t = t->next)
+      if (!t->pnd) {
+         _R(); printf(_PND_NOT_FOUND, t->id); _N();
+         data->tlist = freetarget(t);
+      }
+   return data->tlist ? 1 : 0;
+}
+
+/* make pnd's which have update a target */
+static void targetup(pndman_repository *r, _USR_DATA *data)
+{
+   pndman_package *p;
+   assert(r && data);
+   for (; r; r = r->next)
+      for (p = r->pnd; p; p = p->next)
+         if ((p->flags & PND_UPDATE) && !checkignore(p->id, data))
+            addtarget(p->id, &data->tlist);
+}
+
+/* get handle flags from milkyhelper's flags */
+static unsigned int handleflagsfromflags(unsigned int flags)
+{
+   unsigned int hflags = 0;
+   if ((flags & OP_SYNC))           hflags |= PNDMAN_HANDLE_INSTALL;
+   else if ((flags & OP_REMOVE))    hflags |= PNDMAN_HANDLE_REMOVE;
+   if ((flags & GB_FORCE))          hflags |= PNDMAN_HANDLE_FORCE;
+   if ((flags & A_MENU))            hflags |= PNDMAN_HANDLE_INSTALL_MENU;
+   else if ((flags & A_DESKTOP))    hflags |= PNDMAN_HANDLE_INSTALL_DESKTOP;
+   else if ((flags & A_APPS))       hflags |= PNDMAN_HANDLE_INSTALL_APPS;
+   return hflags;
+}
+
+/* get operation string from milkyhelper's flags */
+static const char* opstrfromflags(char done, unsigned int flags)
+{
+   if ((flags & A_UPGRADE) || (flags & OP_UPGRADE))
+                                 return done?_UPGRADE_DONE:_UPGRADE_FAIL;
+   else if ((flags & OP_SYNC))   return done?_INSTALL_DONE:_INSTALL_FAIL;
+   else if ((flags & OP_REMOVE)) return done?_REMOVE_DONE:_REMOVE_FAIL;
+   return _UNKNOWN_OPERATION;
+}
+
+/* perform target's action */
+static int targetperform(_USR_DATA *data)
+{
+   _USR_TARGET *t;
+   size_t tdl, ttdl; /* total download, total total to download */
+   int ret;
+   unsigned int c = 0;
+   assert(data);
+
+   for (t = data->tlist; t; t = t->next) ++c;
+   pndman_handle handle[c]; t = data->tlist;
+   for (c = 0; t; t = t->next) {
+      pndman_handle_init((char*)t->id, &handle[c]);
+      handle[c].pnd     = t->pnd;
+      handle[c].device  = data->root;
+      handle[c].flags   = handleflagsfromflags(data->flags);
+      pndman_handle_perform(&handle[c]);
+   }
+
+   while ((ret = pndman_download() > 0)) {
+      t = data->tlist; tdl = 0; ttdl = 0;
+      for (c = 0; t; t = t->next) {
+         tdl  = (size_t)handle[c].progress.download;
+         ttdl = (size_t)handle[c].progress.total_to_download;
+         if (handle[c].progress.done) {
+            _B(); printf(opstrfromflags(1,data->flags), handle[c].name); _N();
+         }
+         ++c;
+      }
+      progressbar(tdl, ttdl);
+   }
+   NEWLINE();
+
+   t = data->tlist;
+   for (c = 0; t; t = t->next) {
+      if (!handle[c].progress.done) printf(opstrfromflags(0,data->flags), handle[c].name);
+      pndman_handle_free(&handle[c]);
+      ++c;
+   }
+   return RETURN_OK;
+}
+
+/* check that we have remote repository */
+static pndman_repository* checkremoterepo(const char *str, _USR_DATA *data)
+{
+   assert(str && data);
+   if (data->rlist->next) return data->rlist->next;
+   else { _R(); printf(_REPO_WONT_DO_ANYTHING, str); _N(); }
+   return NULL;
+}
+
+/* check tha we have synchorized repository */
+static int checksyncedrepo(pndman_repository *r)
+{
+   assert(r);
+   for (; r && !r->timestamp; r = r->next);
+   if (!r) { _R(); printf(_NO_SYNCED_REPO); _N(); }
+   else return RETURN_TRUE;
+   return RETURN_FALSE;
+}
+
+/* yaourt operation logic */
+static int yaourtprocess(_USR_DATA *data)
+{
+   _R(); puts("Yaourt mode not yet implented..."); _N();
+   return RETURN_OK;
+}
+
+/* sync operation logic */
 static int syncprocess(_USR_DATA *data)
 {
    pndman_repository *r, *rs;
 
-   r = data->rlist;
-   if (r->next) rs = r->next;
-   else {
-      _R(); printf(_REPO_WONT_DO_ANYTHING, "sync"); _N();
+   /* check that we aren't using local repository */
+   if (!(rs = checkremoterepo("sync", data)))
       return RETURN_FAIL;
-   }
 
    /* repository syncing is always the first operation */
    if (data->flags & A_REFRESH)
@@ -818,63 +987,71 @@ static int syncprocess(_USR_DATA *data)
    }
 
    /* everything else needs synced repositories */
-   for (r = rs; r && !r->timestamp; r = r->next);
-   if (!r) {
-      _R(); printf(_NO_SYNCED_REPO); _N();
-      return RETURN_FAIL;
-   }
-
-   /* set PND's for targets here */
+   if (!checksyncedrepo(rs)) return RETURN_FAIL;
 
    /* ask for ignores */
    skipdialog(data);
 
-   /* -Su with argument is same as -S */
-   if ((data->flags & A_UPGRADE) && !data->tlist) {
-      return RETURN_OK;
-   }
+   /* upgrade without no targets given, add all targets that needs update */
+   if ((data->flags & A_UPGRADE) && !data->tlist)
+      targetup(rs, data);
+
+   /* set PND's for targets here */
+   if (!targetpnd(rs, data)) return RETURN_FAIL;
 
    /* Actual sync here */
-
-   return RETURN_OK;
+   return targetperform(data);
 }
 
+/* upgrade operation logic */
 static int upgradeprocess(_USR_DATA *data)
 {
-   pndman_repository *r, *rs;
+   pndman_repository *rs;
 
-   r = data->rlist;
-   if (r->next) rs = r->next;
-   else {
-      _R(); printf(_REPO_WONT_DO_ANYTHING, "upgrade"); _N();
+   /* check that we aren't using local repository */
+   if (!(rs = checkremoterepo("upgrade", data)))
       return RETURN_FAIL;
-   }
 
-   return RETURN_OK;
+   /* we need synced repo as well */
+   if (!checksyncedrepo(rs)) return RETURN_FAIL;
+
+   /* handle targets */
+   skipdialog(data);
+   if (!data->tlist)          targetup(rs, data);
+   if (!targetpnd(rs, data))  return RETURN_FAIL;
+
+   /* do oepration */
+   return targetperform(data);
 }
 
+/* remove operation logic */
 static int removeprocess(_USR_DATA *data)
 {
-   return RETURN_OK;
+   /* search local repo from the targets */
+   if (!targetpnd(data->rlist, data)) return RETURN_FAIL;
+   return targetperform(data);
 }
 
+/* query operation logic */
 static int queryprocess(_USR_DATA *data)
 {
    /* lame query for now */
-   searchrepo(data->rlist);
-   return RETURN_OK;
+   return searchrepo(data->rlist);
 }
 
+/* crawl operation logic */
 static int crawlprocess(_USR_DATA *data)
 {
    return RETURN_OK;
 }
 
+/* clean operation logic */
 static int cleanprocess(_USR_DATA *data)
 {
    return RETURN_OK;
 }
 
+/* version operation logic */
 static int version(_USR_DATA *data)
 {
    _Y(); printf("libpndman && milkyhelper\n\n");
@@ -886,6 +1063,7 @@ static int version(_USR_DATA *data)
    return RETURN_OK;
 }
 
+/* help operation logic */
 static int help(_USR_DATA *data)
 {
    _R(); printf("Read the source code for help.\n"); _N();
@@ -899,6 +1077,7 @@ static int help(_USR_DATA *data)
  * |_|   |_____/_/   \_\____|____/
  */
 
+/* sanity check the user data before proceeding to logic flow */
 static int sanitycheck(_USR_DATA *data)
 {
    /* expections to sanity checks */
@@ -927,6 +1106,7 @@ static int sanitycheck(_USR_DATA *data)
    return RETURN_OK;
 }
 
+/* process all flags that were parsed from program arguments */
 static int processflags(_USR_DATA *data)
 {
    _USR_TARGET *t;
@@ -1019,6 +1199,7 @@ static void sigint(int sig)
  * |_|  |_/_/   \_\___|_| \_|
  */
 
+/* try to guess what this does */
 int main(int argc, char **argv)
 {
    int ret;
