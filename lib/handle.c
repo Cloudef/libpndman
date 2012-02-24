@@ -187,7 +187,7 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    if (!appdata) return RETURN_FAIL;
 
    /* complete handle's path */
-   snprintf(tmp, PATH_MAX-1, "%s/%p", appdata, handle);
+   snprintf(tmp, PATH_MAX-1, "%s/%p.tmp", appdata, handle);
 
    /* close the download file, so we can move it, and md5 check */
    if (handle->file) fclose(handle->file);
@@ -204,11 +204,12 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    if (md5 && strcmp(md5, handle->pnd->md5)) {
       if (!(handle->flags & PNDMAN_HANDLE_FORCE)) {
          DEBUG("MD5 check fail");
+         free(md5);
          return RETURN_FAIL;
       }
       else
          DEBUG("MD5 differ, but force anyways");
-   }
+   } free(md5);
 
    /* get install directory */
    strncpy(install, handle->device->mount, PATH_MAX-1);
@@ -245,7 +246,6 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    DEBUG("install mark");
 
    /* mark installed */
-   pnd->flags |= PND_INSTALLED;
    strcpy(pnd->path, install);
    return RETURN_OK;
 }
@@ -257,16 +257,13 @@ static int _pndman_handle_remove(pndman_handle *handle, pndman_repository *local
    DEBUG("handle remove");
 
    /* sanity checks */
-   if (!(handle->pnd->flags & PND_INSTALLED))
-      return RETURN_FAIL;
    if (!(f = fopen(handle->pnd->path, "r")))
       return RETURN_FAIL;
    fclose(f);
 
    /* remove */
    DEBUGP("remove: %s\n", handle->pnd->path);
-   if (unlink(handle->pnd->path) != 0)
-      return RETURN_FAIL;
+   if (unlink(handle->pnd->path) != 0) return RETURN_FAIL;
 
    /* remove from local repo */
    return _pndman_repository_free_pnd(handle->pnd, local);
@@ -315,7 +312,7 @@ int pndman_handle_free(pndman_handle *handle)
       /* check appdata */
       appdata = _pndman_device_get_appdata(handle->device);
       if (appdata) {
-         snprintf(tmp_path, PATH_MAX-1, "%s/%p", appdata, handle);
+         snprintf(tmp_path, PATH_MAX-1, "%s/%p.tmp", appdata, handle);
          unlink(tmp_path);
       }
    }
