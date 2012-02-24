@@ -183,7 +183,6 @@ static pndman_device* _pndman_device_new(pndman_device **device)
    new->prev       = *device;
    (*device)->next = new;
    *device         = new;
-   _pndman_remove_tmp_files(*device); /* remove tmp files */
    return *device;
 }
 
@@ -483,15 +482,21 @@ char* _pndman_device_get_appdata(pndman_device *device)
 /* \brief Add all found devices */
 pndman_device* pndman_device_detect(pndman_device *device)
 {
+   pndman_device *d, *d2;
    DEBUG("pndman device detect");
-   return _pndman_device_detect(device);
+   if ((d = _pndman_device_detect(device)))
+      for (d2 = d; d2; d2 = d2->next) _pndman_remove_tmp_files(d2);
+   return d;
 }
 
 /* \brief Add new device */
 pndman_device* pndman_device_add(char *path, pndman_device *device)
 {
+   pndman_device *d;
    DEBUG("pndman device add");
-   return _pndman_device_add(path, device);
+   if ((d = _pndman_device_add(path, device)))
+      _pndman_remove_tmp_files(d);
+   return d;
 }
 
 /* \brief Free one device */
