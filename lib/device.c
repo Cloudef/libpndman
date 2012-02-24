@@ -221,6 +221,9 @@ static pndman_device* _pndman_device_free(pndman_device *device)
    /* get first item */
    first = device->prev ? _pndman_device_first(device) : device->next;
 
+   /* remove temp files */
+   _pndman_remove_tmp_files(device); /* remove tmp files */
+
    /* free the actual device */
    free(device);
    return first;
@@ -238,6 +241,7 @@ static int _pndman_device_free_all(pndman_device *device)
    /* free everything */
    for(; device; device = next) {
       next = device->next;
+      _pndman_remove_tmp_files(device);
       free(device);
    }
 
