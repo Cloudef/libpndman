@@ -51,13 +51,6 @@ typedef enum pndman_handle_flags
    PNDMAN_HANDLE_INSTALL_APPS    = 0x020,
 } pndman_handle_flags;
 
-/* \brief package state flags */
-typedef enum pndman_package_flags
-{
-   PND_UPDATE    = 0x01,
-} pndman_package_flags;
-
-
 /* \brief type enum for version struct */
 typedef enum pndman_version_type
 {
@@ -205,7 +198,7 @@ typedef struct pndman_package
    pndman_previewpic *previewpic;
    pndman_category   *category;
 
-   unsigned int flags;
+   struct pndman_package *update;
    struct pndman_package *next_installed;
    struct pndman_package *next;
 } pndman_package;
