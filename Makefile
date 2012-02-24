@@ -83,7 +83,7 @@ endif
 
 ${CLI_BIN}: ${LIB_TARGET}
 	@echo "Compiling ${CLI_BIN}"
-	@${CC} -Iinclude ${CFLAGS} helper/${CLI_BIN}.c -L. -l$(basename ${TARGET}) ${LIB_LIBS} -o bin/${CLI_BIN}${EXT}
+	@${CC} -Iinclude ${CFLAGS} helper/${CLI_BIN}.c -lm -L. -l$(basename ${TARGET}) ${LIB_LIBS} -o bin/${CLI_BIN}${EXT}
 
 test: ${LIB_TARGET}
 	@${MAKE} -C test CFLAGS="${CFLAGS}" LIBS="-L.. -l$(basename ${TARGET}) ${LIB_LIBS}"
