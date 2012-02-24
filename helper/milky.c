@@ -103,6 +103,7 @@ static void init_usrdata(_USR_DATA *data)
 #define _REPO_SYNCED             "%s, synchorized succesfully.\n"
 #define _REPO_SYNCED_NOT         "%s, failed to synchorize.\n"
 #define _PND_NOT_FOUND           "Warning: no such package %s\n"
+#define _PND_HAS_UPDATE          "%s has a update.\n"
 #define _UPGRADE_DONE            "Upgraded %s\n"
 #define _UPGRADE_FAIL            "Failed to upgrade %s\n"
 #define _INSTALL_DONE            "Installed %s\n"
@@ -546,8 +547,9 @@ static int isquery(unsigned int flags)
 /* do we need targets for our operation? */
 static int needtarget(unsigned int flags)
 {
-   return  (!(flags & OP_CLEAN) && !isquery(flags) &&
-            !(flags & A_REFRESH));
+   return  (!(flags & OP_CLEAN)  && !isquery(flags)       &&
+            !(flags & A_REFRESH) && !(flags & OP_UPGRADE) &&
+            !(flags & A_UPGRADE));
 }
 
 /* set destination */
@@ -651,7 +653,7 @@ static void parseargs(int argc, char **argv, _USR_DATA *data)
    assert(data);
    int i, skipn = 0;
    for (i = 1; i != argc; ++i)
-      if (!skipn) parsearg(argv[i], argc==i+1?NULL:argv[i+i][0]!='-'?argv[i+1]:NULL, &skipn, data);
+      if (!skipn) parsearg(argv[i], argc==i+1?NULL:argv[i+1][0]!='-'?argv[i+1]:NULL, &skipn, data);
       else skipn = 0;
 }
 
@@ -980,7 +982,8 @@ static void pre_op_dialog(_USR_DATA *data)
                data->tlist = freetarget(t);
             }
       } else {
-         if (!yesno(data, _PND_REINSTALL, t->id))
+         if (!(data->flags & A_UPGRADE) && !(data->flags & OP_UPGRADE) &&
+             !yesno(data, _PND_REINSTALL, t->id))
             data->tlist = freetarget(t);
       }
    }
@@ -1042,25 +1045,28 @@ static int searchrepo(pndman_repository *r)
 }
 
 /* get pnd from target id */
-static int targetpnd(pndman_repository *r, _USR_DATA *data)
+static int targetpnd(pndman_repository *rs, _USR_DATA *data)
 {
-   pndman_package *p;
-   _USR_TARGET    *t;
-   assert(r && data);
+   pndman_package    *p;
+   pndman_repository *r;
+   _USR_TARGET       *t, *tn;
+   assert(rs && data);
    for (t = data->tlist; t; t = t->next)
-      for (; r; r = r->next) {
+      for (r = rs; r; r = r->next) {
          for (p = r->pnd; p; p = p->next)
             if (strstr(p->id, t->id)) {
                strcpy(t->id, p->id);
                t->pnd = p; break;
             }
-         if (r == data->rlist) break; /* we only want local repository */
+         if (rs == data->rlist) break; /* we only want local repository */
       }
-   for (t = data->tlist; t; t = t->next)
+   for (t = data->tlist; t; t = tn) {
+      tn = t->next;
       if (!t->pnd) {
          _R(); printf(_PND_NOT_FOUND, t->id); _N();
          data->tlist = freetarget(t);
       }
+   }
    return data->tlist ? 1 : 0;
 }
 
@@ -1071,8 +1077,19 @@ static void targetup(pndman_repository *r, _USR_DATA *data)
    assert(r && data);
    for (; r; r = r->next)
       for (p = r->pnd; p; p = p->next)
-         if ((p->flags & PND_UPDATE) && !checkignore(p->id, data))
+         if (p->update && !checkignore(p->id, data)) {
+            puts(p->id);
             addtarget(p->id, &data->tlist);
+         }
+}
+
+/* list updates in local repository */
+static void listupdate(_USR_DATA *data)
+{
+   pndman_package *p;
+   assert(data);
+   for (p = data->rlist->pnd; p; p = p->next)
+      if (p->update) { _B(); printf(_PND_HAS_UPDATE, p->id); _N(); }
 }
 
 /* get handle flags from milkyhelper's flags */
@@ -1135,9 +1152,11 @@ static int targetperform(_USR_DATA *data)
 
    t = data->tlist;
    for (c = 0; t; t = t->next) {
-      if (!handle[c].progress.done) { _R(); printf(opstrfromflags(0,data->flags), handle[c].name); _N(); }
+      if (!handle[c].progress.done && !(data->flags & OP_REMOVE))
+      { _R(); printf(opstrfromflags(0,data->flags), handle[c].name); _N(); }
       else if (pndman_handle_commit(&handle[c], data->rlist) != RETURN_OK)
       { _R(); printf(opstrfromflags(0,data->flags), handle[c].name); _N(); }
+
       pndman_handle_free(&handle[c]);
       ++c;
    }
@@ -1180,8 +1199,11 @@ static int syncprocess(_USR_DATA *data)
       return RETURN_FAIL;
 
    /* repository syncing is always the first operation */
-   if (data->flags & A_REFRESH)
+   if (data->flags & A_REFRESH) {
       syncrepos(rs, data);
+      pndman_check_updates(data->rlist);
+      listupdate(data);
+   }
 
    /* search */
    if (isquery(data->flags))  {
@@ -1368,6 +1390,7 @@ static int processflags(_USR_DATA *data)
    /* read repository information from each device */
    for (d = data->dlist; d; d = d->next)
       for (r = data->rlist; r; r = r->next) pndman_read_from_device(r, d);
+   pndman_check_updates(data->rlist);
 
    /* logic */
    if ((data->flags & OP_YAOURT))         ret = yaourtprocess(data);
