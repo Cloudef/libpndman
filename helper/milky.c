@@ -6,12 +6,16 @@
 #include <assert.h>
 #include <ctype.h>
 #include <signal.h>
+#include <errno.h>
+#include <math.h>
 #include "pndman.h"
 
 #ifdef WIN32
 #  include <windows.h>
-#elif __linux__
+#else
 #  include <limits.h>
+#  include <pwd.h>
+#  include <sys/stat.h>
 #endif
 
 /*   ____ _____ _   _ _____ ____      _    _
@@ -20,6 +24,15 @@
  * | |_| | |___| |\  | |___|  _ <  / ___ \| |___
  *  \____|_____|_| \_|_____|_| \_\/_/   \_\_____|
 */
+
+/* stores old root device here */
+#define OLDROOT_FILE "milkyhelper.device"
+
+/* stores configuration here */
+#define CONFIG_FILE  "milkyhelper.config"
+
+/* name of directory inside $XDG_CONFIG_HOME */
+#define CFG_DIR      "milkyhelper"
 
 /* use colors? */
 char _USE_COLORS  = 1;
@@ -70,6 +83,51 @@ static void init_usrdata(_USR_DATA *data)
    data->rlist = NULL; data->tlist = NULL;
    data->ilist = NULL;
 }
+
+/*  ____ _____ ____  ___ _   _  ____ ____
+ * / ___|_   _|  _ \|_ _| \ | |/ ___/ ___|
+ * \___ \ | | | |_) || ||  \| | |  _\___ \
+ *  ___) || | |  _ < | || |\  | |_| |___) |
+ * |____/ |_| |_| \_\___|_| \_|\____|____/
+ */
+
+/* all strings expect HELP and VERSION strings are listed here
+ * (* strings that are not considered in final product, aren't here either)
+ * maybe in future: custom printf function that handles color escapes
+ *                  and resets the colors at the end automatically.
+ *                  with this we could get rid of all those _R(); _N();
+ *                  etc.. color functions. Plus it would allow colors to
+ *                  be customized more easily! */
+#define _REPO_WONT_DO_ANYTHING   "There is only local repository available, %s operations won't do anything.\n"
+#define _NO_SYNCED_REPO          "None of repositories is synced. Sync the repositories first.\n"
+#define _REPO_SYNCED             "%s, synchorized succesfully.\n"
+#define _REPO_SYNCED_NOT         "%s, failed to synchorize.\n"
+#define _PND_NOT_FOUND           "Warning: no such package %s\n"
+#define _UPGRADE_DONE            "Upgraded %s\n"
+#define _UPGRADE_FAIL            "Failed to upgrade %s\n"
+#define _INSTALL_DONE            "Installed %s\n"
+#define _INSTALL_FAIL            "Failed to install %s\n"
+#define _REMOVE_DONE             "Removed %s\n"
+#define _REMOVE_FAIL             "Failed to remove %s\n"
+#define _UNKNOWN_OPERATION       "unknown operation: %s"
+#define _NO_X_SPECIFIED          "No %s specified.\n"
+#define _BAD_DEVICE_SELECTED     "Bad device selected, exiting..\n"
+#define _PND_IGNORED_FORCE       "Package %s is being ignored. Do you want to force?"
+#define _PND_REINSTALL           "Package %s is already installed, reinstall?"
+#define _NO_ROOT_YET             "Sir! You haven't selected your mount where to store PND's yet.\n"
+#define _WARNING_SKIPPING        "Warning: skipping %s\n"
+#define _FAILED_TO_DEVICES       "Failed to detect devices.\n"
+#define _FAILED_TO_REPOS         "Failed to initialize local repository..\n"
+#define _COMMIT_FAIL             "Warning: failed to commit repositories to %s\n"
+#define _ROOT_FAIL               "Warning: failed to store your current root device.\n"
+#define _MKCONFIG                "Creating default configuration file in %s\n"
+#define _CONFIG_READ_FAIL        "Warning: failed to read configuration from %s\n"
+#define _INPUT_LINE              "> "
+#define _YESNO                   "[Y/n]"
+#define _NOYES                   "[y/N]"
+
+/* other customizable */
+#define NEWLINE()                puts("");
 
 /*   ____ ___  _     ___  ____  ____
  *  / ___/ _ \| |   / _ \|  _ \/ ___|
@@ -191,6 +249,56 @@ static size_t strtrim(char *str)
    return end - pch;
 }
 
+/* strip leading slash from path */
+static void stripslash(char *path)
+{
+   if (path[strlen(path)-1] == '/' || path[strlen(path)-1] == '\\')
+      path[strlen(path)-1] = '\0';
+}
+
+/* mkdir if it doesn't exist */
+static int mkdirexist(const char *path)
+{
+   if (access(path, F_OK) != 0) {
+      if (errno == EACCES) return RETURN_FAIL;
+#ifdef __WIN32__
+      if (mkdir(path) == -1) return RETURN_FAIL;
+#else  /* _WIN32_ */
+      if (mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
+         return RETURN_FAIL;
+#endif /* POSIX */
+   }
+   return RETURN_OK;
+}
+
+/* get $XDG_CONFIG_HOME/$CFG_DIR path, (create if doesn't exist) */
+static int getcfgpath(char *path)
+{
+/* just dump to cwd on porndora and win32 (on pandora stuff appears in appdata) */
+#if !defined(PANDORA) && !defined(__WIN32__)
+   const char* xdg_home;
+   struct passwd *pw;
+   if (!(xdg_home = getenv("XDG_CONFIG_HOME"))) {
+      if (!(xdg_home = getenv("HOME")))
+         if ((pw = getpwuid(getuid())))
+            xdg_home = pw->pw_dir;
+         else return RETURN_FAIL;
+      strncpy(path, xdg_home, PATH_MAX-1);      /* $HOME */
+      stripslash(path);                         /* make sure no leading slash */
+      strncat(path, "/.config", PATH_MAX-1);    /* $HOME/.config */
+      if (mkdirexist(path) != RETURN_OK)        /* mkdir if needed */
+         return RETURN_FAIL;
+   } else {
+      strncpy(path, xdg_home, PATH_MAX-1);  /* $XDG_CONFIG_HOME */
+      stripslash(path);                     /* make sure no leading slash */
+   }
+   strncat(path, "/",     PATH_MAX-1);
+   strncat(path, CFG_DIR, PATH_MAX-1); /* $XDG_CONFIG_HOME/$CFG_DIR */
+   return mkdirexist(path);
+#endif /* !PANDORA && !__WIN32__ */
+   return RETURN_OK;
+}
+
 /*  ____  _______     _____ ____ _____ ____
  * |  _ \| ____\ \   / /_ _/ ___| ____/ ___|
  * | | | |  _|  \ \ / / | | |   |  _| \___ \
@@ -208,6 +316,42 @@ static pndman_device* setroot(char *root, pndman_device *list)
    if ((d = pndman_device_add(root, list))) return d;
    _R(); printf("Failed to root: %s\n", root); _N();
    return NULL;
+}
+
+/* get path of the old root "configuration" file */
+static int oldrootcfgpath(char *path)
+{
+   if (getcfgpath(path) != RETURN_OK) return RETURN_FAIL;                  /* $XDG_CONFIG_HOME */
+   strncat(path, strlen(path)?"/"OLDROOT_FILE:OLDROOT_FILE, PATH_MAX-1);   /* $XDG_CONFIG_HOME/$OLDROOT_FILE */
+   return RETURN_OK;
+}
+
+/* get stored root */
+static pndman_device* getroot(_USR_DATA *data)
+{
+   FILE *f;
+   char path[PATH_MAX];
+   char dev[LINE_MAX];
+
+   memset(path, 0, PATH_MAX); memset(dev, 0, LINE_MAX);
+   if (oldrootcfgpath(path) != RETURN_OK) return NULL;
+   if (!(f = fopen(path, "r")))           return NULL;
+   fgets(dev, LINE_MAX, f); fclose(f);
+   if (dev[strlen(dev)-1] == '\n') dev[strlen(dev)-1] = '\0';
+   return setroot(dev, data->dlist);
+}
+
+/* save root */
+static int saveroot(_USR_DATA *data)
+{
+   FILE *f;
+   char path[PATH_MAX];
+
+   memset(path, 0, PATH_MAX);
+   if (oldrootcfgpath(path) != RETURN_OK) return RETURN_FAIL;
+   if (!(f = fopen(path, "w")))           return RETURN_FAIL;
+   fputs(data->root->device, f); fclose(f);
+   return RETURN_OK;
 }
 
 /*  _____  _    ____   ____ _____ _____ ____
@@ -406,6 +550,14 @@ static int needtarget(unsigned int flags)
             !(flags & A_REFRESH));
 }
 
+/* set destination */
+static unsigned int setdest(_HELPER_FLAGS dest, _USR_DATA *data)
+{
+   data->flags  = data->flags & ~A_MENU;
+   data->flags  = data->flags & ~A_DESKTOP;
+   data->flags  = data->flags & ~A_APPS;
+   return dest;
+}
 
 /* parse global flags */
 static _HELPER_FLAGS getglob(char c, char *arg, int *skipn, _USR_DATA *data)
@@ -439,9 +591,9 @@ static _HELPER_FLAGS getsync(char c, char *arg, int *skipn, _USR_DATA *data)
    else if (c == 'l')   return A_LIST;
    else if (c == 'y')   return A_REFRESH;
    else if (c == 'u')   return A_UPGRADE;
-   else if (c == 'm')   return A_MENU;
-   else if (c == 'd')   return A_DESKTOP;
-   else if (c == 'a')   return A_APPS;
+   else if (c == 'm')   return setdest(A_MENU, data);
+   else if (c == 'd')   return setdest(A_DESKTOP, data);
+   else if (c == 'a')   return setdest(A_APPS, data);
    return 0;
 }
 
@@ -479,6 +631,7 @@ static void parse(_PARSE_FUNC func, const char *ref, char *arg, char *narg, int 
 static void parsearg(char *arg, char *narg, int *skipn, _USR_DATA *data)
 {
    if (!strncmp(arg, "-r", 2))            _PASSARG(_setroot);     /* argument with argument */
+   if (!strncmp(arg, "--root", 6))        _PASSARG(_setroot);     /* argument with argument */
    if (!strncmp(arg, "--help", 6))        _PASSFLG(OP_HELP);      /* another way of calling help */
    if (!strncmp(arg, "--version", 9))     _PASSFLG(OP_VERSION);   /* another way of calling version */
    if (!strncmp(arg, "--noconfirm", 11))  _PASSFLG(A_NOCONFIRM);  /* noconfirm option */
@@ -517,13 +670,31 @@ static void parseargs(int argc, char **argv, _USR_DATA *data)
 /* configuration wrapper for adding repository */
 static int _addrepository(char **argv, int argc, _USR_DATA *data)
 {
-   pndman_repository *r;
-   pndman_device      *d;
    assert(data);
    if (!argc) return RETURN_FAIL;
-   if (!(r = pndman_repository_add(argv[0], data->rlist)))
+   if (!pndman_repository_add(argv[0], data->rlist))
       return RETURN_FAIL;
-   for (d = data->dlist; d; d = d->next) pndman_read_from_device(r, d);
+   return RETURN_OK;
+}
+
+/* configuration wrapper for adding device */
+static int _adddevice(char **argv, int argc, _USR_DATA *data)
+{
+   assert(data);
+   if (!argc) return RETURN_FAIL;
+   if (!pndman_device_add(argv[0], data->dlist))
+      return RETURN_FAIL;
+   return RETURN_OK;
+}
+
+/* set destination */
+static int _setdest(char **argv, int argc, _USR_DATA *data)
+{
+   assert(data);
+   if (!argc) return RETURN_FAIL;
+   if (!strcasecmp(argv[0], "MENU"))         data->flags |= setdest(A_MENU, data);
+   else if (!strcasecmp(argv[0], "DESKTOP")) data->flags |= setdest(A_DESKTOP, data);
+   else if (!strcasecmp(argv[0], "APPS"))    data->flags |= setdest(A_APPS, data);
    return RETURN_OK;
 }
 
@@ -569,7 +740,9 @@ typedef struct _CONFIG_KEYS
 /* configuration options */
 static _CONFIG_KEYS _CONFIG_KEY[] = {
    { "repository",            _addrepository },
+   { "device",                _adddevice },
    { "ignore",                _addignore },
+   { "destination",           _setdest },
    { "nomerge",               _nomerge },
    { "<this ends the list>",  NULL },
 };
@@ -621,6 +794,32 @@ static int readconfig_arg(const char *key, _CONFIG_FUNC func, _USR_DATA *data, c
    return RETURN_OK;
 }
 
+/* create default configuration file */
+static int mkconfig(const char *path)
+{
+   FILE *f;
+   if (!(f = fopen(path, "w"))) return RETURN_FAIL;
+   _B(); printf(_MKCONFIG, path); _N();
+   fputs("#\n", f);
+   fputs("# Configuration file for milkyhelper.\n", f);
+   fputs("# 'Keys' can be listed multiple times, and they will be read just fine\n", f);
+   fputs("#\n", f);
+   fputs("\n# To add repositories, use 'repository' key\n", f);
+   fputs("# repository \"<repository url>\"\n", f);
+   fputs("\n# To add virual device (eg. directory), use 'device' key\n", f);
+   fputs("# device \"<absolute path>\"\n", f);
+   fputs("\n# To prevent packages from upgrading, use 'ignore' key\n", f);
+   fputs("# ignore \"<pnd id>\" \"<pnd id>\" \"<pnd id>\" ...\n", f);
+   fputs("\n# To change default install folder, use 'destination' key\n", f);
+   fputs("# destination MENU DESKTOP APPS\n", f);
+   fputs("\n# To disable repository merges when synchorizing, use 'nomerge' key\n", f);
+   fputs("# nomerge\n", f);
+   fputs("\n# milkshake's repo is enabled by default\n", f);
+   fputs("repository \"http://repo.openpandora.org/includes/get_data.php\"\n",f );
+   fclose(f);
+   return RETURN_OK;
+}
+
 /* read keys from configuration file */
 static int readconfig(const char *path, _USR_DATA *data)
 {
@@ -629,8 +828,12 @@ static int readconfig(const char *path, _USR_DATA *data)
    FILE *f;
    assert(path && data);
 
-   if (!(f = fopen(path, "r")))
+   if (!(f = fopen(path, "r"))) {
+      if (mkconfig(path) != RETURN_OK)
          return RETURN_FAIL;
+      else if (!(f = fopen(path, "r")))
+         return RETURN_FAIL;
+   }
 
    while (fgets(line, LINE_MAX, f)) {
       if (!strtrim(line) || line[0] == _CONFIG_COMMENT) continue; /* trim and check if skip on comment */
@@ -644,45 +847,20 @@ static int readconfig(const char *path, _USR_DATA *data)
    return RETURN_OK;
 }
 
+/* get path to milkyhelper's configuration file */
+static int getconfigpath(char *path)
+{
+   if (getcfgpath(path) != RETURN_OK) return RETURN_FAIL;               /* $XDG_CONFIG_HOME */
+   strncat(path, strlen(path)?"/"CONFIG_FILE:CONFIG_FILE, PATH_MAX-1);  /* $XDG_CONFIG_HOME/$CONFIG_FILE */
+   return RETURN_OK;
+}
+
 /*  ___ _   _ ____  _   _ _____
  * |_ _| \ | |  _ \| | | |_   _|
  *  | ||  \| | |_) | | | | | |
  *  | || |\  |  __/| |_| | | |
  * |___|_| \_|_|    \___/  |_|
  */
-
-/* all strings expect HELP and VERSION strings are listed here
- * (* strings that are not considered in final product, aren't here either)
- * maybe in future: custom printf function that handles color escapes
- *                  and resets the colors at the end automatically.
- *                  with this we could get rid of all those _R(); _N();
- *                  etc.. color functions. Plus it would allow colors to
- *                  be customized more easily! */
-#define _REPO_WONT_DO_ANYTHING   "There is only local repository available, %s operations won't do anything.\n"
-#define _NO_SYNCED_REPO          "None of repositories is synced. Sync the repositories first.\n"
-#define _REPO_SYNCED             "%s, synchorized succesfully.\n"
-#define _REPO_SYNCED_NOT         "%s, failed to synchorize.\n"
-#define _PND_NOT_FOUND           "Warning: no such package %s\n"
-#define _UPGRADE_DONE            "Upgraded %s\n"
-#define _UPGRADE_FAIL            "Failed to upgrade %s\n"
-#define _INSTALL_DONE            "Installed %s\n"
-#define _INSTALL_FAIL            "Failed to install %s\n"
-#define _REMOVE_DONE             "Removed %s\n"
-#define _REMOVE_FAIL             "Failed to remove %s\n"
-#define _UNKNOWN_OPERATION       "unknown operation: %s"
-#define _NO_X_SPECIFIED          "No %s specified.\n"
-#define _BAD_DEVICE_SELECTED     "Bad device selected, exiting..\n"
-#define _PND_IGNORED_FORCE       "Package %s is being ignored. Do you want to force?\n"
-#define _NO_ROOT_YET             "Sir! You haven't selected your mount where to store PND's yet.\n"
-#define _WARNING_SKIPPING        "Warning: skipping %s\n"
-#define _FAILED_TO_DEVICES       "Failed to detect devices.\n"
-#define _FAILED_TO_REPOS         "Failed to initialize local repository.\n"
-#define _INPUT_LINE              "> "
-#define _YESNO                   "[Y/n]"
-#define _NOYES                   "[y/N]"
-
-/* other customizable */
-#define NEWLINE()                puts("");
 
 /* dialog for asking root device where to perform operations on, when no such device isn't available yet */
 static int rootdialog(_USR_DATA *data)
@@ -724,8 +902,8 @@ static int _yesno_dialog(char noconfirm, char yn, char *fmt, va_list args)
    char response[32];
 
    fflush(stdout);
-   vprintf(fmt, args);
-   printf(" %s %s", yn?_YESNO:_NOYES, noconfirm?"\n":"");
+   _B(); vprintf(fmt, args); _W();
+   printf(" %s %s", yn?_YESNO:_NOYES, noconfirm?"\n":""); _N();
    if (noconfirm) return yn;
 
    fflush(stdout);
@@ -752,41 +930,58 @@ static int _yesno_base(char noconfirm, int yn, char *fmt, ...)
 }
 
 /* show progressbar, shows dots instead when total_to_download is not known */
-static void progressbar(size_t downloaded, size_t total_to_download)
+static void progressbar(float downloaded, float total_to_download)
 {
-   size_t fraction, dots, i, pwdt;
+   unsigned int dots, i, pwdt;
+   float fraction;
 
    pwdt     = 40; /* width */
    if (!total_to_download) {
-      _Y(); for (i = 0; i != (downloaded / 1024) % pwdt; ++i) printf("."); _N();
+      _Y(); for (i = 0; i != ((unsigned int)downloaded / 1024) % pwdt; ++i) printf("."); _N();
       printf("\r");
       fflush(stdout);
       return;
    }
-   fraction = downloaded / total_to_download;
-   dots     = fraction * pwdt;
+   fraction = (float)downloaded / (float)total_to_download;
+   dots     = round(fraction * pwdt);
 
-   _Y(); printf("%3zu%% ", fraction * 100); _W();
+   _Y(); printf("%3.0f%% ", fraction * 100); _W();
    printf("["); _R();
    for (i = 0; i != dots; ++i) printf("=");
    for (     ; i != pwdt; ++i) printf(" ");
-   _W(); printf("]\r"); _N();
+   _W(); printf("] "); _B();
+   printf("%4.2f MiB / %4.2f MiB\r", downloaded/1048576, total_to_download/1048567); _N();
    fflush(stdout);
 }
 
+/* check if pnd is installed */
+static int pndinstalled(pndman_package *pnd, _USR_DATA *data)
+{
+   pndman_package *p;
+   assert(pnd && data);
+   for (p = data->rlist->pnd; p; p = p->next)
+      if (!strcmp(pnd->id, p->id)) return RETURN_TRUE;
+   return RETURN_FALSE;
+}
+
 /* ask whether to skip ignored packages that where still passed as target by user */
-static void skipdialog(_USR_DATA *data)
+static void pre_op_dialog(_USR_DATA *data)
 {
    _USR_TARGET *t, *tn;
    assert(data);
 
    for (t = data->tlist; t; t = tn) {
       tn = t->next;
-      if (checkignore(t->id, data))
-         if (!yesno(data, _PND_IGNORED_FORCE, t->id)) {
-            printf(_WARNING_SKIPPING, t->id);
+      if (!pndinstalled(t->pnd, data)) {
+         if (checkignore(t->id, data))
+            if (!yesno(data, _PND_IGNORED_FORCE, t->id)) {
+               _R(); printf(_WARNING_SKIPPING, t->id); _N();
+               data->tlist = freetarget(t);
+            }
+      } else {
+         if (!yesno(data, _PND_REINSTALL, t->id))
             data->tlist = freetarget(t);
-         }
+      }
    }
 }
 
@@ -801,7 +996,7 @@ static void skipdialog(_USR_DATA *data)
 static void syncrepos(pndman_repository *rs, _USR_DATA *data)
 {
    pndman_repository *r;
-   size_t tdl, ttdl; /* total download, total total to download */
+   float tdl, ttdl; /* total download, total total to download */
    int ret;
    unsigned int c = 0;
 
@@ -813,14 +1008,15 @@ static void syncrepos(pndman_repository *rs, _USR_DATA *data)
    while ((ret = pndman_sync() > 0)) {
       r = rs; tdl = 0; ttdl = 0;
       for (c = 0; r; r = r->next) {
-         tdl   = (size_t)handle[c].progress.download;
-         ttdl  = (size_t)handle[c].progress.total_to_download;
+         tdl   += (float)handle[c].progress.download;
+         ttdl  += (float)handle[c].progress.total_to_download;
          if (handle[c].progress.done) {
            _B(); printf(_REPO_SYNCED, handle[c].repository->name); _N();
          }
          ++c;
       }
       progressbar(tdl, ttdl);
+      usleep(1000);
    }
    NEWLINE();
 
@@ -853,7 +1049,10 @@ static int targetpnd(pndman_repository *r, _USR_DATA *data)
    for (t = data->tlist; t; t = t->next)
       for (; r; r = r->next) {
          for (p = r->pnd; p; p = p->next)
-            if (strstr(p->id, t->id)) { t->pnd = p; break; }
+            if (strstr(p->id, t->id)) {
+               strcpy(t->id, p->id);
+               t->pnd = p; break;
+            }
          if (r == data->rlist) break; /* we only want local repository */
       }
    for (t = data->tlist; t; t = t->next)
@@ -882,9 +1081,10 @@ static unsigned int handleflagsfromflags(unsigned int flags)
    if ((flags & OP_SYNC))           hflags |= PNDMAN_HANDLE_INSTALL;
    else if ((flags & OP_REMOVE))    hflags |= PNDMAN_HANDLE_REMOVE;
    if ((flags & GB_FORCE))          hflags |= PNDMAN_HANDLE_FORCE;
-   if ((flags & A_MENU))            hflags |= PNDMAN_HANDLE_INSTALL_MENU;
-   else if ((flags & A_DESKTOP))    hflags |= PNDMAN_HANDLE_INSTALL_DESKTOP;
+
+   if ((flags & A_DESKTOP))         hflags |= PNDMAN_HANDLE_INSTALL_DESKTOP;
    else if ((flags & A_APPS))       hflags |= PNDMAN_HANDLE_INSTALL_APPS;
+   else                             hflags |= PNDMAN_HANDLE_INSTALL_MENU; /* default to menu */
    return hflags;
 }
 
@@ -902,7 +1102,7 @@ static const char* opstrfromflags(char done, unsigned int flags)
 static int targetperform(_USR_DATA *data)
 {
    _USR_TARGET *t;
-   size_t tdl, ttdl; /* total download, total total to download */
+   float tdl, ttdl; /* total download, total total to download */
    int ret;
    unsigned int c = 0;
    assert(data);
@@ -917,23 +1117,26 @@ static int targetperform(_USR_DATA *data)
       pndman_handle_perform(&handle[c]);
    }
 
-   while ((ret = pndman_download() > 0)) {
+   while ((ret = pndman_download()) > 0) {
       t = data->tlist; tdl = 0; ttdl = 0;
       for (c = 0; t; t = t->next) {
-         tdl  = (size_t)handle[c].progress.download;
-         ttdl = (size_t)handle[c].progress.total_to_download;
+         tdl  += (float)handle[c].progress.download;
+         ttdl += (float)handle[c].progress.total_to_download;
          if (handle[c].progress.done) {
             _B(); printf(opstrfromflags(1,data->flags), handle[c].name); _N();
          }
          ++c;
       }
       progressbar(tdl, ttdl);
+      usleep(1000);
    }
    NEWLINE();
 
    t = data->tlist;
    for (c = 0; t; t = t->next) {
-      if (!handle[c].progress.done) printf(opstrfromflags(0,data->flags), handle[c].name);
+      if (!handle[c].progress.done) { _R(); printf(opstrfromflags(0,data->flags), handle[c].name); _N(); }
+      else if (pndman_handle_commit(&handle[c], data->rlist) != RETURN_OK)
+      { _R(); printf(opstrfromflags(0,data->flags), handle[c].name); _N(); }
       pndman_handle_free(&handle[c]);
       ++c;
    }
@@ -989,15 +1192,15 @@ static int syncprocess(_USR_DATA *data)
    /* everything else needs synced repositories */
    if (!checksyncedrepo(rs)) return RETURN_FAIL;
 
-   /* ask for ignores */
-   skipdialog(data);
-
    /* upgrade without no targets given, add all targets that needs update */
    if ((data->flags & A_UPGRADE) && !data->tlist)
       targetup(rs, data);
 
    /* set PND's for targets here */
    if (!targetpnd(rs, data)) return RETURN_FAIL;
+
+   /* ask for ignores */
+   pre_op_dialog(data);
 
    /* Actual sync here */
    return targetperform(data);
@@ -1016,9 +1219,9 @@ static int upgradeprocess(_USR_DATA *data)
    if (!checksyncedrepo(rs)) return RETURN_FAIL;
 
    /* handle targets */
-   skipdialog(data);
    if (!data->tlist)          targetup(rs, data);
    if (!targetpnd(rs, data))  return RETURN_FAIL;
+   pre_op_dialog(data);
 
    /* do oepration */
    return targetperform(data);
@@ -1109,7 +1312,8 @@ static int sanitycheck(_USR_DATA *data)
 /* process all flags that were parsed from program arguments */
 static int processflags(_USR_DATA *data)
 {
-   _USR_TARGET *t;
+   _USR_TARGET       *t;
+   pndman_device     *d;
    pndman_repository *r;
    int ret = RETURN_FAIL;
    assert(data);
@@ -1160,6 +1364,10 @@ static int processflags(_USR_DATA *data)
    for (t = data->tlist; t; t = t->next) puts(t->id);
    _N();
 
+   /* read repository information from each device */
+   for (d = data->dlist; d; d = d->next)
+      for (r = data->rlist; r; r = r->next) pndman_read_from_device(r, d);
+
    /* logic */
    if ((data->flags & OP_YAOURT))         ret = yaourtprocess(data);
    else if ((data->flags & OP_SYNC))      ret = syncprocess(data);
@@ -1170,6 +1378,15 @@ static int processflags(_USR_DATA *data)
    else if ((data->flags & OP_CLEAN))     ret = cleanprocess(data);
    else if ((data->flags & OP_VERSION))   ret = version(data);
    else if ((data->flags & OP_HELP))      ret = help(data);
+
+   /* commit everything to disk */
+   if (pndman_commit_all(data->rlist, data->root) != RETURN_OK)
+   { _R(); printf(_COMMIT_FAIL, data->root->mount); _N(); }
+
+   /* save root */
+   if (saveroot(data) != RETURN_OK)
+   { _R(); printf(_ROOT_FAIL); _N(); }
+
    return ret;
 }
 
@@ -1188,6 +1405,9 @@ static void sigint(int sig)
    _R(); printf("Caught %s, exiting...\n",
          sig == SIGINT  ? "SIGINT"  :
          sig == SIGTERM ? "SIGTERM" : "SIGSEGV"); _N();
+#ifdef __WIN32__
+   _fcloseall();
+#endif
    pndman_quit();
    exit(sig);
 }
@@ -1204,6 +1424,8 @@ int main(int argc, char **argv)
 {
    int ret;
    _USR_DATA data;
+   char path[PATH_MAX];
+   memset(path, 0, PATH_MAX);
 
    /* setup signals */
    (void)signal(SIGINT,  sigint);
@@ -1235,12 +1457,15 @@ int main(int argc, char **argv)
    /* do logic, if everything ok! */
    if (data.dlist && data.rlist) {
       /* read configuration */
-      if (readconfig("milkycfg", &data) == RETURN_OK) {
+      if ((ret = getconfigpath(path)) == RETURN_OK) ret = readconfig(path, &data);
+      if (ret != RETURN_OK) { _R(); printf(_CONFIG_READ_FAIL, path); _N(); }
 
-         /* parse arguments */
-         parseargs(argc, argv, &data);
-         ret = processflags(&data) == RETURN_OK ? EXIT_SUCCESS : EXIT_FAILURE;
-      }
+      /* read root */
+      data.root = getroot(&data);
+
+      /* parse arguments */
+      parseargs(argc, argv, &data);
+      ret = processflags(&data) == RETURN_OK ? EXIT_SUCCESS : EXIT_FAILURE;
    }
 
    /* free repositories && devices */
