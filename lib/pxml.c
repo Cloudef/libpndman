@@ -1036,7 +1036,6 @@ static int _pndman_crawl_to_repository(pndman_device *device, pndman_repository 
       pnd = _pndman_repository_new_pnd_check(p->id, p->path, local);
       if (!pnd) continue;
       _pndman_copy_pnd(pnd, p);
-      pnd->flags = PND_INSTALLED; /* it's obiviously installed :) */
 
       /* free */
       n = p->next;
