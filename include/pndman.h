@@ -51,7 +51,15 @@ typedef enum pndman_handle_flags
    PNDMAN_HANDLE_INSTALL_APPS    = 0x020,
 } pndman_handle_flags;
 
-/* type enum for version struct */
+/* \brief package state flags */
+typedef enum pndman_package_flags
+{
+   PND_INSTALLED = 0x01,
+   PND_UPDATE    = 0x02,
+} pndman_package_flags;
+
+
+/* \brief type enum for version struct */
 typedef enum pndman_version_type
 {
    PND_VERSION_RELEASE,
@@ -59,7 +67,7 @@ typedef enum pndman_version_type
    PND_VERSION_ALPHA
 } pndman_version_type;
 
-/* x11 enum for exec struct */
+/* \brief x11 enum for exec struct */
 typedef enum pndman_exec_x11
 {
    PND_EXEC_REQ,
