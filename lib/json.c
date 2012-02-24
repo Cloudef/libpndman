@@ -16,12 +16,8 @@ static int _json_set_string(char *string, json_t *object, size_t max)
 }
 
 /* \brief helper int setter */
-static int _json_set_number(double *i, json_t *object)
-{
-   if (!object) return RETURN_FAIL;
-   *i = json_number_value(object);
-   return RETURN_OK;
-}
+#define  _json_set_number(i, object, type) \
+         if (object) *i = (type)json_number_value(object);
 
 /* \brief helper version setter */
 static int _json_set_version(pndman_version *ver, json_t *object)
@@ -217,7 +213,7 @@ static int _pndman_json_repo_header(json_t *repo_header, pndman_repository *repo
          strncpy(repo->version, json_string_value(element), REPO_VERSION);
       else
          snprintf(repo->version, REPO_VERSION-1, "%.2f", json_number_value(element));
-   _json_set_number((double*)&repo->timestamp, json_object_get(repo_header, "timestamp"));
+   _json_set_number(&repo->timestamp, json_object_get(repo_header, "timestamp"), time_t);
 
    return RETURN_OK;
 }
@@ -261,9 +257,9 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       _json_set_version(&pnd->version,    json_object_get(package,"version"));
       _json_set_localization(pnd,         json_object_get(package,"localizations"));
       _json_set_string(pnd->info,         json_object_get(package,"info"),    PND_INFO);
-      _json_set_number((double*)&pnd->size, json_object_get(package, "size"));
-      _json_set_number((double*)&pnd->modified_time, json_object_get(package, "modified_time"));
-      _json_set_number((double*)&pnd->rating, json_object_get(package, "rating"));
+      _json_set_number(&pnd->size,        json_object_get(package, "size"),            size_t);
+      _json_set_number(&pnd->modified_time, json_object_get(package, "modified-time"), time_t);
+      _json_set_number(&pnd->rating,      json_object_get(package, "rating"),          int);
       _json_set_author(&pnd->author,      json_object_get(package,"author"));
       _json_set_string(pnd->vendor,       json_object_get(package,"vendor"),  PND_NAME);
       _json_set_string(pnd->icon,         json_object_get(package,"icon"),    PND_PATH);
@@ -411,10 +407,10 @@ int _pndman_json_commit(pndman_repository *r, FILE *f)
 
       _fkeyf(f, "info", p->info, 1);
 
-      fprintf(f, "\"size\":\"%zu\",", p->size);
+      fprintf(f, "\"size\":%zu,", p->size);
       _fkeyf(f, "md5", p->md5, 1);
-      fprintf(f, "\"modified-time\":\"%zu\",", p->modified_time);
-      fprintf(f, "\"rating\":\"%d\",", p->rating);
+      fprintf(f, "\"modified-time\":%zu,", p->modified_time);
+      fprintf(f, "\"rating\":%d,", p->rating);
 
       /* author object */
       fprintf(f, "\"author\":");

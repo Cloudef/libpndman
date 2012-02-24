@@ -542,6 +542,9 @@ void _pndman_free_pnd(pndman_package *pnd)
    /* should never be null */
    assert(pnd);
 
+   /* this is no longer a valid update */
+   if (pnd->update) pnd->update->update = NULL;
+
    /* free titles */
    t = pnd->title;
    for (; t; t = tn)

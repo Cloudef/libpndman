@@ -380,18 +380,24 @@ static int _pndman_version_check(pndman_package *lp, pndman_package *rp)
    if (!strcmp(lp->repository, rp->repository)) {
       if (rp->modified_time > lp->modified_time) {
          lp->update = rp;
-         return 0;
+         return 1;
       }
    }
 
    /* this package already has update, try if the new proposed is newer */
    if (lp->update) {
-      if (_pndman_vercmp(lp->update, rp)) lp->update = rp;
+      if (_pndman_vercmp(lp->update, rp)) {
+         lp->update->update = NULL;
+         lp->update = rp; rp->update = lp;
+      }
       else return 0;
    }
 
-   if (_pndman_vercmp(lp, rp)) lp->update = rp;
-   return 1;
+   if (_pndman_vercmp(lp, rp)) {
+      lp->update = rp;
+      rp->update = lp;
+   }
+   return lp->update?1:0;
 }
 
 /* \brief check updates, returns the number of updates found */
@@ -402,11 +408,12 @@ static int _pndman_check_updates(pndman_repository *list)
    int updates = 0;
    assert(list);
 
-   if (list->next) return 0;
+   if (!list->next) return 0;
    for (pnd = list->pnd; pnd; pnd = pnd->next)
       for (r = list->next; r; r = r->next)
          for (p = r->pnd; p; p = p->next)
-            updates += _pndman_version_check(pnd, p);
+            if (!strcmp(pnd->id, p->id))
+               updates += _pndman_version_check(pnd, p);
    return updates;
 }
 
