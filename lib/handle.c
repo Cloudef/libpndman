@@ -109,7 +109,7 @@ static int _pndman_handle_download(pndman_handle *handle)
    }
 
    /* open file to write */
-   snprintf(tmp_path, PATH_MAX-1, "%s/%p", appdata, handle);
+   snprintf(tmp_path, PATH_MAX-1, "%s/%p.tmp", appdata, handle);
    handle->file = fopen(tmp_path, "wb");
    if (!handle->file) {
       curl_free_request(&handle->request);
