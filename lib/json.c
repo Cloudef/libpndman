@@ -255,6 +255,7 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
 
       memcpy(pnd->id,     id,  PND_ID);
       memcpy(pnd->path, path,  PND_PATH);
+      _json_set_string(pnd->repository,   json_object_get(package,"repository"), PND_STR);
       _json_set_string(pnd->md5,          json_object_get(package,"md5"),     PND_MD5);
       _json_set_string(pnd->url,          json_object_get(package,"uri"),     PND_STR);
       _json_set_version(&pnd->version,    json_object_get(package,"version"));
@@ -370,7 +371,7 @@ int _pndman_json_commit(pndman_repository *r, FILE *f)
       /* local repository */
       if (!r->prev) {
          _fkeyf(f, "path", p->path, 1);
-         fprintf(f, "\"flags\":%d,", p->flags);
+         _fkeyf(f, "repository", p->repository, 1);
       }
 
       _fkeyf(f, "id", p->id, 1);

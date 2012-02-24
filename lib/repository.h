@@ -29,6 +29,7 @@ typedef struct pndman_repository
 
 pndman_repository* _pndman_repository_first(pndman_repository *repo);
 pndman_repository* _pndman_repository_last(pndman_repository *repo);
+pndman_repository* _pndman_repository_get(const char *url, pndman_repository *list);
 
 pndman_package* _pndman_repository_new_pnd(pndman_repository *repo);
 pndman_package* _pndman_repository_new_pnd_check(char *id, char *path, pndman_repository *repo);

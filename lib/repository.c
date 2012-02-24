@@ -45,6 +45,15 @@ inline pndman_repository* _pndman_repository_last(pndman_repository *repo)
    return repo;
 }
 
+/* \brief get repository by url */
+inline pndman_repository* _pndman_repository_get(const char *url, pndman_repository *list)
+{
+   pndman_repository *r;
+   r = _pndman_repository_first(list);
+   for(; r; r = r->next) if (!strcmp(r->url, url)) return r;
+   return NULL;
+}
+
 /* \brief add new pnd to repository */
 pndman_package* _pndman_repository_new_pnd(pndman_repository *repo)
 {
@@ -55,6 +64,7 @@ pndman_package* _pndman_repository_new_pnd(pndman_repository *repo)
          for (p = repo->pnd; p->next; p = p->next);
          p = p->next = _pndman_new_pnd();
    } else p = repo->pnd = _pndman_new_pnd();
+   strncpy(p->repository, repo->url, PND_STR-1);
 
    return p;
 }
@@ -74,6 +84,7 @@ pndman_package* _pndman_repository_new_pnd_check(char *id, char *path, pndman_re
                pni->next_installed = _pndman_new_pnd();
                if (!pni->next_installed) return NULL;
                pni->next_installed->next = pni->next;
+               strncpy(pni->next_installed->repository, repo->url, PND_STR-1);
                return pni->next_installed;
             } else
                return pnd; /* this is the same pnd as installed locally */
@@ -138,16 +149,9 @@ static pndman_repository* _pndman_repository_new(pndman_repository **repo)
 /* \brief Allocate new if exists */
 static pndman_repository* _pndman_repository_new_if_exist(pndman_repository **repo, const char *check_existing)
 {
-   pndman_repository *r;
-
    if (!*repo) return *repo = _pndman_repository_init();
-   if (check_existing) {
-      r = _pndman_repository_first(*repo);
-      for(; r; r = r->next) {
-         // DEBUGP("%s == %s\n", r->url, check_existing);
-         if (!strcmp(r->url, check_existing)) return NULL;
-      }
-   }
+   if (check_existing && _pndman_repository_get(check_existing, *repo))
+      return NULL;
 
    return _pndman_repository_new(repo);
 }

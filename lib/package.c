@@ -333,6 +333,7 @@ pndman_package* _pndman_new_pnd(void)
    memset(pnd->md5,     0, PND_MD5);
    memset(pnd->url,     0, PND_STR);
    memset(pnd->vendor,  0, PND_NAME);
+   memset(pnd->repository, 0, PND_STR);
 
    //memset(pnd->icon, 0, PND_PATH-1);
    strcpy(pnd->icon, PND_DEFAULT_ICON);
@@ -370,6 +371,7 @@ int _pndman_copy_pnd(pndman_package *pnd, pndman_package *src)
    memcpy(pnd->url,     src->url,      PND_STR);
    memcpy(pnd->vendor,  src->vendor,   PND_NAME);
    memcpy(pnd->icon,    src->icon,     PND_PATH);
+   memcpy(pnd->repository, src->repository, PND_STR);
 
    _pndman_copy_author(&pnd->author, &src->author);
    _pndman_copy_version(&pnd->version, &src->version);
@@ -383,7 +385,7 @@ int _pndman_copy_pnd(pndman_package *pnd, pndman_package *src)
    pnd->size            = src->size;
    pnd->modified_time   = src->modified_time;
    pnd->rating          = src->rating;
-   pnd->update          = NULL;
+   pnd->update          = src->update;
 
    return RETURN_OK;
 }
