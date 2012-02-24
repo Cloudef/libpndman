@@ -350,7 +350,7 @@ pndman_package* _pndman_new_pnd(void)
    pnd->size            = 0;
    pnd->modified_time   = 0;
    pnd->rating          = 0;
-   pnd->flags           = 0;
+   pnd->update          = NULL;
    pnd->next            = NULL;
    pnd->next_installed  = NULL;
 
@@ -383,7 +383,7 @@ int _pndman_copy_pnd(pndman_package *pnd, pndman_package *src)
    pnd->size            = src->size;
    pnd->modified_time   = src->modified_time;
    pnd->rating          = src->rating;
-   pnd->flags           = src->flags;
+   pnd->update          = NULL;
 
    return RETURN_OK;
 }
