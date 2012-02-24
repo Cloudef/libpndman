@@ -6,6 +6,7 @@
 #include <errno.h>
 
 #ifdef __linux__
+#  include <dirent.h>
 #  include <mntent.h>
 #  include <sys/vfs.h>
 #  include <sys/stat.h>
@@ -52,6 +53,58 @@ static inline pndman_device* _pndman_device_last(pndman_device *device)
    /* find last */
    for(; device->next; device = device->next);
    return device;
+}
+
+/* \brief remove temp files in appdata (don't create tree) */
+static void _pndman_remove_tmp_files(pndman_device *device)
+{
+   char tmp[PATH_MAX];
+   char tmp2[PATH_MAX];
+#ifndef __WIN32__
+   DIR *dp;
+   struct dirent *ep;
+#else
+   WIN32_FIND_DATA dp;
+   HANDLE hFind = NULL;
+#endif
+   assert(device && device->mount);
+
+   memset(tmp, 0, PATH_MAX);
+   memset(tmp2,0, PATH_MAX);
+   if (!strlen(device->appdata)) {
+      strncpy(tmp, device->mount, PATH_MAX-1);
+      strncat(tmp, "/pandora", PATH_MAX-1);
+      strncat(tmp, "/appdata", PATH_MAX-1);
+      strncat(tmp, "/"PNDMAN_APPDATA, PATH_MAX-1);
+   } else strcpy(tmp, device->appdata);
+
+#ifndef __WIN32__
+   dp = opendir(tmp);
+   if (!dp) return;
+   while (ep = readdir(dp)) {
+      if (strstr(ep->d_name, ".tmp")) {
+         strcpy(tmp2, tmp);
+         strncat(tmp2, "/", PATH_MAX-1);
+         strncat(tmp2, ep->d_name, PATH_MAX-1);
+         remove(tmp2);
+      }
+   }
+   closedir(dp);
+#else
+   strcpy(tmp2, tmp);
+   strncat(tmp2, "/*.tmp", PATH_MAX-1);
+
+   if ((hFind = FindFirstFile(tmp, &dp)) == INVALID_HANDLE_VALUE)
+      return;
+
+   do {
+      strcpy(tmp2, tmp);
+      strncat(tmp2, "/", PATH_MAX-1);
+      strncat(tmp2, dp.cFileName, PATH_MAX-1);
+      remove(tmp2);
+   } while (FindNextFile(hFind, &dp));
+   FindClose(hFind);
+#endif
 }
 
 static int _check_create_tree_dir(char *path)
@@ -130,6 +183,7 @@ static pndman_device* _pndman_device_new(pndman_device **device)
    new->prev       = *device;
    (*device)->next = new;
    *device         = new;
+   _pndman_remove_tmp_files(*device); /* remove tmp files */
    return *device;
 }
 
