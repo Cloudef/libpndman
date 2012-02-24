@@ -198,6 +198,7 @@ typedef struct pndman_package
    pndman_previewpic *previewpic;
    pndman_category   *category;
 
+   const char repository[PND_STR];
    struct pndman_package *update;
    struct pndman_package *next_installed;
    struct pndman_package *next;
@@ -331,6 +332,7 @@ int pndman_sync_request(pndman_sync_handle *handle, unsigned int flags, pndman_r
 int pndman_sync_request_free(pndman_sync_handle *handle);
 int pndman_commit_all(pndman_repository *repo, pndman_device *device);
 int pndman_crawl(pndman_device *device, pndman_repository *local);
+int pndman_check_updates(pndman_repository *list);
 
 /* test thing, for surely */
 int pnd_do_something(char *file);
