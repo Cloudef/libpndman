@@ -175,10 +175,7 @@ static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
 
    /* failure? */
    if (!ret) {
-      DEBUG("FAIL");
       fclose(pnd);
-      puts(PXML);
-      exit(0);
       return RETURN_FAIL;
    }
 
@@ -198,7 +195,7 @@ static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
 
    /* read fail */
    if (!ret) {
-      DEBUG("FAIL2");
+      DEBUG("FAIL");
       fclose(pnd);
       puts(PXML);
       exit(0);
