@@ -230,6 +230,15 @@ pndman_repository* pndman_repository_add(const char *url, pndman_repository *rep
    return _pndman_repository_add(url, repo);
 }
 
+/* \brief Clear repository, effectiely frees the PND list */
+void pndman_repository_clear(pndman_repository *repo)
+{
+   DEBUG("pndman repo clear");
+   if (!repo) return;
+   _pndman_repository_free_pnd_all(repo);
+   repo->pnd = NULL;
+}
+
 /* \brief Free one repo, returns first repo */
 pndman_repository* pndman_repository_free(pndman_repository *repo)
 {

@@ -320,6 +320,7 @@ const char* pndman_get_md5(pndman_package *pnd);
  * So no need to document these here yet. */
 pndman_repository* pndman_repository_init();
 pndman_repository* pndman_repository_add(const char *url, pndman_repository *list);
+void pndman_repository_clear(pndman_repository *repo);
 pndman_repository* pndman_repository_free(pndman_repository *repo);
 int pndman_repository_free_all(pndman_repository *repo);
 pndman_device* pndman_device_add(const char *path, pndman_device *list);
