@@ -549,7 +549,7 @@ static int needtarget(unsigned int flags)
 {
    return  (!(flags & OP_CLEAN)  && !isquery(flags)       &&
             !(flags & A_REFRESH) && !(flags & OP_UPGRADE) &&
-            !(flags & A_UPGRADE));
+            !(flags & A_UPGRADE) && !(flags & OP_CRAWL));
 }
 
 /* set destination */
@@ -1268,6 +1268,10 @@ static int queryprocess(_USR_DATA *data)
 /* crawl operation logic */
 static int crawlprocess(_USR_DATA *data)
 {
+   pndman_device *d;
+   unsigned int f = 0;
+   for (d = data->dlist; d; d = d->next) f += pndman_crawl(d, data->rlist);
+   printf("%d pnds crawled\n",f);
    return RETURN_OK;
 }
 
