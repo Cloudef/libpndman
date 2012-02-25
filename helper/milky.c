@@ -1033,14 +1033,54 @@ static void syncrepos(pndman_repository *rs, _USR_DATA *data)
    }
 }
 
+/* pndinfo */
+static void pndinfo(pndman_package *pnd)
+{
+   assert(pnd);
+   _Y(); printf("%s", pnd->category ? strlen(pnd->category->sub) ?
+                      pnd->category->sub : pnd->category->main : "nogroup");
+   _W(); printf("/"); _G(); printf("%s\n", pnd->id); _N();
+}
+
+/* returns true or false depending if query type matches */
+static int matchquery(pndman_package *p, _USR_TARGET *t, _USR_DATA *data)
+{
+   pndman_translated *s;
+   pndman_category   *c;
+   assert(p && t && data);
+
+   /* compary category? */
+   if ((data->flags & A_CATEGORY)) {
+      for (c = p->category; c; c = c->next)
+         if (!strcasecmp(c->main, t->id))     return RETURN_TRUE;
+         else if (!strcasecmp(c->sub, t->id)) return RETURN_TRUE;
+      return RETURN_FALSE;
+   }
+
+   if (strcasestr(p->id, t->id))        return RETURN_TRUE;
+   for (s = p->title; s; s = s->next)
+      if (strcasestr(s->string, t->id)) return RETURN_TRUE;
+   for (s = p->description; s; s = s->next)
+      if (strcasestr(s->string, t->id)) return RETURN_TRUE;
+
+   return RETURN_FALSE;
+}
+
 /* search repository */
-static int searchrepo(pndman_repository *r)
+static int searchrepo(pndman_repository *r, _USR_DATA *data)
 {
    pndman_package *p;
+   _USR_TARGET *t;
    assert(r);
 
    /* lame search for now */
-   for (p = r->pnd; p; p = p->next) puts(p->id);
+   if (!data->tlist)
+      for (p = r->pnd; p; p = p->next) pndinfo(p);
+   else
+      for (t = data->tlist; t; t = t->next)
+         for (p = r->pnd; p; p = p->next) {
+            if (matchquery(p, t, data)) pndinfo(p);
+         }
    return RETURN_OK;
 }
 
@@ -1208,7 +1248,7 @@ static int syncprocess(_USR_DATA *data)
    /* search */
    if (isquery(data->flags))  {
       for (r = rs; r && strlen(r->url); r = r->next)
-         searchrepo(r);
+         searchrepo(r, data);
       return RETURN_OK;
    }
 
@@ -1262,7 +1302,7 @@ static int removeprocess(_USR_DATA *data)
 static int queryprocess(_USR_DATA *data)
 {
    /* lame query for now */
-   return searchrepo(data->rlist);
+   return searchrepo(data->rlist, data);
 }
 
 /* crawl operation logic */
@@ -1270,6 +1310,12 @@ static int crawlprocess(_USR_DATA *data)
 {
    pndman_device *d;
    unsigned int f = 0;
+
+   /* TODO: add seperate API command that checks existance of PND's
+    * and only removes indivual ones instead of clearing whole list.
+    *
+    * Doing so we will preserve remote information */
+   pndman_repository_clear(data->rlist);
    for (d = data->dlist; d; d = d->next) f += pndman_crawl(d, data->rlist);
    printf("%d pnds crawled\n",f);
    return RETURN_OK;
