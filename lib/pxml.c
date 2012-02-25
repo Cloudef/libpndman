@@ -8,18 +8,18 @@
 #include "package.h"
 #include "repository.h"
 #include "device.h"
-#include "md5.h"
 
 #ifdef __linux__
 #  include <sys/stat.h>
 #  include <dirent.h>
 #endif
 
-#define PXML_START_TAG "<PXML"
-#define PXML_END_TAG   "</PXML>"
-#define PXML_TAG_SIZE  7
-#define PXML_MAX_SIZE  1024 * 1024
-#define XML_HEADER     "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
+#define PXML_START_TAG     "<PXML"
+#define PXML_END_TAG       "</PXML>"
+#define PXML_MAX_SIZE      1024 * 1024
+#define PXML_WINDOW        4096
+#define PXML_WINDOW_FRACT  PXML_WINDOW-10
+#define XML_HEADER         "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
 
 /* PXML Tags */
 #define PXML_PACKAGE_TAG      "package"
@@ -110,43 +110,109 @@ typedef struct pxml_parse
    int                  bckward_desc;
 } pxml_parse;
 
+static char* _match_tag(char *s, size_t len, char *tag, size_t *p)
+{
+   unsigned int nlen = strlen(tag);
+   char *end = s + len - nlen;
+   *p = nlen;
+
+   while (s < end) {
+      if (isprint(*s))
+         if (!strncasecmp(s, tag, nlen)) return s;
+      ++s; ++*p;
+   }
+   return NULL;
+}
+
 /* \brief
  * Get PXML out of PND  */
 static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
 {
    FILE     *pnd;
-   char     s[LINE_MAX];
-   size_t   pos;
-   char     *ret;
+   char     s[PXML_WINDOW];
+   char     *match;
+   size_t   pos, len, ret, read, stag, etag;
 
    /* open PND */
    pnd = fopen(pnd_file, "rb");
    if (!pnd)
       return RETURN_FAIL;
 
-   /* set && seek to end */
-   memset(s,  0, LINE_MAX);
-   fseek(pnd, 0, SEEK_END); pos = ftell(pnd) - 512; fseek(pnd, pos, SEEK_SET);
-   for (; (ret = fgets(s, PXML_TAG_SIZE, pnd)) && memcmp(s, PXML_START_TAG, strlen(PXML_START_TAG));
-          fseek(pnd, --pos, SEEK_SET));
+   /* seek to end, and see if we should seek back */
+   memset(s,  0, PXML_WINDOW);
+   fseek(pnd, 0, SEEK_END);
+   if ((len = ftell(pnd)) > PXML_WINDOW) {
+      pos  = len - PXML_WINDOW;
+      read = PXML_WINDOW;
+   } else {
+      pos  = 0;
+      read = len;
+   }
+
+   /* hackety, hackety, hack */
+   while (1) {
+      /* seek */
+      fseek(pnd, pos, SEEK_SET);
+
+      /* read until start tag */
+      if ((ret = fread(s, 1, read, pnd))) {
+         // if (!memcmp(s, PXML_START_TAG, strlen(PXML_START_TAG))) break;
+         if ((match = _match_tag(s, read, PXML_START_TAG, &stag))) break;
+      }
+
+      if (!ret) break; ret = 0;              /* below breaks are failures */
+      if (!pos) break;                       /* nothing more to read */
+      else if (pos > PXML_WINDOW_FRACT) {    /* seek back */
+         pos -= PXML_WINDOW_FRACT;
+         read = PXML_WINDOW;
+         if (len - pos > (500*1024)) break;
+      } else {                               /* read final segment */
+         read = PXML_WINDOW - pos;
+         memset(s + pos, 0, PXML_WINDOW - pos);
+         pos = 0;
+      }
+   }
+
+   /* failure? */
+   if (!ret) {
+      DEBUG("FAIL");
+      fclose(pnd);
+      puts(PXML);
+      exit(0);
+      return RETURN_FAIL;
+   }
 
    /* Yatta! PXML start found ^_^ */
    /* PXML does not define standard XML, so add those to not confuse expat */
-   strncpy(PXML, XML_HEADER, PXML_MAX_SIZE-1);
+   memcpy(PXML, XML_HEADER, strlen(XML_HEADER)); pos = strlen(XML_HEADER);
 
-   /* read until end tag */
-   for (; ret && memcmp(s, PXML_END_TAG, strlen(PXML_END_TAG)); ret = fgets(s, LINE_MAX-1, pnd))
-      strncat(PXML, s, PXML_MAX_SIZE-1);
+   /* check if end tag is on the same buffer as start tag */
+   if (!_match_tag(match, read, PXML_END_TAG, &etag)) {
+      /* nope, copy first buffer and read to end */
+      memcpy(PXML + pos, match, read-stag+5); pos += read-stag+5;
+      while ((ret = fread(s, 1, read, pnd))) {
+         match = s; if (_match_tag(match, read, PXML_END_TAG, &etag)) break;
+         memcpy(PXML + pos, s, read); pos += read;
+      }
+   }
 
-   /* and we are done, was it so hard libpnd? */
-   strncat(PXML, PXML_END_TAG, PXML_MAX_SIZE-1);
+   /* read fail */
+   if (!ret) {
+      DEBUG("FAIL2");
+      fclose(pnd);
+      puts(PXML);
+      exit(0);
+      return RETURN_FAIL;
+   }
+
+   /* finish */
+   memcpy(PXML + pos, match, etag);
 
    /* store size */
-   *size = strlen(PXML);
+   *size = pos+etag;
 
    /* close the file */
    fclose(pnd);
-
    return RETURN_OK;
 }
 
@@ -737,7 +803,10 @@ static int _pxml_pnd_parse(pxml_parse *data, char *PXML, size_t size)
       ret = RETURN_FAIL;
 
    if (ret == RETURN_FAIL) {
+      DEBUG("");
       DEBUG(PXML);
+      DEBUG("");
+      DEBUG("FIX CODE!");
       exit(EXIT_FAILURE);
    }
 
@@ -845,10 +914,10 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
 static int _pndman_crawl_process(char *pnd_file, pxml_parse *data)
 {
    char PXML[PXML_MAX_SIZE];
-   char *md5;
    size_t size;
    assert(pnd_file && data);
 
+   memset(PXML, 0, PXML_MAX_SIZE);
    if (_fetch_pxml_from_pnd(pnd_file, PXML, &size) != RETURN_OK)
       return RETURN_FAIL;
 
@@ -859,13 +928,6 @@ static int _pndman_crawl_process(char *pnd_file, pxml_parse *data)
 
    /* add path to the pnd */
    strncpy(data->pnd->path, pnd_file, PATH_MAX-1);
-
-   /* add md5 to the pnd */
-   md5 = _pndman_md5(pnd_file);
-   if (md5) {
-      strncpy(data->pnd->md5, md5, PND_MD5);
-      free(md5);
-   }
 
    return RETURN_OK;
 }
