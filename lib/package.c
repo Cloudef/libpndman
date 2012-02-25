@@ -4,6 +4,7 @@
 #include <malloc.h>
 #include "pndman.h"
 #include "package.h"
+#include "md5.h"
 
 /* \brief Init version struct */
 static void _pndman_init_version(pndman_version *ver)
@@ -835,6 +836,26 @@ pndman_category* _pndman_application_new_category(pndman_application *app)
    }
 
    return c;
+}
+
+/* API */
+
+/* \brief calculate new md5 for the PND,
+ * Use this if you don't have md5 in pnd or want to recalculate */
+const char* pndman_get_md5(pndman_package *pnd)
+{
+   char *md5;
+   if (!pnd) return NULL;
+
+   /* get md5 */
+   md5 = _pndman_md5(pnd->path);
+   if (!md5) return NULL;
+
+   /* store it in pnd */
+   strncpy(pnd->md5, md5, PND_MD5);
+   free(md5);
+
+   return pnd->md5;
 }
 
 /* vim: set ts=8 sw=3 tw=0 :*/

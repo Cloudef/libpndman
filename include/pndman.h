@@ -309,6 +309,10 @@ int pndman_quit();
 const char* pndman_git_head();
 const char* pndman_git_commit();
 
+/* \brief calculate new md5 for the PND,
+ * Use this if you don't have md5 in pnd or want to recalculate */
+const char* pndman_get_md5(pndman_package *pnd);
+
 /* Current API functions
  * These are very likely to change.
  * I'm just defining them here, since I'm getting sick of implict declaration warnings.
