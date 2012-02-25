@@ -335,6 +335,7 @@ pndman_package* _pndman_new_pnd(void)
    memset(pnd->url,     0, PND_STR);
    memset(pnd->vendor,  0, PND_NAME);
    memset(pnd->repository, 0, PND_STR);
+   memset(pnd->device,  0, PND_PATH);
 
    //memset(pnd->icon, 0, PND_PATH-1);
    strcpy(pnd->icon, PND_DEFAULT_ICON);
@@ -373,6 +374,7 @@ int _pndman_copy_pnd(pndman_package *pnd, pndman_package *src)
    memcpy(pnd->vendor,  src->vendor,   PND_NAME);
    memcpy(pnd->icon,    src->icon,     PND_PATH);
    memcpy(pnd->repository, src->repository, PND_STR);
+   memcpy(pnd->device,  src->device,   PND_PATH);
 
    _pndman_copy_author(&pnd->author, &src->author);
    _pndman_copy_version(&pnd->version, &src->version);

@@ -177,6 +177,7 @@ typedef struct pndman_package
    pndman_category   *category;
 
    char repository[PND_STR];
+   char device[PND_PATH];
    struct pndman_package *update;
    struct pndman_package *next_installed;
    struct pndman_package *next;

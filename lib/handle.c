@@ -247,6 +247,7 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
 
    /* mark installed */
    strcpy(pnd->path, install);
+   strcpy(pnd->device, handle->device->device);
    return RETURN_OK;
 }
 
