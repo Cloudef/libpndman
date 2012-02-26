@@ -38,6 +38,7 @@ int main()
    pndman_repository *repository, *r;
    pndman_device     *device;
    pndman_package    *pnd;
+   pndman_translated *t;
    char *cwd;
 
    cwd = test_device();
@@ -80,6 +81,9 @@ int main()
             printf("ICON:  %s\n", pnd->icon);
             printf("MD5:   %s\n", pnd->md5);
             printf("URL:   %s\n", pnd->url);
+            puts("\nTitles:");
+            for (t = pnd->title; t; t = t->next)
+               puts(t->string);
             puts("");
          }
       }
