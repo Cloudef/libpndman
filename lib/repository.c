@@ -208,6 +208,23 @@ static int _pndman_repository_free_all(pndman_repository *repo)
    return RETURN_OK;
 }
 
+/* \brief Check local repository for bad/removed PNDs, return number of packages removed */
+static int _pndman_repository_check(pndman_repository *repo)
+{
+   pndman_package *p;
+   FILE *f;
+   int removed = 0;
+   assert(repo);
+
+   for (p = repo->pnd; p; p = p->next)
+      if (!(f = fopen(p->path, "r"))) {
+         if (_pndman_repository_free_pnd(p, repo) == RETURN_OK)
+            ++removed;
+      }
+      else fclose(f);
+   return removed;
+}
+
 /* API */
 
 /* \brief Initialize repo list
@@ -237,6 +254,15 @@ void pndman_repository_clear(pndman_repository *repo)
    if (!repo) return;
    _pndman_repository_free_pnd_all(repo);
    repo->pnd = NULL;
+}
+
+/* \brief Check local repository for bad/removed PNDs, returns number of packages removed */
+int pndman_repository_check_local(pndman_repository *local)
+{
+   DEBUG("pndman repo check local");
+   if (!local) return 0;
+   local = _pndman_repository_first(local); /* make fool proof */
+   return _pndman_repository_check(local);
 }
 
 /* \brief Free one repo, returns first repo */
