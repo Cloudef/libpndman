@@ -918,6 +918,12 @@ static int _pndman_crawl_process(char *pnd_file, pxml_parse *data)
    if (_fetch_pxml_from_pnd(pnd_file, PXML, &size) != RETURN_OK)
       return RETURN_FAIL;
 
+   /* reset some stuff before crawling for post process */
+   memset(data->pnd->version.major, 0, PND_VER);
+   memset(data->pnd->version.minor,  0, PND_VER);
+   memset(data->pnd->version.release,0, PND_VER);
+   memset(data->pnd->version.build,  0, PND_VER);
+
    /* parse */
    if (_pxml_pnd_parse(data, PXML, size) != RETURN_OK)
       return RETURN_FAIL;
