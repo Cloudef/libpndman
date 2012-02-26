@@ -211,17 +211,19 @@ static int _pndman_repository_free_all(pndman_repository *repo)
 /* \brief Check local repository for bad/removed PNDs, return number of packages removed */
 static int _pndman_repository_check(pndman_repository *repo)
 {
-   pndman_package *p;
+   pndman_package *p, *pn;
    FILE *f;
    int removed = 0;
    assert(repo);
 
-   for (p = repo->pnd; p; p = p->next)
+   for (p = repo->pnd; p; p = pn) {
+      pn = p->next;
       if (!(f = fopen(p->path, "r"))) {
          if (_pndman_repository_free_pnd(p, repo) == RETURN_OK)
             ++removed;
       }
       else fclose(f);
+   }
    return removed;
 }
 
