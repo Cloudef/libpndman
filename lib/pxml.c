@@ -9,7 +9,7 @@
 #include "repository.h"
 #include "device.h"
 
-#ifdef __linux__
+#ifndef __WIN32__
 #  include <sys/stat.h>
 #  include <dirent.h>
 #endif
@@ -953,12 +953,22 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
    pnd = NULL; p = NULL;
    ret = 0;
 
-#ifdef __linux__
+#ifndef __WIN32__ /* POSIX */
    dp = opendir(path);
    if (!dp) return 0;
 
    while (ep = readdir(dp)) {
-      if (!strstr(ep->d_name, ".pnd")) continue;
+      if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, "..")) continue; /* no we don't want this! */
+      /* recrusive */
+      if (ep->d_type == DT_DIR) {
+         strcpy(tmp, path);
+         strncat(tmp, "/", PATH_MAX-1);
+         strncat(tmp, ep->d_name, PATH_MAX-1);
+         ret += _pndman_crawl_dir(tmp, list);
+         continue;
+      }
+      if (ep->d_type != DT_REG) continue;                /* we only want regular files */
+      if (!strcasestr(ep->d_name, ".pnd")) continue;     /* we only want .pnd files */
       strcpy(tmp, path);
       strncat(tmp, "/", PATH_MAX-1);
       strncat(tmp, ep->d_name, PATH_MAX-1);
@@ -989,14 +999,24 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
       ++ret;
    }
    closedir(dp);
-#elif __WIN32__
+#else /* WIN32 */
    strcpy(tmp, path);
-   strncat(tmp, "/*.pnd", PATH_MAX-1);
+   strncat(tmp, "/*", PATH_MAX-1);
 
    if ((hFind = FindFirstFile(tmp, &dp)) == INVALID_HANDLE_VALUE)
       return 0;
 
    do {
+      if (!strcmp(dp.cFileName, ".") || !strcmp(dp.cFileName, "..")) continue; /* we don't want this */
+      /* recrusive */
+      if (dp.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY) {
+         strcpy(tmp, path);
+         strncat(tmp, "/", PATH_MAX-1);
+         strncat(tmp, dp.cFileName, PATH_MAX-1);
+         ret += _pndman_crawl_dir(tmp, list);
+         continue;
+      }
+      if (!strcasestr(dp.cFileName, ".pnd")) continue; /* we only want .pnd files */
       strcpy(tmp, path);
       strncat(tmp, "/", PATH_MAX-1);
       strncat(tmp, dp.cFileName, PATH_MAX-1);
