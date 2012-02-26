@@ -956,8 +956,6 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
    assert(path && list);
 
    /* init parse data */
-   data.bckward_title = 1; /* backwards compatibility with PXML titles */
-   data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
    pnd = NULL; p = NULL;
    ret = 0;
 
@@ -989,6 +987,8 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
       data.pnd   = pnd;
       data.app   = NULL;
       data.data  = NULL;
+      data.bckward_title = 1; /* backwards compatibility with PXML titles */
+      data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
       data.state = PXML_PARSE_DEFAULT;
       if (_pndman_crawl_process(tmp, &data) != RETURN_OK) {
          _pndman_free_pnd(pnd);
@@ -1037,6 +1037,8 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
       data.pnd   = pnd;
       data.app   = NULL;
       data.data  = NULL;
+      data.bckward_title = 1; /* backwards compatibility with PXML titles */
+      data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
       data.state = PXML_PARSE_DEFAULT;
       if (_pndman_crawl_process(tmp, &data) != RETURN_OK) {
          _pndman_free_pnd(pnd);
