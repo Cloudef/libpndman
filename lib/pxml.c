@@ -850,6 +850,8 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
       memcpy(pnd->version.release, pnd->app->version.release, PND_VER);
    if (!strlen(pnd->version.build) && strlen(pnd->app->version.build))
       memcpy(pnd->version.build, pnd->app->version.build, PND_VER);
+   if (pnd->version.type != pnd->app->version.type && pnd->version.type == PND_VERSION_RELEASE)
+      pnd->version.type = pnd->app->version.type;
 
    /* titles */
    if (!pnd->title && pnd->app->title) {
@@ -1168,6 +1170,11 @@ int pnd_do_something(char *pnd_file)
    data.bckward_title = 1;
    data.bckward_desc  = 1;
    data.state = PXML_PARSE_DEFAULT;
+
+   memset(data.pnd->version.major,  0, PND_VER);
+   memset(data.pnd->version.minor,  0, PND_VER);
+   memset(data.pnd->version.release,0, PND_VER);
+   memset(data.pnd->version.build,  0, PND_VER);
 
    /* parse */
    if (_pxml_pnd_parse(&data, PXML, size) != RETURN_OK) {
