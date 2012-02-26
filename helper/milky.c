@@ -1311,11 +1311,6 @@ static int crawlprocess(_USR_DATA *data)
    pndman_device *d;
    unsigned int f = 0;
 
-   /* TODO: add seperate API command that checks existance of PND's
-    * and only removes indivual ones instead of clearing whole list.
-    *
-    * Doing so we will preserve remote information */
-   pndman_repository_clear(data->rlist);
    for (d = data->dlist; d; d = d->next) f += pndman_crawl(d, data->rlist);
    printf("%d pnds crawled\n",f);
    return RETURN_OK;
@@ -1440,7 +1435,8 @@ static int processflags(_USR_DATA *data)
    /* read repository information from each device */
    for (d = data->dlist; d; d = d->next)
       for (r = data->rlist; r; r = r->next) pndman_read_from_device(r, d);
-   pndman_check_updates(data->rlist);
+   pndman_repository_check_local(data->rlist);  /* check for removed/bad pnds */
+   pndman_check_updates(data->rlist);           /* check for updates */
 
    /* logic */
    if ((data->flags & OP_YAOURT))         ret = yaourtprocess(data);
