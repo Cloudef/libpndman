@@ -1040,6 +1040,7 @@ static void pndinfo(pndman_package *pnd)
    _Y(); printf("%s", pnd->category ? strlen(pnd->category->sub) ?
                       pnd->category->sub : pnd->category->main : "nogroup");
    _W(); printf("/"); _G(); printf("%s\n", pnd->id); _N();
+   _W(); puts(pnd->title?strlen(pnd->title->string)?pnd->title->string:"notitle":"notitle"); _N();
 }
 
 /* returns true or false depending if query type matches */
