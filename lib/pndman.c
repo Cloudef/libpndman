@@ -9,7 +9,7 @@
 #include "version.h"
 
 /* \brief convert string to uppercase, returns number of characters converted */
-static char* _upstr(char *src)
+static char* _upstr(const char *src)
 {
    int i;
    char *dst = malloc(strlen(src)+1);
@@ -20,7 +20,7 @@ static char* _upstr(char *src)
 }
 
 /* \brief strstr strings in uppercase, NOTE: returns 1 on found else 0 */
-int _strupstr(char *hay, char *needle)
+int _strupstr(const char *hay, const char *needle)
 {
    char *uphay, *upneedle; int ret = RETURN_FALSE;
    if (!(uphay    = _upstr(hay))) return RETURN_FALSE;
@@ -33,16 +33,16 @@ int _strupstr(char *hay, char *needle)
    return ret;
 }
 
-/* \brief strcmp strings in uppercase, NOTE: returns 1 on found else 0 */
-int _strupcmp(char *hay, char *needle)
+/* \brief strcmp strings in uppercase, NOTE: returns 0 on found else 1 (so you don't mess up with strcmp) */
+int _strupcmp(const char *hay, const char *needle)
 {
-   char *uphay, *upneedle; int ret = RETURN_FALSE;
-   if (!(uphay    = _upstr(hay))) return RETURN_FALSE;
+   char *uphay, *upneedle; int ret = RETURN_TRUE;
+   if (!(uphay    = _upstr(hay))) return RETURN_TRUE;
    if (!(upneedle = _upstr(needle))) {
-      free(uphay); return RETURN_FALSE;
+      free(uphay); return RETURN_TRUE;
    }
 
-   if (!strcmp(uphay, upneedle)) ret = RETURN_TRUE;
+   if (!strcmp(uphay, upneedle)) ret = RETURN_FALSE;
    free(uphay); free(upneedle);
    return ret;
 }

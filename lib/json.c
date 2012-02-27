@@ -29,8 +29,8 @@ static int _json_set_version(pndman_version *ver, json_t *object)
    _json_set_string(ver->release,   json_object_get(object,"release"),  PND_VER);
    _json_set_string(ver->build,     json_object_get(object,"build"),    PND_VER);
    _json_set_string(type,           json_object_get(object,"type"),     PND_VER);
-   ver->type = _strupcmp(type,PND_TYPE_BETA)  ? PND_VERSION_BETA  :
-               _strupcmp(type,PND_TYPE_ALPHA) ? PND_VERSION_ALPHA : PND_VERSION_RELEASE;
+   ver->type = !_strupcmp(type,PND_TYPE_BETA)  ? PND_VERSION_BETA  :
+               !_strupcmp(type,PND_TYPE_ALPHA) ? PND_VERSION_ALPHA : PND_VERSION_RELEASE;
    return RETURN_OK;
 }
 
@@ -391,7 +391,7 @@ int _pndman_json_commit(pndman_repository *r, FILE *f)
       for (t = p->title; t; t = t->next) {
          found = 0;
          for (d = p->description; d ; d = d->next)
-            if (_strupcmp(d->lang, t->lang)) {
+            if (!_strupcmp(d->lang, t->lang)) {
                found = 1;
                break;
             }

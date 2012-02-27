@@ -42,8 +42,8 @@ typedef enum
 FILE* _pndman_get_tmp_file();
 void _strip_slash(char *path);
 
-int _strupstr(char *hay, char *needle);
-int _strupcmp(char *hay, char *needle);
+int _strupstr(const char *hay, const char *needle);
+int _strupcmp(const char *hay, const char *needle);
 
 #ifdef __cplusplus
 }
