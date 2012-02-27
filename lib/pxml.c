@@ -931,6 +931,7 @@ static int _pndman_crawl_process(char *pnd_file, pxml_parse *data)
 {
    char PXML[PXML_MAX_SIZE];
    size_t size;
+   FILE *f;
    assert(pnd_file && data);
 
    memset(PXML, 0, PXML_MAX_SIZE);
@@ -947,6 +948,13 @@ static int _pndman_crawl_process(char *pnd_file, pxml_parse *data)
    if (_pxml_pnd_parse(data, PXML, size) != RETURN_OK)
       return RETURN_FAIL;
    _pxml_pnd_post_process(data->pnd);
+
+   /* add size to the pnd */
+   if ((f = fopen(pnd_file, "r"))) {
+         fseek(f, SEEK_END, 0);
+         data->pnd->size = ftell(f);
+         fclose(f);
+   }
 
    /* add path to the pnd */
    strncpy(data->pnd->path, pnd_file, PATH_MAX-1);
