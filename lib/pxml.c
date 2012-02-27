@@ -674,7 +674,6 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
          {
             if (!memcmp(tag, PXML_DESCRIPTION_TAG, strlen(PXML_DESCRIPTION_TAG)))
             {
-               puts("asdasd");
                if ((desc = _pndman_application_new_description(app)))
                {
                   _pxml_pnd_translated_tag(desc, attrs);
