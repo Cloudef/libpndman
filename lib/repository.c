@@ -108,8 +108,7 @@ int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *repo)
       _pndman_free_pnd(pnd);
       return RETURN_OK;
    }
-   for (p = repo->pnd; p; p = pn) {
-      pn = p->next;
+   for (p = repo->pnd; p; p = p->next) {
       if (p->next == pnd) {
          if (p->next->next) p->next = p->next->next;
          else               p->next = NULL;
