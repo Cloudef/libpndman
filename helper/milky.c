@@ -1173,7 +1173,8 @@ static void listupdate(_USR_DATA *data)
 static unsigned int handleflagsfromflags(unsigned int flags)
 {
    unsigned int hflags = 0;
-   if ((flags & OP_SYNC))           hflags |= PNDMAN_HANDLE_INSTALL;
+   if ((flags & OP_SYNC) || (flags & OP_UPGRADE))
+                                    hflags |= PNDMAN_HANDLE_INSTALL;
    else if ((flags & OP_REMOVE))    hflags |= PNDMAN_HANDLE_REMOVE;
    if ((flags & GB_FORCE))          hflags |= PNDMAN_HANDLE_FORCE;
 
@@ -1205,17 +1206,20 @@ static int targetperform(_USR_DATA *data)
    for (t = data->tlist; t; t = t->next) ++c;
    pndman_handle handle[c]; t = data->tlist; char done[c];
    for (c = 0; t; t = t->next) {
-      pndman_handle_init(t->pnd->id, &handle[c]);
+      pndman_handle_init(strlen(t->pnd->id)?t->pnd->id:"notitle", &handle[c]);
       handle[c].pnd     = t->pnd;
       handle[c].device  = data->root;
       handle[c].flags   = handleflagsfromflags(data->flags);
       done[c]           = 0;
-      pndman_handle_perform(&handle[c]);
+      if (pndman_handle_perform(&handle[c]) != RETURN_OK)
+         handle[c].flags = 0;
+      ++c;
    }
 
    while ((ret = pndman_download()) > 0) {
       t = data->tlist; tdl = 0; ttdl = 0;
       for (c = 0; t; t = t->next) {
+         if (!handle[c].flags) { ++c; continue; } /* failed perform */
          tdl  += (float)handle[c].progress.download;
          ttdl += (float)handle[c].progress.total_to_download;
          if (handle[c].progress.done && !done[c]) {
@@ -1318,11 +1322,13 @@ static int upgradeprocess(_USR_DATA *data)
       return RETURN_FAIL;
 
    /* we need synced repo as well */
-   if (!checksyncedrepo(rs)) return RETURN_FAIL;
+   if (!checksyncedrepo(rs))  return RETURN_FAIL;
 
    /* handle targets */
    if (!data->tlist)          targetup(rs, data);
    if (!targetpnd(rs, data))  return RETURN_FAIL;
+
+   /* ask for ignores */
    pre_op_dialog(data);
 
    /* do oepration */
