@@ -250,6 +250,45 @@ static size_t strtrim(char *str)
    return end - pch;
 }
 
+/* \brief convert string to uppercase, returns number of characters converted */
+static char* _upstr(const char *src)
+{
+   int i;
+   char *dst = malloc(strlen(src)+1);
+   if (!dst) return NULL;
+   for (i = 0; i != strlen(src); ++i)
+      dst[i] = (char)toupper(src[i]);
+   return dst;
+}
+
+/* \brief strstr strings in uppercase, NOTE: returns 1 on found else 0 */
+static int _strupstr(const char *hay, const char *needle)
+{
+   char *uphay, *upneedle; int ret = RETURN_FALSE;
+   if (!(uphay    = _upstr(hay))) return RETURN_FALSE;
+   if (!(upneedle = _upstr(needle))) {
+      free(uphay); return RETURN_FALSE;
+   }
+
+   if (strstr(uphay, upneedle)) ret = RETURN_TRUE;
+   free(uphay); free(upneedle);
+   return ret;
+}
+
+/* \brief strcmp strings in uppercase, NOTE: returns 0 on found else 1 (so you don't mess up with strcmp) */
+static int _strupcmp(const char *hay, const char *needle)
+{
+   char *uphay, *upneedle; int ret = RETURN_TRUE;
+   if (!(uphay    = _upstr(hay))) return RETURN_TRUE;
+   if (!(upneedle = _upstr(needle))) {
+      free(uphay); return RETURN_TRUE;
+   }
+
+   if (!strcmp(uphay, upneedle)) ret = RETURN_FALSE;
+   free(uphay); free(upneedle);
+   return ret;
+}
+
 /* strip leading slash from path */
 static void stripslash(char *path)
 {
@@ -695,9 +734,9 @@ static int _setdest(char **argv, int argc, _USR_DATA *data)
 {
    assert(data);
    if (!argc) return RETURN_FAIL;
-   if (!strcasecmp(argv[0], "MENU"))         data->flags |= setdest(A_MENU, data);
-   else if (!strcasecmp(argv[0], "DESKTOP")) data->flags |= setdest(A_DESKTOP, data);
-   else if (!strcasecmp(argv[0], "APPS"))    data->flags |= setdest(A_APPS, data);
+   if (!_strupcmp(argv[0], "MENU"))         data->flags |= setdest(A_MENU, data);
+   else if (!_strupcmp(argv[0], "DESKTOP")) data->flags |= setdest(A_DESKTOP, data);
+   else if (!_strupcmp(argv[0], "APPS"))    data->flags |= setdest(A_APPS, data);
    return RETURN_OK;
 }
 
@@ -914,8 +953,8 @@ static int _yesno_dialog(char noconfirm, char yn, char *fmt, va_list args)
       return RETURN_FALSE;
 
    if (!strtrim(response)) return yn;
-   if (!strcasecmp(response, "Y") || !strcasecmp(response, "YES"))   return RETURN_TRUE;
-   if (!strcasecmp(response, "N") || !strcasecmp(response, "NO"))    return RETURN_FALSE;
+   if (!_strupcmp(response, "Y") || !_strupcmp(response, "YES"))   return RETURN_TRUE;
+   if (!_strupcmp(response, "N") || !_strupcmp(response, "NO"))    return RETURN_FALSE;
    return RETURN_FALSE;
 }
 
@@ -1053,16 +1092,16 @@ static int matchquery(pndman_package *p, _USR_TARGET *t, _USR_DATA *data)
    /* compary category? */
    if ((data->flags & A_CATEGORY)) {
       for (c = p->category; c; c = c->next)
-         if (!strcasecmp(c->main, t->id))     return RETURN_TRUE;
-         else if (!strcasecmp(c->sub, t->id)) return RETURN_TRUE;
+         if (!_strupcmp(c->main, t->id))     return RETURN_TRUE;
+         else if (!_strupcmp(c->sub, t->id)) return RETURN_TRUE;
       return RETURN_FALSE;
    }
 
-   if (strcasestr(p->id, t->id))        return RETURN_TRUE;
+   if (_strupstr(p->id, t->id))        return RETURN_TRUE;
    for (s = p->title; s; s = s->next)
-      if (strcasestr(s->string, t->id)) return RETURN_TRUE;
+      if (_strupstr(s->string, t->id)) return RETURN_TRUE;
    for (s = p->description; s; s = s->next)
-      if (strcasestr(s->string, t->id)) return RETURN_TRUE;
+      if (_strupstr(s->string, t->id)) return RETURN_TRUE;
 
    return RETURN_FALSE;
 }
