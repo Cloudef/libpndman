@@ -36,29 +36,21 @@ int _strupstr(const char *hay, const char *needle)
 /* \brief strcmp strings in uppercase, NOTE: returns 0 on found else 1 (so you don't mess up with strcmp) */
 int _strupcmp(const char *hay, const char *needle)
 {
-   char *uphay, *upneedle; int ret = RETURN_TRUE;
-   if (!(uphay    = _upstr(hay))) return RETURN_TRUE;
-   if (!(upneedle = _upstr(needle))) {
-      free(uphay); return RETURN_TRUE;
-   }
+   size_t i, len;
 
-   if (!strcmp(uphay, upneedle)) ret = RETURN_FALSE;
-   free(uphay); free(upneedle);
-   return ret;
+   if ((len = strlen(hay)) != strlen(needle)) return RETURN_TRUE;
+   for (i = 0; i != len; ++i)
+      if (toupper(hay[i]) != toupper(needle[i])) return RETURN_TRUE;
+   return RETURN_FALSE;
 }
 
 /* \brief strncmp strings in uppercase, NOTE: returns 0 on found else 1 (so you don't mess up with strcmp) */
 int _strnupcmp(const char *hay, const char *needle, size_t len)
 {
-   char *uphay, *upneedle; int ret = RETURN_TRUE;
-   if (!(uphay    = _upstr(hay))) return RETURN_TRUE;
-   if (!(upneedle = _upstr(needle))) {
-      free(uphay); return RETURN_TRUE;
-   }
-
-   if (!strncmp(uphay, upneedle, len)) ret = RETURN_FALSE;
-   free(uphay); free(upneedle);
-   return ret;
+   size_t i;
+   for (i = 0; i != len; ++i)
+      if (hay[i] != needle[i]) return RETURN_TRUE;
+   return RETURN_FALSE;
 }
 
 /* \brief return temporary file */
