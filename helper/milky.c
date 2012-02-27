@@ -1203,12 +1203,13 @@ static int targetperform(_USR_DATA *data)
    assert(data);
 
    for (t = data->tlist; t; t = t->next) ++c;
-   pndman_handle handle[c]; t = data->tlist;
+   pndman_handle handle[c]; t = data->tlist; char done[c];
    for (c = 0; t; t = t->next) {
       pndman_handle_init((char*)t->id, &handle[c]);
       handle[c].pnd     = t->pnd;
       handle[c].device  = data->root;
       handle[c].flags   = handleflagsfromflags(data->flags);
+      done[c]           = 0;
       pndman_handle_perform(&handle[c]);
    }
 
@@ -1217,8 +1218,9 @@ static int targetperform(_USR_DATA *data)
       for (c = 0; t; t = t->next) {
          tdl  += (float)handle[c].progress.download;
          ttdl += (float)handle[c].progress.total_to_download;
-         if (handle[c].progress.done) {
+         if (handle[c].progress.done && !done[c]) {
             _B(); printf(opstrfromflags(1,data->flags), handle[c].name); _N();
+            done[c] = 1;
          }
          ++c;
       }
