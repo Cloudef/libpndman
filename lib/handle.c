@@ -91,6 +91,7 @@ static int _pndman_handle_download(pndman_handle *handle)
 
    DEBUG("handle download");
    if (!handle->device)             return RETURN_FAIL;
+   if (!handle->pnd)                return RETURN_FAIL;
    if (!strlen(handle->pnd->url))   return RETURN_FAIL;
    if (!(handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_MENU)    &&
