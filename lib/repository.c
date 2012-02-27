@@ -78,13 +78,14 @@ pndman_package* _pndman_repository_new_pnd_check(char *id, char *path, pndman_re
       if (!strcmp(id, pnd->id)) {
          /* if local repository, create instance */
          if (!repo->prev) {
-            if (_strupcmp(path, pnd->path)) {
+            if (strlen(path) && _strupcmp(path, pnd->path)) {
                /* create instance here, path differs! */
-               for (pni = pnd; pni->next_installed; pni = pni->next_installed);
+               for (pni = pnd; pni && pni->next_installed; pni = pni->next_installed);
                pni->next_installed = _pndman_new_pnd();
                if (!pni->next_installed) return NULL;
                pni->next_installed->next = pni->next;
                strncpy(pni->next_installed->repository, repo->url, PND_STR-1);
+               DEBUGP("%s == %s NEW_INSTALLED\n", path, pnd->path);
                return pni->next_installed;
             } else
                return pnd; /* this is the same pnd as installed locally */
