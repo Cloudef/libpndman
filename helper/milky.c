@@ -1205,7 +1205,7 @@ static int targetperform(_USR_DATA *data)
    for (t = data->tlist; t; t = t->next) ++c;
    pndman_handle handle[c]; t = data->tlist; char done[c];
    for (c = 0; t; t = t->next) {
-      pndman_handle_init((char*)t->id, &handle[c]);
+      pndman_handle_init(t->pnd->id, &handle[c]);
       handle[c].pnd     = t->pnd;
       handle[c].device  = data->root;
       handle[c].flags   = handleflagsfromflags(data->flags);
