@@ -16,6 +16,7 @@ typedef struct pndman_device
 } pndman_device;
 
 char* _pndman_device_get_appdata(pndman_device *device);
+void _pndman_device_get_appdata_no_create(char *appdata, pndman_device *device);
 
 #ifdef __cplusplus
 }

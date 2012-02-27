@@ -71,12 +71,8 @@ static void _pndman_remove_tmp_files(pndman_device *device)
 
    memset(tmp, 0, PATH_MAX);
    memset(tmp2,0, PATH_MAX);
-   if (!strlen(device->appdata)) {
-      strncpy(tmp, device->mount, PATH_MAX-1);
-      strncat(tmp, "/pandora", PATH_MAX-1);
-      strncat(tmp, "/appdata", PATH_MAX-1);
-      strncat(tmp, "/"PNDMAN_APPDATA, PATH_MAX-1);
-   } else strcpy(tmp, device->appdata);
+   _pndman_device_get_appdata_no_create(tmp, device);
+   if (!strlen(tmp)) return;
 
 #ifndef __WIN32__
    dp = opendir(tmp);
@@ -475,6 +471,19 @@ char* _pndman_device_get_appdata(pndman_device *device)
       return NULL;
 
    return device->appdata;
+}
+
+/* \brief get appdata, return null if doesn't exist */
+void _pndman_device_get_appdata_no_create(char *appdata, pndman_device *device)
+{
+   assert(device && appdata);
+   memset(appdata, 0, PATH_MAX);
+   if (!strlen(device->appdata)) {
+      strncpy(appdata, device->mount, PATH_MAX-1);
+      strncat(appdata, "/pandora", PATH_MAX-1);
+      strncat(appdata, "/appdata", PATH_MAX-1);
+      strncat(appdata, "/"PNDMAN_APPDATA, PATH_MAX-1);
+   } else strcpy(appdata, device->appdata);
 }
 
 /* API */

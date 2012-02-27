@@ -126,7 +126,7 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
 
    /* check appdata */
    appdata = _pndman_device_get_appdata(device);
-   if (!appdata) return RETURN_FAIL;
+   if (!strlen(appdata)) return RETURN_FAIL;
 
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/local.db", PATH_MAX-1);
@@ -156,7 +156,7 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
 
    /* check appdata */
    appdata = _pndman_device_get_appdata(device);
-   if (!appdata) return RETURN_FAIL;
+   if (!strlen(appdata)) return RETURN_FAIL;
 
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/repo.db", PATH_MAX-1);
@@ -181,12 +181,12 @@ static int _pndman_db_get_local(pndman_repository *repo, pndman_device *device)
 {
    FILE *f;
    char db_path[PATH_MAX];
-   char *appdata;
+   char appdata[PATH_MAX];
    assert(repo && device);
 
    /* check appdata */
-   appdata = _pndman_device_get_appdata(device);
-   if (!appdata) return RETURN_FAIL;
+   _pndman_device_get_appdata_no_create(appdata, device);
+   if (!strlen(appdata)) return RETURN_FAIL;
 
    /* begin to read local database */
    strncpy(db_path, appdata, PATH_MAX-1);
@@ -209,8 +209,8 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
    char s[LINE_MAX];
    char s2[LINE_MAX];
    char db_path[PATH_MAX];
+   char appdata[PATH_MAX];
    char *ret;
-   char *appdata;
    int  parse = 0;
    assert(device);
 
@@ -225,8 +225,8 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
       return RETURN_FAIL;
 
    /* check appdata */
-   appdata = _pndman_device_get_appdata(device);
-   if (!appdata) return RETURN_FAIL;
+   _pndman_device_get_appdata_no_create(appdata, device);
+   if (!strlen(appdata)) return RETURN_FAIL;
 
    /* begin to read other repositories */
    strncpy(db_path, appdata, PATH_MAX-1);

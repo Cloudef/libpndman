@@ -104,7 +104,7 @@ static int _pndman_handle_download(pndman_handle *handle)
 
    /* check appdata */
    appdata = _pndman_device_get_appdata(handle->device);
-   if (!appdata) {
+   if (!strlen(appdata)) {
       curl_free_request(&handle->request);
       return RETURN_FAIL;
    }
@@ -186,7 +186,7 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
 
    /* check appdata */
    appdata = _pndman_device_get_appdata(handle->device);
-   if (!appdata) return RETURN_FAIL;
+   if (!strlen(appdata)) return RETURN_FAIL;
 
    /* complete handle's path */
    snprintf(tmp, PATH_MAX-1, "%s/%p.tmp", appdata, handle);
