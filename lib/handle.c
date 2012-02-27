@@ -135,6 +135,7 @@ static int _pndman_handle_download(pndman_handle *handle)
    return RETURN_OK;
 }
 
+/* \brief parse filename from HTTP header */
 static int _parse_filename_from_header(char *filename, pndman_handle *handle)
 {
    char* haystack = (char*)handle->request.result.data;
