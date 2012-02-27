@@ -251,7 +251,7 @@ static size_t strtrim(char *str)
 }
 
 /* \brief strcmp strings in uppercase, NOTE: returns 0 on found else 1 (so you don't mess up with strcmp) */
-int _strupcmp(const char *hay, const char *needle)
+static int strupcmp(const char *hay, const char *needle)
 {
    size_t i, len;
    if ((len = strlen(hay)) != strlen(needle)) return RETURN_TRUE;
@@ -261,7 +261,7 @@ int _strupcmp(const char *hay, const char *needle)
 }
 
 /* \brief strncmp strings in uppercase, NOTE: returns 0 on found else 1 (so you don't mess up with strcmp) */
-int _strnupcmp(const char *hay, const char *needle, size_t len)
+static int strnupcmp(const char *hay, const char *needle, size_t len)
 {
    size_t i;
    for (i = 0; i != len; ++i)
@@ -270,11 +270,11 @@ int _strnupcmp(const char *hay, const char *needle, size_t len)
 }
 
 /* \brief strstr strings in uppercase */
-char* _strupstr(const char *hay, const char *needle)
+static char* strupstr(const char *hay, const char *needle)
 {
    size_t i, r, p, len, len2;
    p = 0; r = 0;
-   if (!_strupcmp(hay, needle)) return (char*)hay;
+   if (!strupcmp(hay, needle)) return (char*)hay;
    if ((len = strlen(hay)) < (len2 = strlen(needle))) return NULL;
    for (i = 0; i != len; ++i) {
       if (p == len2) return (char*)&hay[r]; /* THIS IS IT! */
@@ -731,9 +731,9 @@ static int _setdest(char **argv, int argc, _USR_DATA *data)
 {
    assert(data);
    if (!argc) return RETURN_FAIL;
-   if (!_strupcmp(argv[0], "MENU"))         data->flags |= setdest(A_MENU, data);
-   else if (!_strupcmp(argv[0], "DESKTOP")) data->flags |= setdest(A_DESKTOP, data);
-   else if (!_strupcmp(argv[0], "APPS"))    data->flags |= setdest(A_APPS, data);
+   if (!strupcmp(argv[0], "MENU"))         data->flags |= setdest(A_MENU, data);
+   else if (!strupcmp(argv[0], "DESKTOP")) data->flags |= setdest(A_DESKTOP, data);
+   else if (!strupcmp(argv[0], "APPS"))    data->flags |= setdest(A_APPS, data);
    return RETURN_OK;
 }
 
@@ -950,8 +950,8 @@ static int _yesno_dialog(char noconfirm, char yn, char *fmt, va_list args)
       return RETURN_FALSE;
 
    if (!strtrim(response)) return yn;
-   if (!_strupcmp(response, "Y") || !_strupcmp(response, "YES"))   return RETURN_TRUE;
-   if (!_strupcmp(response, "N") || !_strupcmp(response, "NO"))    return RETURN_FALSE;
+   if (!strupcmp(response, "Y") || !strupcmp(response, "YES"))   return RETURN_TRUE;
+   if (!strupcmp(response, "N") || !strupcmp(response, "NO"))    return RETURN_FALSE;
    return RETURN_FALSE;
 }
 
@@ -1089,16 +1089,16 @@ static int matchquery(pndman_package *p, _USR_TARGET *t, _USR_DATA *data)
    /* compary category? */
    if ((data->flags & A_CATEGORY)) {
       for (c = p->category; c; c = c->next)
-         if (!_strupcmp(c->main, t->id))     return RETURN_TRUE;
-         else if (!_strupcmp(c->sub, t->id)) return RETURN_TRUE;
+         if (!strupcmp(c->main, t->id))     return RETURN_TRUE;
+         else if (!strupcmp(c->sub, t->id)) return RETURN_TRUE;
       return RETURN_FALSE;
    }
 
-   if (_strupstr(p->id, t->id))        return RETURN_TRUE;
+   if (strupstr(p->id, t->id))        return RETURN_TRUE;
    for (s = p->title; s; s = s->next)
-      if (_strupstr(s->string, t->id)) return RETURN_TRUE;
+      if (strupstr(s->string, t->id)) return RETURN_TRUE;
    for (s = p->description; s; s = s->next)
-      if (_strupstr(s->string, t->id)) return RETURN_TRUE;
+      if (strupstr(s->string, t->id)) return RETURN_TRUE;
 
    return RETURN_FALSE;
 }
