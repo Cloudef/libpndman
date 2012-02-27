@@ -24,6 +24,7 @@ static int _json_set_version(pndman_version *ver, json_t *object)
 {
    char type[PND_VER];
    if (!object) return RETURN_FAIL;
+   memset(type, 0, PND_VER);
    _json_set_string(ver->major,     json_object_get(object,"major"),    PND_VER);
    _json_set_string(ver->minor,     json_object_get(object,"minor"),    PND_VER);
    _json_set_string(ver->release,   json_object_get(object,"release"),  PND_VER);

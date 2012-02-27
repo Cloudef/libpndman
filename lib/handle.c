@@ -15,7 +15,7 @@
  * etc...
  */
 
-#define HANDLE_NAME 24
+#define HANDLE_NAME PND_ID
 
 /* \brief flags for handle to determite what to do */
 typedef enum pndman_handle_flags
@@ -279,16 +279,18 @@ int pndman_handle_init(const char *name, pndman_handle *handle)
 {
    DEBUG("pndman_handle_init");
    if (!handle) return RETURN_FAIL;
-   if (_pndman_curl_init() != RETURN_OK)
-      return RETURN_FAIL;
 
    handle->request.curl = NULL;
    handle->device       = NULL;
    handle->pnd          = NULL;
+   memset(handle->name, 0, HANDLE_NAME);
    strncpy(handle->name, name, HANDLE_NAME-1);
    memset(handle->error, 0, LINE_MAX);
    handle->flags = 0;
    curl_init_progress(&handle->progress);
+
+   if (_pndman_curl_init() != RETURN_OK)
+      return RETURN_FAIL;
 
    return RETURN_OK;
 }
