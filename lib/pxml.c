@@ -279,7 +279,7 @@ static void _pxml_pnd_exec_tag(pndman_exec *exec, char **attrs)
       /* <exec background= */
       if (!memcmp(attrs[i], PXML_BACKGROUND_ATTR, strlen(PXML_BACKGROUND_ATTR)))
       {
-         if (!strcasecmp(attrs[++i], PND_TRUE)) exec->background = 1;
+         if (_strupcmp(attrs[++i], PND_TRUE)) exec->background = 1;
       }
       /* <exec startdir= */
       else if (!memcmp(attrs[i], PXML_STARTDIR_ATTR, strlen(PXML_STARTDIR_ATTR)))
@@ -299,9 +299,9 @@ static void _pxml_pnd_exec_tag(pndman_exec *exec, char **attrs)
       else if (!memcmp(attrs[i], PXML_X11_ATTR, strlen(PXML_X11_ATTR)))
       {
          ++i;
-         if (!strcasecmp(attrs[i], PND_X11_REQ))          exec->x11 = PND_EXEC_REQ;
-         else if (!strcasecmp(attrs[i], PND_X11_STOP))    exec->x11 = PND_EXEC_STOP;
-         else if (!strcasecmp(attrs[i], PND_X11_IGNORE))  exec->x11 = PND_EXEC_IGNORE;
+         if (_strupcmp(attrs[i], PND_X11_REQ))          exec->x11 = PND_EXEC_REQ;
+         else if (_strupcmp(attrs[i], PND_X11_STOP))    exec->x11 = PND_EXEC_STOP;
+         else if (_strupcmp(attrs[i], PND_X11_IGNORE))  exec->x11 = PND_EXEC_IGNORE;
       }
    }
 }
@@ -438,9 +438,9 @@ static void _pxml_pnd_version_tag(pndman_version *ver, char **attrs)
       else if (!memcmp(attrs[i], PXML_TYPE_ATTR, strlen(PXML_TYPE_ATTR)))
       {
          ++i;
-         if (!strcasecmp(PND_TYPE_RELEASE, attrs[i]))    ver->type = PND_VERSION_RELEASE;
-         else if (!strcasecmp(PND_TYPE_BETA, attrs[i]))  ver->type = PND_VERSION_BETA;
-         else if (!strcasecmp(PND_TYPE_ALPHA, attrs[i])) ver->type = PND_VERSION_ALPHA;
+         if (_strupcmp(PND_TYPE_RELEASE, attrs[i]))    ver->type = PND_VERSION_RELEASE;
+         else if (_strupcmp(PND_TYPE_BETA, attrs[i]))  ver->type = PND_VERSION_BETA;
+         else if (_strupcmp(PND_TYPE_ALPHA, attrs[i])) ver->type = PND_VERSION_ALPHA;
       }
    }
 }
@@ -991,7 +991,7 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
          continue;
       }
       if (ep->d_type != DT_REG) continue;                /* we only want regular files */
-      if (!strcasestr(ep->d_name, ".pnd")) continue;     /* we only want .pnd files */
+      if (!_strupstr(ep->d_name, ".pnd")) continue;     /* we only want .pnd files */
       strcpy(tmp, path);
       strncat(tmp, "/", PATH_MAX-1);
       strncat(tmp, ep->d_name, PATH_MAX-1);
@@ -1041,7 +1041,7 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
          ret += _pndman_crawl_dir(tmp, list);
          continue;
       }
-      if (!strcasestr(dp.cFileName, ".pnd")) continue; /* we only want .pnd files */
+      if (!_strupstr(dp.cFileName, ".pnd")) continue; /* we only want .pnd files */
       strcpy(tmp, path);
       strncat(tmp, "/", PATH_MAX-1);
       strncat(tmp, dp.cFileName, PATH_MAX-1);

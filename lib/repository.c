@@ -78,7 +78,7 @@ pndman_package* _pndman_repository_new_pnd_check(char *id, char *path, pndman_re
       if (!strcmp(id, pnd->id)) {
          /* if local repository, create instance */
          if (!repo->prev) {
-            if (strcmp(path, pnd->path)) {
+            if (!_strupcmp(path, pnd->path)) {
                /* create instance here, path differs! */
                for (pni = pnd; pni->next_installed; pni = pni->next_installed);
                pni->next_installed = _pndman_new_pnd();

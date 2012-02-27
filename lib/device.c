@@ -196,7 +196,7 @@ static pndman_device* _pndman_device_new_if_exist(pndman_device **device, const 
       d = _pndman_device_first(*device);
       for(; d; d = d->next) {
          // DEBUGP("%s == %s\n", d->mount, check_existing);
-         if (!strcmp(d->mount, check_existing)) return NULL;
+         if (_strupcmp(d->mount, check_existing)) return NULL;
       }
    }
 
@@ -302,8 +302,8 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
    memset(strings, 0, 4096);
    while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
       if (mnt.mnt_dir != NULL) {
-         if (strcmp(mnt.mnt_fsname, path) == 0 ||
-             strcmp(mnt.mnt_dir,    path) == 0  )
+         if (strupcmp(mnt.mnt_fsname, path) ||
+             strupcmp(mnt.mnt_dir,    path))
              break;
       }
       m = NULL;
@@ -355,7 +355,7 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
       return NULL;
 
    /* fill device struct */
-   if (strlen(path) > 3 && strcmp(szDrive, path))
+   if (strlen(path) > 3 && !_strupcmp(szDrive, path))
       strncpy(device->mount, path, PATH_MAX-1);
    else
       strncpy(device->mount,  szDrive, PATH_MAX-1);
@@ -386,10 +386,10 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
    memset(strings, 0, 4096);
    while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
       if ((mnt.mnt_dir != NULL) && (statfs(mnt.mnt_dir, &fs) == 0)) {
-         if(strstr(mnt.mnt_fsname, "/dev/")	        != 0 &&
-            strcmp(mnt.mnt_dir, "/")		        != 0 &&
-            strcmp(mnt.mnt_dir, "/home")		!= 0 &&
-            strcmp(mnt.mnt_dir, "/boot")		!= 0 )
+         if(_strupstr(mnt.mnt_fsname, "/dev/")	        != 0 &&
+            _strupcmp(mnt.mnt_dir, "/")		        != 1 &&
+            _strupcmp(mnt.mnt_dir, "/home")		!= 1 &&
+            _strupcmp(mnt.mnt_dir, "/boot")		!= 1 )
          {
             /* check for read && write perms */
             if (access(mnt.mnt_dir, R_OK | W_OK) == -1)

@@ -1,11 +1,51 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "pndman.h"
 #include "device.h"
 #include "package.h"
 #include "repository.h"
 #include "version.h"
+
+/* \brief convert string to uppercase, returns number of characters converted */
+static char* _upstr(char *src)
+{
+   int i;
+   char *dst = malloc(strlen(src)+1);
+   if (!dst) return NULL;
+   for (i = 0; i != strlen(src); ++i)
+      dst[i] = (char)toupper(src[i]);
+   return dst;
+}
+
+/* \brief strstr strings in uppercase, NOTE: returns 1 on found else 0 */
+int _strupstr(char *hay, char *needle)
+{
+   char *uphay, *upneedle; int ret = RETURN_FALSE;
+   if (!(uphay    = _upstr(hay))) return RETURN_FALSE;
+   if (!(upneedle = _upstr(needle))) {
+      free(uphay); return RETURN_FALSE;
+   }
+
+   if (strstr(uphay, upneedle)) ret = RETURN_TRUE;
+   free(uphay); free(upneedle);
+   return ret;
+}
+
+/* \brief strcmp strings in uppercase, NOTE: returns 1 on found else 0 */
+int _strupcmp(char *hay, char *needle)
+{
+   char *uphay, *upneedle; int ret = RETURN_FALSE;
+   if (!(uphay    = _upstr(hay))) return RETURN_FALSE;
+   if (!(upneedle = _upstr(needle))) {
+      free(uphay); return RETURN_FALSE;
+   }
+
+   if (!strcmp(uphay, upneedle)) ret = RETURN_TRUE;
+   free(uphay); free(upneedle);
+   return ret;
+}
 
 /* \brief return temporary file */
 FILE* _pndman_get_tmp_file()
