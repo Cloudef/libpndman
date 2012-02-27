@@ -28,7 +28,7 @@
 #define REPO_URL     LINE_MAX
 #define REPO_NAME    24
 #define REPO_VERSION 8
-#define HANDLE_NAME  24
+#define HANDLE_NAME  PND_ID
 
 #ifdef __cplusplus
 extern "C" {
