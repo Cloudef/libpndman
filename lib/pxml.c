@@ -658,7 +658,7 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
          /* === BACKWARDS COMPATIBILITY === */
          /* TODO: These are okay to ignore if new methods are used */
          /* <title */
-         else if (((pxml_parse*)data)->bckward_title)
+         if (((pxml_parse*)data)->bckward_title)
          {
             if (!memcmp(tag, PXML_TITLE_TAG, strlen(PXML_TITLE_TAG)))
             {
@@ -670,10 +670,11 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
             }
          }
          /* <description */
-         else if (((pxml_parse*)data)->bckward_desc)
+         if (((pxml_parse*)data)->bckward_desc)
          {
             if (!memcmp(tag, PXML_DESCRIPTION_TAG, strlen(PXML_DESCRIPTION_TAG)))
             {
+               puts("asdasd");
                if ((desc = _pndman_application_new_description(app)))
                {
                   _pxml_pnd_translated_tag(desc, attrs);
@@ -685,6 +686,23 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
    }
 }
 
+/* \brief copy string with special care, returns number of characters copied */
+static int _cstrncpy(char *dst, char *src, int len)
+{
+   int i, p, nospace;
+   assert(dst && src);
+   if (!len) return 0;
+   p = 0; nospace = 0;
+   for (i = 0; i != len; ++i) {
+      if (!isspace(src[i])) nospace = 1;
+      if (isprint(src[i]) && src[i] != '\n' &&
+          src[i] != '\r'  && src[i] != '\t' && nospace) {
+         dst[p++] = src[i];
+      }
+   }
+   return p;
+}
+
 /* \brief Text data */
 static void _pxml_pnd_data(void *data, char *text, int len)
 {
@@ -694,8 +712,8 @@ static void _pxml_pnd_data(void *data, char *text, int len)
    char                  *ptr          = ((pxml_parse*)data)->data;
 
    if (!ptr) return;
-   if (len < PND_STR) memcpy(ptr, text, len);
-   ((pxml_parse*)data)->data = NULL;
+   if (len < PND_STR)
+      if (_cstrncpy(ptr, text, len)) ((pxml_parse*)data)->data = NULL;
 }
 
 /* \brief End element tag */
