@@ -100,7 +100,7 @@ pndman_package* _pndman_repository_new_pnd_check(char *id, char *path, pndman_re
 /* \brief free pnd from repository */
 int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *repo)
 {
-   pndman_package *p;
+   pndman_package *p, *pn;
    assert(pnd && repo);
 
    if (repo->pnd == pnd) {
@@ -108,13 +108,15 @@ int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *repo)
       _pndman_free_pnd(pnd);
       return RETURN_OK;
    }
-   for (p = repo->pnd; p; p = p->next)
+   for (p = repo->pnd; p; p = pn) {
+      pn = p->next;
       if (p->next == pnd) {
          if (p->next->next) p->next = p->next->next;
          else               p->next = NULL;
          _pndman_free_pnd(pnd);
          return RETURN_OK;
       }
+   }
    return RETURN_FAIL;
 }
 
