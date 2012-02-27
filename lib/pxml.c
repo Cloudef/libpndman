@@ -118,7 +118,7 @@ static char* _match_tag(char *s, size_t len, char *tag, size_t *p)
 
    while (s < end) {
       if (isprint(*s))
-         if (!strncasecmp(s, tag, nlen)) return s;
+         if (!_strnupcmp(s, tag, nlen)) return s;
       ++s; ++*p;
    }
    return NULL;

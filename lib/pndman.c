@@ -47,6 +47,20 @@ int _strupcmp(const char *hay, const char *needle)
    return ret;
 }
 
+/* \brief strncmp strings in uppercase, NOTE: returns 0 on found else 1 (so you don't mess up with strcmp) */
+int _strnupcmp(const char *hay, const char *needle, size_t len)
+{
+   char *uphay, *upneedle; int ret = RETURN_TRUE;
+   if (!(uphay    = _upstr(hay))) return RETURN_TRUE;
+   if (!(upneedle = _upstr(needle))) {
+      free(uphay); return RETURN_TRUE;
+   }
+
+   if (!strncmp(uphay, upneedle, len)) ret = RETURN_FALSE;
+   free(uphay); free(upneedle);
+   return ret;
+}
+
 /* \brief return temporary file */
 FILE* _pndman_get_tmp_file()
 {
