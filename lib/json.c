@@ -310,8 +310,8 @@ int _pndman_json_process(pndman_repository *repo, FILE *data)
 /* \brief print to file with escapes */
 static void _cfprintf(FILE *f, char *str)
 {
-   assert(f && str);
    int len, i;
+   assert(f && str);
    if (!(len = strlen(str))) return;
    for (i = 0; i != len; ++i) {
       if (str[i] == '\\')
