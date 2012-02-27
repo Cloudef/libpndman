@@ -23,10 +23,15 @@ static void _pndman_init_version(pndman_version *ver)
 /* \brief Copy version struct */
 static void _pndman_copy_version(pndman_version *dst, pndman_version *src)
 {
-   memcpy(dst->major, src->major, PND_VER);
-   memcpy(dst->minor, src->minor, PND_VER);
-   memcpy(dst->release, src->release, PND_VER);
-   memcpy(dst->build, src->build, PND_VER);
+   if (strlen(src->major))
+      memcpy(dst->major, src->major, PND_VER);
+   if (strlen(src->minor))
+      memcpy(dst->minor, src->minor, PND_VER);
+   if (strlen(src->release))
+      memcpy(dst->release, src->release, PND_VER);
+   if (strlen(src->build))
+      memcpy(dst->build, src->build, PND_VER);
+
    dst->type = src->type;
 }
 
@@ -45,9 +50,12 @@ static void _pndman_init_exec(pndman_exec *exec)
 /* \brief Copy exec struct */
 static void _pndman_copy_exec(pndman_exec *dst, pndman_exec *src)
 {
-   memcpy(dst->startdir, src->startdir, PND_PATH);
-   memcpy(dst->command, src->command, PND_STR);
-   memcpy(dst->arguments, src->arguments, PND_STR);
+   if (strlen(src->startdir))
+      memcpy(dst->startdir, src->startdir, PND_PATH);
+   if (strlen(src->command))
+      memcpy(dst->command, src->command, PND_STR);
+   if (strlen(src->arguments))
+      memcpy(dst->arguments, src->arguments, PND_STR);
 
    dst->standalone   = src->standalone;
    dst->background   = src->background;
@@ -65,9 +73,12 @@ static void _pndman_init_author(pndman_author *author)
 /* \brief Copy author struct */
 static void _pndman_copy_author(pndman_author *dst, pndman_author *src)
 {
-   memcpy(dst->name, src->name, PND_NAME);
-   memcpy(dst->website, src->website, PND_STR);
-   memcpy(dst->email, src->email, PND_STR);
+   if (strlen(src->name))
+      memcpy(dst->name, src->name, PND_NAME);
+   if (strlen(src->website))
+      memcpy(dst->website, src->website, PND_STR);
+   if (strlen(src->email))
+      memcpy(dst->email, src->email, PND_STR);
 }
 
 /* \brief Init info struct */
@@ -81,9 +92,12 @@ static void _pndman_init_info(pndman_info *info)
 /* \brief Copy info struct */
 static void _pndman_copy_info(pndman_info *dst, pndman_info *src)
 {
-   memcpy(dst->name, src->name, PND_NAME);
-   memcpy(dst->type, src->type, PND_SHRT_STR);
-   memcpy(dst->src, src->src, PND_PATH);
+   if (strlen(src->name))
+      memcpy(dst->name, src->name, PND_NAME);
+   if (strlen(src->type))
+      memcpy(dst->type, src->type, PND_SHRT_STR);
+   if (strlen(src->src))
+      memcpy(dst->src, src->src, PND_PATH);
 }
 
 /* \brief Internal allocation of pndman_translated */
@@ -366,29 +380,53 @@ int _pndman_copy_pnd(pndman_package *pnd, pndman_package *src)
    assert(pnd && src);
 
    /* copy */
-   memcpy(pnd->path,    src->path,     PND_PATH);
-   memcpy(pnd->id,      src->id,       PND_ID);
-   memcpy(pnd->info,    src->info,     PND_INFO);
+   if (strlen(src->path))
+      memcpy(pnd->path,    src->path,     PND_PATH);
+   if (strlen(src->id))
+      memcpy(pnd->id,      src->id,       PND_ID);
+   if (strlen(src->url))
+      memcpy(pnd->info,    src->info,     PND_INFO);
    memcpy(pnd->md5,     src->md5,      PND_MD5);
-   memcpy(pnd->url,     src->url,      PND_STR);
-   memcpy(pnd->vendor,  src->vendor,   PND_NAME);
-   memcpy(pnd->icon,    src->icon,     PND_PATH);
-   memcpy(pnd->repository, src->repository, PND_STR);
-   memcpy(pnd->device,  src->device,   PND_PATH);
+   if (strlen(src->url))
+      memcpy(pnd->url,     src->url,      PND_STR);
+   if (strlen(src->vendor))
+      memcpy(pnd->vendor,  src->vendor,   PND_NAME);
+   if (strlen(src->icon))
+      memcpy(pnd->icon,    src->icon,     PND_PATH);
+   if (strlen(src->repository))
+      memcpy(pnd->repository, src->repository, PND_STR);
+   if (strlen(src->device))
+      memcpy(pnd->device,  src->device,   PND_PATH);
 
    _pndman_copy_author(&pnd->author, &src->author);
    _pndman_copy_version(&pnd->version, &src->version);
-   pnd->app          = _pndman_copy_application(src->app);
-   pnd->title        = _pndman_copy_translated(src->title);
-   pnd->description  = _pndman_copy_translated(src->description);
-   pnd->license      = _pndman_copy_license(src->license);
-   pnd->previewpic   = _pndman_copy_previewpic(src->previewpic);
-   pnd->category     = _pndman_copy_category(src->category);
 
-   pnd->size            = src->size;
-   pnd->modified_time   = src->modified_time;
-   pnd->rating          = src->rating;
-   pnd->update          = src->update;
+   /* TODO: merge non existant ones instead? */
+   if (!pnd->app)
+      pnd->app          = _pndman_copy_application(src->app);
+
+   if (!pnd->title)
+      pnd->title        = _pndman_copy_translated(src->title);
+   if (!pnd->description)
+      pnd->description  = _pndman_copy_translated(src->description);
+
+   if (!pnd->license)
+      pnd->license      = _pndman_copy_license(src->license);
+
+   if (!pnd->previewpic)
+      pnd->previewpic   = _pndman_copy_previewpic(src->previewpic);
+
+   if (!pnd->category)
+      pnd->category     = _pndman_copy_category(src->category);
+
+   if (src->size)
+      pnd->size            = src->size;
+   if (src->modified_time)
+      pnd->modified_time   = src->modified_time;
+   if (src->rating)
+      pnd->rating          = src->rating;
+   if (src->update)
+      pnd->update          = src->update;
 
    return RETURN_OK;
 }
