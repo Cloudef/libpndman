@@ -103,6 +103,7 @@ static void init_usrdata(_USR_DATA *data)
 #define _REPO_SYNCED             "%s, synchorized succesfully.\n"
 #define _REPO_SYNCED_NOT         "%s, failed to synchorize.\n"
 #define _PND_NOT_FOUND           "Warning: no such package %s\n"
+#define _PND_NO_UPDATE           "Warning: %s, has no update.\n"
 #define _PND_HAS_UPDATE          "%s has a update.\n"
 #define _UPGRADE_DONE            "Upgraded %s\n"
 #define _UPGRADE_FAIL            "Failed to upgrade %s\n"
@@ -1122,26 +1123,52 @@ static int searchrepo(pndman_repository *r, _USR_DATA *data)
 }
 
 /* get pnd from target id */
-static int targetpnd(pndman_repository *rs, _USR_DATA *data)
+static int targetpnd(pndman_repository *rs, _USR_DATA *data, int up)
 {
    pndman_package    *p;
    pndman_repository *r;
    _USR_TARGET       *t, *tn;
    assert(rs && data);
-   for (t = data->tlist; t; t = t->next)
+
+   /* try cmp first */
+   for (t = data->tlist; t; t = t->next) {
+      if (t->pnd) continue;
       for (r = rs; r; r = r->next) {
          for (p = r->pnd; p; p = p->next)
-            if (strstr(p->id, t->id)) {
+            if (!strcmp(p->id, t->id)) {
+               printf("A: %s %s\n", t->id, p->id);
                strcpy(t->id, p->id);
                t->pnd = p; break;
             }
          if (rs == data->rlist) break; /* we only want local repository */
       }
+   }
+
+   /* then strstr first */
+   for (t = data->tlist; t; t = t->next) {
+      if (t->pnd) continue;
+      for (r = rs; r; r = r->next) {
+         for (p = r->pnd; p; p = p->next)
+            if (strstr(p->id, t->id)) {
+               printf("A: %s %s\n", t->id, p->id);
+               strcpy(t->id, p->id);
+               t->pnd = p; break;
+            }
+         if (rs == data->rlist) break; /* we only want local repository */
+      }
+   }
+
    for (t = data->tlist; t; t = tn) {
       tn = t->next;
       if (!t->pnd) {
          _R(); printf(_PND_NOT_FOUND, t->id); _N();
          data->tlist = freetarget(t);
+         continue;
+      }
+      if (up && !t->pnd->update) {
+         _R(); printf(_PND_NO_UPDATE, t->id); _N();
+         data->tlist = freetarget(t);
+         continue;
       }
    }
    return data->tlist ? 1 : 0;
@@ -1173,14 +1200,16 @@ static void listupdate(_USR_DATA *data)
 static unsigned int handleflagsfromflags(unsigned int flags)
 {
    unsigned int hflags = 0;
-   if ((flags & OP_SYNC) || (flags & OP_UPGRADE))
-                                    hflags |= PNDMAN_HANDLE_INSTALL;
+   if ((flags & OP_SYNC))           hflags |= PNDMAN_HANDLE_INSTALL;
    else if ((flags & OP_REMOVE))    hflags |= PNDMAN_HANDLE_REMOVE;
    if ((flags & GB_FORCE))          hflags |= PNDMAN_HANDLE_FORCE;
 
-   if ((flags & A_DESKTOP))         hflags |= PNDMAN_HANDLE_INSTALL_DESKTOP;
-   else if ((flags & A_APPS))       hflags |= PNDMAN_HANDLE_INSTALL_APPS;
-   else                             hflags |= PNDMAN_HANDLE_INSTALL_MENU; /* default to menu */
+   /* don't assing destination on upgrade */
+   if (!(flags & OP_UPGRADE) && !(flags & A_UPGRADE)) {
+      if ((flags & A_DESKTOP))         hflags |= PNDMAN_HANDLE_INSTALL_DESKTOP;
+      else if ((flags & A_APPS))       hflags |= PNDMAN_HANDLE_INSTALL_APPS;
+      else                             hflags |= PNDMAN_HANDLE_INSTALL_MENU; /* default to menu */
+   }
    return hflags;
 }
 
@@ -1208,7 +1237,7 @@ static int targetperform(_USR_DATA *data)
    for (c = 0; t; t = t->next) {
       pndman_handle_init(strlen(t->pnd->id)?t->pnd->id:"notitle", &handle[c]);
       handle[c].pnd     = t->pnd;
-      handle[c].device  = data->root;
+      handle[c].device  = ((data->flags & OP_UPGRADE) || (data->flags & A_UPGRADE))?data->dlist:data->root;
       handle[c].flags   = handleflagsfromflags(data->flags);
       done[c]           = 0;
       if (pndman_handle_perform(&handle[c]) != RETURN_OK)
@@ -1303,7 +1332,7 @@ static int syncprocess(_USR_DATA *data)
       targetup(rs, data);
 
    /* set PND's for targets here */
-   if (!targetpnd(rs, data)) return RETURN_FAIL;
+   if (!targetpnd(rs, data, (data->flags & A_UPGRADE))) return RETURN_FAIL;
 
    /* ask for ignores */
    pre_op_dialog(data);
@@ -1326,7 +1355,7 @@ static int upgradeprocess(_USR_DATA *data)
 
    /* handle targets */
    if (!data->tlist)          targetup(rs, data);
-   if (!targetpnd(rs, data))  return RETURN_FAIL;
+   if (!targetpnd(rs, data, 1))  return RETURN_FAIL;
 
    /* ask for ignores */
    pre_op_dialog(data);
@@ -1339,7 +1368,7 @@ static int upgradeprocess(_USR_DATA *data)
 static int removeprocess(_USR_DATA *data)
 {
    /* search local repo from the targets */
-   if (!targetpnd(data->rlist, data)) return RETURN_FAIL;
+   if (!targetpnd(data->rlist, data, 0)) return RETURN_FAIL;
    return targetperform(data);
 }
 
