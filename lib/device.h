@@ -15,6 +15,10 @@ typedef struct pndman_device
    struct pndman_device *next, *prev;
 } pndman_device;
 
+
+pndman_device* _pndman_device_first(pndman_device *device);
+pndman_device* _pndman_device_last(pndman_device *device);
+
 char* _pndman_device_get_appdata(pndman_device *device);
 void _pndman_device_get_appdata_no_create(char *appdata, pndman_device *device);
 

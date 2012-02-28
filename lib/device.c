@@ -40,7 +40,7 @@ static pndman_device* _pndman_device_init()
 }
 
 /* \brief Find first device */
-static inline pndman_device* _pndman_device_first(pndman_device *device)
+inline pndman_device* _pndman_device_first(pndman_device *device)
 {
    /* find first */
    for(; device->prev; device = device->prev);
@@ -48,7 +48,7 @@ static inline pndman_device* _pndman_device_first(pndman_device *device)
 }
 
 /* \brief Find last device */
-static inline pndman_device* _pndman_device_last(pndman_device *device)
+inline pndman_device* _pndman_device_last(pndman_device *device)
 {
    /* find last */
    for(; device->next; device = device->next);
