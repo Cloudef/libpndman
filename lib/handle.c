@@ -22,12 +22,11 @@
 typedef enum pndman_handle_flags
 {
    PNDMAN_HANDLE_INSTALL         = 0x001,
-   PNDMAN_HANDLE_UPGRADE         = 0x002,
-   PNDMAN_HANDLE_REMOVE          = 0x004,
-   PNDMAN_HANDLE_FORCE           = 0x008,
-   PNDMAN_HANDLE_INSTALL_DESKTOP = 0x010,
-   PNDMAN_HANDLE_INSTALL_MENU    = 0x020,
-   PNDMAN_HANDLE_INSTALL_APPS    = 0x040,
+   PNDMAN_HANDLE_REMOVE          = 0x002,
+   PNDMAN_HANDLE_FORCE           = 0x004,
+   PNDMAN_HANDLE_INSTALL_DESKTOP = 0x008,
+   PNDMAN_HANDLE_INSTALL_MENU    = 0x010,
+   PNDMAN_HANDLE_INSTALL_APPS    = 0x020,
 } pndman_handle_flags;
 
 /* \brief pndman_handle struct */
@@ -91,22 +90,25 @@ static int _pndman_handle_download(pndman_handle *handle)
    char tmp_path[PATH_MAX];
    char *appdata;
    pndman_device *d;
-
    DEBUG("handle download");
+
    if (!handle->pnd)                return RETURN_FAIL;
    if (!strlen(handle->pnd->url))   return RETURN_FAIL;
    if (!handle->device)             return RETURN_FAIL;
-   if (!(handle->flags & PNDMAN_HANDLE_UPGRADE)         &&
+   if (!handle->pnd->update                             &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_MENU)    &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_APPS))
       return RETURN_FAIL;
 
-   if ((handle->flags & PNDMAN_HANDLE_UPGRADE)) {
-      if (!strlen(handle->pnd->path)) return RETURN_FAIL; /* should not happen really */
-      handle->device = _pndman_device_first(handle->device);
-      for (d = handle->device; d && strcmp(d->device, handle->pnd->device); d = d->next);
+   if (handle->pnd->update &&
+       !(handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
+       !(handle->flags & PNDMAN_HANDLE_INSTALL_MENU)    &&
+       !(handle->flags & PNDMAN_HANDLE_INSTALL_APPS)) {
+      if (!handle->pnd->update || !strlen(handle->pnd->update->path)) return RETURN_FAIL; /* should not happen really */
+      for (d = _pndman_device_first(handle->device); d && _strupcmp(d->device, handle->pnd->update->device); d = d->next);
       if (!d) return RETURN_FAIL; /* can't find installed device */
+      handle->device = d; /* assign device, old pnd is installed on */
    }
 
    /* reset curl */
@@ -190,7 +192,8 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    DEBUG("handle install");
 
    if (!handle->device) return RETURN_FAIL;
-   if (!(handle->flags & PNDMAN_HANDLE_UPGRADE)         &&
+   if (!handle->pnd)    return RETURN_FAIL;
+   if (!handle->pnd->update                             &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_MENU)    &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_APPS))
@@ -225,7 +228,14 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
          DEBUG("MD5 differ, but force anyways");
    } free(md5);
 
-   if (!(handle->flags & PNDMAN_HANDLE_UPGRADE)) {
+   if (handle->pnd->update &&
+      !(handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
+      !(handle->flags & PNDMAN_HANDLE_INSTALL_MENU)    &&
+      !(handle->flags & PNDMAN_HANDLE_INSTALL_APPS)) {
+      /* get basename of old path (update) */
+      strcpy(install, handle->pnd->update->path);
+      dirname(install);
+   } else {
       /* get install directory */
       strncpy(install, handle->device->mount, PATH_MAX-1);
       strncat(install, "/pandora", PATH_MAX-1);
@@ -235,10 +245,6 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
          strncat(install, "/menu", PATH_MAX-1);
       else if (handle->flags & PNDMAN_HANDLE_INSTALL_APPS)
          strncat(install, "/apps", PATH_MAX-1);
-   } else {
-      /* get basename of old path */
-      strcpy(install, handle->pnd->path);
-      dirname(install);
    }
 
    /* parse download header */
