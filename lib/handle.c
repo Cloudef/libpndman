@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include <libgen.h>
 #include <curl/curl.h>
 #include "pndman.h"
 #include "package.h"
@@ -21,11 +22,12 @@
 typedef enum pndman_handle_flags
 {
    PNDMAN_HANDLE_INSTALL         = 0x001,
-   PNDMAN_HANDLE_REMOVE          = 0x002,
-   PNDMAN_HANDLE_FORCE           = 0x004,
-   PNDMAN_HANDLE_INSTALL_DESKTOP = 0x008,
-   PNDMAN_HANDLE_INSTALL_MENU    = 0x010,
-   PNDMAN_HANDLE_INSTALL_APPS    = 0x020,
+   PNDMAN_HANDLE_UPGRADE         = 0x002,
+   PNDMAN_HANDLE_REMOVE          = 0x004,
+   PNDMAN_HANDLE_FORCE           = 0x008,
+   PNDMAN_HANDLE_INSTALL_DESKTOP = 0x010,
+   PNDMAN_HANDLE_INSTALL_MENU    = 0x020,
+   PNDMAN_HANDLE_INSTALL_APPS    = 0x040,
 } pndman_handle_flags;
 
 /* \brief pndman_handle struct */
@@ -88,15 +90,24 @@ static int _pndman_handle_download(pndman_handle *handle)
 {
    char tmp_path[PATH_MAX];
    char *appdata;
+   pndman_device *d;
 
    DEBUG("handle download");
-   if (!handle->device)             return RETURN_FAIL;
    if (!handle->pnd)                return RETURN_FAIL;
    if (!strlen(handle->pnd->url))   return RETURN_FAIL;
-   if (!(handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
+   if (!handle->device)             return RETURN_FAIL;
+   if (!(handle->flags & PNDMAN_HANDLE_UPGRADE)         &&
+       !(handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_MENU)    &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_APPS))
       return RETURN_FAIL;
+
+   if ((handle->flags & PNDMAN_HANDLE_UPGRADE)) {
+      if (!strlen(handle->pnd->path)) return RETURN_FAIL; /* should not happen really */
+      handle->device = _pndman_device_first(handle->device);
+      for (d = handle->device; d && strcmp(d->device, handle->pnd->device); d = d->next);
+      if (!d) return RETURN_FAIL; /* can't find installed device */
+   }
 
    /* reset curl */
    if (curl_init_request(&handle->request) != RETURN_OK)
@@ -179,7 +190,8 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    DEBUG("handle install");
 
    if (!handle->device) return RETURN_FAIL;
-   if (!(handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
+   if (!(handle->flags & PNDMAN_HANDLE_UPGRADE)         &&
+       !(handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_MENU)    &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_APPS))
       return RETURN_FAIL;
@@ -213,15 +225,21 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
          DEBUG("MD5 differ, but force anyways");
    } free(md5);
 
-   /* get install directory */
-   strncpy(install, handle->device->mount, PATH_MAX-1);
-   strncat(install, "/pandora", PATH_MAX-1);
-   if (handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP)
-      strncat(install, "/desktop", PATH_MAX-1);
-   else if (handle->flags & PNDMAN_HANDLE_INSTALL_MENU)
-      strncat(install, "/menu", PATH_MAX-1);
-   else if (handle->flags & PNDMAN_HANDLE_INSTALL_APPS)
-      strncat(install, "/apps", PATH_MAX-1);
+   if (!(handle->flags & PNDMAN_HANDLE_UPGRADE)) {
+      /* get install directory */
+      strncpy(install, handle->device->mount, PATH_MAX-1);
+      strncat(install, "/pandora", PATH_MAX-1);
+      if (handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP)
+         strncat(install, "/desktop", PATH_MAX-1);
+      else if (handle->flags & PNDMAN_HANDLE_INSTALL_MENU)
+         strncat(install, "/menu", PATH_MAX-1);
+      else if (handle->flags & PNDMAN_HANDLE_INSTALL_APPS)
+         strncat(install, "/apps", PATH_MAX-1);
+   } else {
+      /* get basename of old path */
+      strcpy(install, handle->pnd->path);
+      dirname(install);
+   }
 
    /* parse download header */
    if (_parse_filename_from_header(filename, handle) != RETURN_OK) {
@@ -350,8 +368,10 @@ int pndman_handle_perform(pndman_handle *handle)
    handle->progress.done = 0;
 
    if ((handle->flags & PNDMAN_HANDLE_INSTALL))
-      if (_pndman_handle_download(handle) != RETURN_OK)
+      if (_pndman_handle_download(handle) != RETURN_OK) {
+         handle->flags = 0; /* don't allow continue */
          return RETURN_FAIL;
+      }
 
    return RETURN_OK;
 }
@@ -425,6 +445,7 @@ int pndman_download()
 int pndman_handle_commit(pndman_handle *handle, pndman_repository *local)
 {
    if (!handle)         return RETURN_FAIL;
+   if (!handle->flags)  return RETURN_FAIL;
    if (!handle->pnd)    return RETURN_FAIL;
    if (!local)          return RETURN_FAIL;
    DEBUG("pndman handle commit");
