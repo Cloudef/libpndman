@@ -303,7 +303,7 @@ static pndman_application* _pndman_copy_application(pndman_application *src)
    pndman_application *app;
 
    if (!src) return NULL;
-   app = malloc(sizeof(pndman_application));
+   app = _pndman_new_application();
    if (!app)
       return NULL;
 
