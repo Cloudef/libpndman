@@ -19,7 +19,7 @@
 #define PXML_MAX_SIZE      1024 * 1024
 #define PXML_WINDOW        4096
 #define PXML_WINDOW_FRACT  PXML_WINDOW-10
-#define XML_HEADER         "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
+#define XML_HEADER         "<?xml version=\"1.1\" encoding=\"UTF-8\" ?>"
 
 /* PXML Tags */
 #define PXML_PACKAGE_TAG      "package"
@@ -110,15 +110,21 @@ typedef struct pxml_parse
    int                  bckward_desc;
 } pxml_parse;
 
+/* \brief search tag from string. NOTE: we do correct incorrect XML too so string changes */
 static char* _match_tag(char *s, size_t len, char *tag, size_t *p)
 {
    unsigned int nlen = strlen(tag);
    char *end = s + len - nlen;
+   int inquote = 0;
    *p = nlen;
 
    while (s < end) {
-      if (isprint(*s))
+      if (isprint(*s)) {
          if (!_strnupcmp(s, tag, nlen)) return s;
+         else if (*s == '\'' || *s == '"') inquote = !inquote;
+         else if (inquote)
+            if (*s == '&' || *s == '<' || *s == '>') *s = ' '; /* get rid of bad XML */
+      }
       ++s; ++*p;
    }
    return NULL;
@@ -820,6 +826,7 @@ static int _pxml_pnd_parse(pxml_parse *data, char *PXML, size_t size)
       DEBUG("");
       DEBUG(PXML);
       DEBUG("");
+      DEBUG(XML_ErrorString(XML_GetErrorCode(xml)));
       DEBUG("FIX CODE!");
       exit(EXIT_FAILURE);
    }
