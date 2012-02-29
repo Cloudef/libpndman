@@ -206,6 +206,9 @@ void _pndman_package_free_licenses(pndman_package *pnd);
 /* \brief Internal free of pndman_package's categories */
 void _pndman_package_free_categories(pndman_package *pnd);
 
+/* \brief Internal free of pndman_application's */
+void _pndman_package_free_applications(pndman_package *pnd);
+
 /* \brief Internal free of pndman_application's titles
  * NOTE: Used by PXML parser */
 void _pndman_application_free_titles(pndman_application *app);

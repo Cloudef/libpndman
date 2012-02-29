@@ -1385,7 +1385,7 @@ static int crawlprocess(_USR_DATA *data)
    pndman_device *d;
    unsigned int f = 0;
 
-   for (d = data->dlist; d; d = d->next) f += pndman_crawl(d, data->rlist);
+   for (d = data->dlist; d; d = d->next) f += pndman_crawl(0, d, data->rlist);
    printf("%d pnds crawled\n",f);
    return RETURN_OK;
 }

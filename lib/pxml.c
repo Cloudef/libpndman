@@ -1169,7 +1169,7 @@ static int _pndman_crawl_to_pnd_list(pndman_device *device, pndman_package *list
 }
 
 /* \brief crawl to repository, return number of pnd's found, and -1 on error */
-static int _pndman_crawl_to_repository(pndman_device *device, pndman_repository *local)
+static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_repository *local)
 {
    pndman_package *list, *p, *n, *pnd;
    int ret;
@@ -1195,6 +1195,7 @@ static int _pndman_crawl_to_repository(pndman_device *device, pndman_repository 
    for (p = list; p; p = n) {
       pnd = _pndman_repository_new_pnd_check(p->id, p->path, local);
       if (!pnd) continue;
+      if (!full) _pndman_package_free_applications(pnd);
       _pndman_copy_pnd(pnd, p);
       strcpy(pnd->device, device->device);
 
@@ -1208,13 +1209,14 @@ static int _pndman_crawl_to_repository(pndman_device *device, pndman_repository 
 
 /* API */
 
-/* \brief crawl pnds to local repository, returns number of pnd's found, and -1 on error */
-int pndman_crawl(pndman_device *device, pndman_repository *local)
+/* \brief crawl pnds to local repository, returns number of pnd's found, and -1 on error
+ * The full_crawl option allows you to specify wether to crawl application data from PND as well */
+int pndman_crawl(int full_crawl, pndman_device *device, pndman_repository *local)
 {
    if (!device) return RETURN_FAIL;
    if (!local)  return RETURN_FAIL;
    local = _pndman_repository_first(local);
-   return _pndman_crawl_to_repository(device, local);
+   return _pndman_crawl_to_repository(full_crawl, device, local);
 }
 
 /* \brief

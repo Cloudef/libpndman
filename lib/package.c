@@ -570,6 +570,16 @@ static void _pndman_free_application(pndman_application *app)
    free(app);
 }
 
+/* \brief Internal free of pndman_application's */
+void _pndman_package_free_applications(pndman_package *pnd)
+{
+   pndman_application *a, *an;
+   assert(pnd);
+   a = pnd->app;
+   for (; a; a = an)
+   { an = a->next; _pndman_free_application(a); }
+}
+
 /* \brief Internal free of pndman_package */
 void _pndman_free_pnd(pndman_package *pnd)
 {
@@ -577,7 +587,6 @@ void _pndman_free_pnd(pndman_package *pnd)
    pndman_license     *l, *ln;
    pndman_previewpic  *p, *pn;
    pndman_category    *c, *cn;
-   pndman_application *a, *an;
    pndman_package     *pp, *ppn;
 
    /* should never be null */
@@ -613,9 +622,7 @@ void _pndman_free_pnd(pndman_package *pnd)
    { cn = c->next; free(c); }
 
    /* free applications */
-   a = pnd->app;
-   for (; a; a = an)
-   { an = a->next; _pndman_free_application(a); }
+   _pndman_package_free_applications(pnd);
 
    /* free next installed PND */
    pp = pnd->next_installed;

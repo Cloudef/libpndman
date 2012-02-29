@@ -60,7 +60,7 @@ int main()
       err("allocating repo list failed");
 
    /* crawl pnds to local repository */
-   if (pndman_crawl(device, repository) == -1)
+   if (pndman_crawl(0, device, repository) == -1)
       err("crawling failed");
 
    puts("");
