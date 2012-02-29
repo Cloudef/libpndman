@@ -20,6 +20,8 @@
 #define PXML_WINDOW        4096
 #define PXML_WINDOW_FRACT  PXML_WINDOW-10
 #define XML_HEADER         "<?xml version=\"1.1\" encoding=\"UTF-8\" ?>"
+#define XMLSTART()         { pos = 0; strip = '<'; }
+#define XMLCOPY(x,y,z)     if (PXML_MAX_SIZE>pos+z) { memcpy(PXML+x,y,z); pos+=z; } else { DEBUGP("PXML MAX: %zu > %d\n", pos, PXML_MAX_SIZE); exit(0); }
 
 /* PXML Tags */
 #define PXML_PACKAGE_TAG      "package"
@@ -111,19 +113,54 @@ typedef struct pxml_parse
 } pxml_parse;
 
 /* \brief search tag from string. NOTE: we do correct incorrect XML too so string changes */
-static char* _match_tag(char *s, size_t len, char *tag, size_t *p)
+static char* _match_tag(char *s, size_t len, char *tag, size_t *p, char *strip)
 {
-   unsigned int nlen = strlen(tag);
-   char *end = s + len - nlen;
-   int inquote = 0;
-   *p = nlen;
+   unsigned int nlen;
+   char *end;
+
+   nlen = strlen(tag);
+   end  = s + len - (strip?0:nlen);
+   *p   = 0;
 
    while (s < end) {
+      /* don't even try unprintable characters */
       if (isprint(*s)) {
-         if (!_strnupcmp(s, tag, nlen)) return s;
-         else if (*s == '\'' || *s == '"') inquote = !inquote;
-         else if (inquote)
-            if (*s == '&' || *s == '<' || *s == '>') *s = ' '; /* get rid of bad XML */
+         /* tag found */
+         if (!_strnupcmp(s, tag, nlen)) return &*s;
+         /* fugly stripping code, thank you everyone who are using invalid PXML in their PNDs :) */
+         else if (strip) {
+            if (!*strip || *strip == '?') {
+               if (*strip == '?') {
+                  if (*s == '!') {
+                     *strip = '!';                                                        /* enter comment area */
+                     if (*p) *(s-1) = ' '; *s = ' ';                                      /* strip check characters */
+                  } else {
+                     *strip = '<';                                                        /* enter tag area */
+                     if (*s == '&' || *s == '>') *s = ' ';                                /* strip this */
+                     else if (*s == '>') *strip = 0;                                      /* instantly leave */
+                  }
+               } else if (*s == '<' || *s == '>' || *s == '"' || *s == '\'') {
+                  if (*s != '<') *strip = *s; else *strip = '?';                          /* enter strip area */
+               }
+            } else {
+               /* strip comments */
+               if (*strip == '!') {
+                  if (*s == '-') *strip = '-';                                            /* end comment on -> */
+                  *s = ' ';                                                               /* inside comments, strip everything */
+               } else if (*strip == '-') {
+                  /* check if comment ends */
+                       if (*s == '>') *strip = 0;
+                  else if (*s == '-') *strip = '-'; else *strip = '!';
+                  *s = ' ';
+               } else {
+                  /* strip non comment */
+                       if (*strip == '<') { if (*s == '>')  *strip = 0; }                 /* end bracket */
+                  else if (*strip == '>') { if (*s == '<')  *strip = 0; }                 /* end bracket */
+                  else if (*s == *strip || *s == '<')       *strip = 0;                   /* end quote */
+                       if (*strip && (*s == '&' || *s == '>')) *s = ' ';                  /* get rid of bad XML */
+               }
+            }
+         }
       }
       ++s; ++*p;
    }
@@ -136,7 +173,7 @@ static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
 {
    FILE     *pnd;
    char     s[PXML_WINDOW];
-   char     *match;
+   char     *match, strip;
    size_t   pos, len, ret, read, stag, etag;
 
    /* open PND */
@@ -163,7 +200,7 @@ static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
       /* read until start tag */
       if ((ret = fread(s, 1, read, pnd))) {
          // if (!memcmp(s, PXML_START_TAG, strlen(PXML_START_TAG))) break;
-         if ((match = _match_tag(s, read, PXML_START_TAG, &stag))) break;
+         if ((match = _match_tag(s, read, PXML_START_TAG, &stag, NULL))) break;
       }
 
       if (!ret) break; ret = 0;              /* below breaks are failures */
@@ -187,17 +224,19 @@ static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
 
    /* Yatta! PXML start found ^_^ */
    /* PXML does not define standard XML, so add those to not confuse expat */
-   memcpy(PXML, XML_HEADER, strlen(XML_HEADER)); pos = strlen(XML_HEADER);
+   XMLSTART();
+   XMLCOPY(0, XML_HEADER, strlen(XML_HEADER));
 
    /* check if end tag is on the same buffer as start tag */
-   if (!_match_tag(match, read, PXML_END_TAG, &etag)) {
+   if (!_match_tag(match+strlen(PXML_START_TAG), read-stag-strlen(PXML_START_TAG), PXML_END_TAG, &etag, &strip)) {
       /* nope, copy first buffer and read to end */
-      memcpy(PXML + pos, match, read-stag+5); pos += read-stag+5;
+      XMLCOPY(pos, match, read-stag);
       while ((ret = fread(s, 1, read, pnd))) {
-         match = s; if (_match_tag(match, read, PXML_END_TAG, &etag)) break;
-         memcpy(PXML + pos, s, read); pos += read;
+         match = s;
+         if (_match_tag(s, read, PXML_END_TAG, &etag, &strip)) break;
+         XMLCOPY(pos, s, read);
       }
-   }
+   } else etag += strlen(PXML_START_TAG);
 
    /* read fail */
    if (!ret) {
@@ -209,10 +248,10 @@ static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
    }
 
    /* finish */
-   memcpy(PXML + pos, match, etag);
+   XMLCOPY(pos, match, etag+strlen(PXML_END_TAG));
 
    /* store size */
-   *size = pos+etag;
+   *size = pos;
 
    /* close the file */
    fclose(pnd);
@@ -937,7 +976,7 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
 static int _pndman_crawl_process(char *pnd_file, pxml_parse *data)
 {
    char PXML[PXML_MAX_SIZE];
-   size_t size;
+   size_t size = 0;
    FILE *f;
    assert(pnd_file && data);
 
