@@ -1062,14 +1062,14 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
       data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
       data.state = PXML_PARSE_DEFAULT;
       if (_pndman_crawl_process(tmp, &data) != RETURN_OK) {
-         _pndman_free_pnd(pnd);
+         while ((pnd = _pndman_free_pnd(pnd)));
          continue;
       }
 
       /* assign pnd to list */
       if (!p) {
          _pndman_copy_pnd(list, pnd);
-         _pndman_free_pnd(pnd);
+         while ((pnd = _pndman_free_pnd(pnd)));
          p = list;
       } else {
          for (p = list; p && p->next; p = p->next);
@@ -1112,7 +1112,7 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
       data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
       data.state = PXML_PARSE_DEFAULT;
       if (_pndman_crawl_process(tmp, &data) != RETURN_OK) {
-         _pndman_free_pnd(pnd);
+         while ((pnd = _pndman_free_pnd(pnd)));
          continue;
       }
 
@@ -1186,14 +1186,14 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
    if (ret <= 0) {
       for (p = list; p; p = n) {
          n = p->next;
-         _pndman_free_pnd(p);
+         while ((p = _pndman_free_pnd(p)));
       }
       return ret;
    }
 
    /* merge pnd's to repo */
    for (p = list; p; p = n) {
-      pnd = _pndman_repository_new_pnd_check(p->id, p->path, local);
+      pnd = _pndman_repository_new_pnd_check(p->id, p->path, &p->version, local);
       if (!pnd) continue;
       if (!full) _pndman_package_free_applications(pnd);
       _pndman_copy_pnd(pnd, p);
@@ -1201,7 +1201,7 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
 
       /* free */
       n = p->next;
-      _pndman_free_pnd(p);
+      while ((p = _pndman_free_pnd(p)));
    }
 
    return ret;
@@ -1268,7 +1268,7 @@ int pnd_do_something(char *pnd_file)
    DEBUGP("ID:       %s\n", test->id);
    if (!strlen(test->id)) {
       DEBUG("Your code sucks, fix it!");
-      _pndman_free_pnd(test);
+      while ((test = _pndman_free_pnd(test)));
       exit(EXIT_FAILURE);
    }
 
@@ -1356,7 +1356,7 @@ int pnd_do_something(char *pnd_file)
          DEBUGP("  %s\n", p->src);
    }
    DEBUG("");
-   _pndman_free_pnd(test);
+   while ((test = _pndman_free_pnd(test)));
 
    return RETURN_OK;
 }

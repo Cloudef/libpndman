@@ -240,7 +240,7 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       /* these are needed for checking duplicate pnd's */
       _json_set_string(id,   json_object_get(package,"id"),    PND_ID);
       _json_set_string(path, json_object_get(package, "path"), PND_PATH);
-      pnd = _pndman_repository_new_pnd_check(id, path, repo);
+      pnd = _pndman_repository_new_pnd_check(id, path, NULL, repo);
       if (!pnd) return RETURN_FAIL;
 
       /* free old titles and descriptions (if instance or old) */

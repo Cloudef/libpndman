@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 #include <malloc.h>
@@ -345,34 +344,6 @@ static int _pndman_repository_sync_request(pndman_sync_handle *handle, unsigned 
    return RETURN_OK;
 }
 
-static int _pndman_vercmp(pndman_package *lp, pndman_package *rp)
-{
-   int major, minor, release, build;
-   int major2, minor2, release2, build2;
-
-   /* do vanilla version checking */
-   major     = strtol(lp->version.major, (char **) NULL, 10);
-   minor     = strtol(lp->version.minor, (char **) NULL, 10);
-   release   = strtol(lp->version.release, (char **) NULL, 10);
-   build     = strtol(lp->version.build, (char **) NULL, 10);
-
-   /* remote */
-   major2    = strtol(rp->version.major, (char **) NULL, 10);
-   minor2    = strtol(rp->version.minor, (char **) NULL, 10);
-   release2  = strtol(rp->version.release, (char **) NULL, 10);
-   build2    = strtol(rp->version.build, (char **) NULL, 10);
-
-   if (major2 > major)
-      return 1;
-   else if (major2 == major && minor2 > minor)
-      return 1;
-   else if (major2 == major && minor2 == minor && release2 > release)
-      return 1;
-   else if (major2 == major && minor2 == minor && release2 == release && build2 > build)
-      return 1;
-   return 0;
-}
-
 /* \brief do version comparision and set update pointer */
 static int _pndman_version_check(pndman_package *lp, pndman_package *rp)
 {
@@ -387,14 +358,14 @@ static int _pndman_version_check(pndman_package *lp, pndman_package *rp)
 
    /* this package already has update, try if the new proposed is newer */
    if (lp->update) {
-      if (_pndman_vercmp(lp->update, rp)) {
+      if (_pndman_vercmp(&lp->update->version, &rp->version)) {
          lp->update->update = NULL;
          lp->update = rp; rp->update = lp;
       }
       else return 0;
    }
 
-   if (_pndman_vercmp(lp, rp)) {
+   if (_pndman_vercmp(&lp->version, &rp->version)) {
       lp->update = rp;
       rp->update = lp;
    }

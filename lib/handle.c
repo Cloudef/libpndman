@@ -266,9 +266,13 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
          break;
       }
 
+   /* remove old pnd from repo */
+   if (handle->pnd->update)
+      _pndman_repository_free_pnd(handle->pnd->update, local);
+
    /* Copy the pnd object to local database
     * path should be always "" when installing from remote repository */
-   pnd = _pndman_repository_new_pnd_check(handle->pnd->id, install, local);
+   pnd = _pndman_repository_new_pnd_check(handle->pnd->id, install, &handle->pnd->version, local);
    if (!pnd) return RETURN_FAIL;
    _pndman_copy_pnd(pnd, handle->pnd);
 

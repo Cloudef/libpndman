@@ -1,10 +1,42 @@
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
 #include "pndman.h"
 #include "package.h"
 #include "md5.h"
+
+/* \brief compare package versions, return 1 on newer, 0 otherwise
+ * NOTE: lp == package to use as base, rp == package to compare against
+ *       so rp > lp == 1 */
+int _pndman_vercmp(pndman_version *lp, pndman_version *rp)
+{
+   int major, minor, release, build;
+   int major2, minor2, release2, build2;
+
+   /* do vanilla version checking */
+   major     = strtol(lp->major, (char **) NULL, 10);
+   minor     = strtol(lp->minor, (char **) NULL, 10);
+   release   = strtol(lp->release, (char **) NULL, 10);
+   build     = strtol(lp->build, (char **) NULL, 10);
+
+   /* remote */
+   major2    = strtol(rp->major, (char **) NULL, 10);
+   minor2    = strtol(rp->minor, (char **) NULL, 10);
+   release2  = strtol(rp->release, (char **) NULL, 10);
+   build2    = strtol(rp->build, (char **) NULL, 10);
+
+   if (major2 > major)
+      return 1;
+   else if (major2 == major && minor2 > minor)
+      return 1;
+   else if (major2 == major && minor2 == minor && release2 > release)
+      return 1;
+   else if (major2 == major && minor2 == minor && release2 == release && build2 > build)
+      return 1;
+   return 0;
+}
 
 /* \brief Init version struct */
 static void _pndman_init_version(pndman_version *ver)
@@ -581,13 +613,13 @@ void _pndman_package_free_applications(pndman_package *pnd)
 }
 
 /* \brief Internal free of pndman_package */
-void _pndman_free_pnd(pndman_package *pnd)
+pndman_package* _pndman_free_pnd(pndman_package *pnd)
 {
    pndman_translated  *t, *tn;
    pndman_license     *l, *ln;
    pndman_previewpic  *p, *pn;
    pndman_category    *c, *cn;
-   pndman_package     *pp, *ppn;
+   pndman_package     *pp;
 
    /* should never be null */
    assert(pnd);
@@ -624,13 +656,14 @@ void _pndman_free_pnd(pndman_package *pnd)
    /* free applications */
    _pndman_package_free_applications(pnd);
 
-   /* free next installed PND */
+   /* store next installed for return */
    pp = pnd->next_installed;
-   for (; pp; pp = ppn)
-   { ppn = pp->next_installed; _pndman_free_pnd(pp); }
 
    /* free this */
    free(pnd);
+
+   /* return next installed */
+   return pp;
 }
 
 /* \brief Internal allocation of title for pndman_package */

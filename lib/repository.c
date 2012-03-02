@@ -70,28 +70,39 @@ pndman_package* _pndman_repository_new_pnd(pndman_repository *repo)
 }
 
 /* \brief check duplicate pnd on repo, return that pnd if found, else return new */
-pndman_package* _pndman_repository_new_pnd_check(char *id, char *path, pndman_repository *repo)
+pndman_package* _pndman_repository_new_pnd_check(char *id, char *path, pndman_version *ver, pndman_repository *repo)
 {
-   pndman_package *pnd, *pni;
+   pndman_package *pnd, *pni, *pr;
 
+   pr = NULL;
    for (pnd = repo->pnd; pnd; pnd = pnd->next) {
       if (!strcmp(id, pnd->id)) {
          /* if local repository, create instance */
          if (!repo->prev) {
-            if (strlen(path) && _strupcmp(path, pnd->path)) {
-               /* create instance here, path differs! */
-               for (pni = pnd; pni && pni->next_installed; pni = pni->next_installed);
-               pni->next_installed = _pndman_new_pnd();
-               if (!pni->next_installed) return NULL;
-               pni->next_installed->next = pni->next;
-               strncpy(pni->next_installed->repository, repo->url, PND_STR-1);
-               DEBUGP("%s == %s NEW_INSTALLED\n", path, pnd->path);
-               return pni->next_installed;
+            /* create instance here, path differs! */
+            if (!repo->prev && strlen(path) && _strupcmp(path, pnd->path)) { /* only local repo can have next installed */
+               if (!_pndman_vercmp(&pnd->version, ver)) {
+                  /* new pnd is older, assing it to end */
+                  for (pni = pnd; pni && pni->next_installed; pni = pni->next_installed)
+                     if (!_strupcmp(path, pni->path)) return pni; /* it's next installed */
+                  if (!(pni = pni->next_installed = _pndman_new_pnd()))
+                     return NULL;
+                  pni->next = pnd->next; /* assign parent's next to next */
+                  DEBUGP("Older : %s\n", path);
+               } else {
+                  /* new pnd is newer, assign it to first */
+                  if (!(pni = _pndman_new_pnd())) return NULL;
+                  pr->next = pni; pni->next_installed = pnd; /* assign nexts */
+                  DEBUGP("Newer : %s\n", path);
+               }
+               strncpy(pni->repository, repo->url, PND_STR-1);
+               return pni;
             } else
                return pnd; /* this is the same pnd as installed locally */
          } else
             return pnd; /* remote repository can't have instances :) */
       }
+      pr = pnd;
    }
 
    /* create new pnd */
@@ -101,21 +112,42 @@ pndman_package* _pndman_repository_new_pnd_check(char *id, char *path, pndman_re
 /* \brief free pnd from repository */
 int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *repo)
 {
-   pndman_package *p;
+   pndman_package *p, *pn, *pr;
    assert(pnd && repo);
 
+   /* check first first */
    if (repo->pnd == pnd) {
-      repo->pnd = repo->pnd->next;
-      _pndman_free_pnd(pnd);
+      /* if no next_installed, assing next pnd in repo list */
+      if (!(repo->pnd = _pndman_free_pnd(pnd)))
+         repo->pnd = repo->pnd->next; /* next pnd */
       return RETURN_OK;
    }
+
+   pr = NULL;
    for (p = repo->pnd; p; p = p->next) {
-      if (p->next == pnd) {
-         if (p->next->next) p->next = p->next->next;
-         else               p->next = NULL;
-         _pndman_free_pnd(pnd);
+      /* check parent */
+      if (p == pnd) {
+         assert(pr); /* this should never fail */
+         pr->next = p->next; /* assign next to previous next */
+         if ((p = _pndman_free_pnd(pnd)))
+            pr->next = p; /* assign next_installed to previous next */
          return RETURN_OK;
       }
+
+      /* check childs */
+      pr = p; /* set this as parent for next_installed */
+      for (pn = p->next_installed; pn; pn = pn->next_installed) {
+         if (pn == pnd) {
+            assert(pr); /* this should never fail */
+            pr->next_installed = p->next_installed; /* assign next_installed to previous next_installed */
+            if ((p = _pndman_free_pnd(pnd)))
+               pr->next_installed = p; /* assign next_installed to previous next_installed or parent */
+            return RETURN_OK;
+         }
+         pr = pn; /* set this next_installed as previous */
+      }
+
+      pr = p; /* set the parent as previous again */
    }
    return RETURN_FAIL;
 }
@@ -125,7 +157,7 @@ int _pndman_repository_free_pnd_all(pndman_repository *repo)
 {
    pndman_package *p, *n;
    for (p = repo->pnd; p; p = n)
-   { n = p->next; _pndman_free_pnd(p); }
+   { n = p->next; while ((p = _pndman_free_pnd(p))); }
    return RETURN_OK;
 }
 

@@ -188,6 +188,9 @@ typedef struct pndman_package
 /* \brief Allocate new pndman_package */
 pndman_package* _pndman_new_pnd(void);
 
+/* \brief compare pnd versions */
+int _pndman_vercmp(pndman_version *lp, pndman_version *rp);
+
 /* \brief copy pndman_package, doesn't copy next && next_installed pointers */
 int _pndman_copy_pnd(pndman_package *pnd, pndman_package *src);
 
@@ -217,8 +220,8 @@ void _pndman_application_free_titles(pndman_application *app);
  * NOTE: Used by PXML parser */
 void _pndman_application_free_descriptions(pndman_application *app);
 
-/* \brief Internal free of pndman_package */
-void _pndman_free_pnd(pndman_package *pnd);
+/* \brief Internal free of pndman_package, return next_installed, null if no any */
+pndman_package* _pndman_free_pnd(pndman_package *pnd);
 
 /* \brief Internal allocation of title for pndman_package */
 pndman_translated* _pndman_package_new_title(pndman_package *pnd);
