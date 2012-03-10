@@ -610,6 +610,8 @@ void _pndman_package_free_applications(pndman_package *pnd)
    a = pnd->app;
    for (; a; a = an)
    { an = a->next; _pndman_free_application(a); }
+
+   pnd->app = NULL;
 }
 
 /* \brief Internal free of pndman_package */
