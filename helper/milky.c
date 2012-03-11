@@ -1505,6 +1505,7 @@ static int processflags(_USR_DATA *data)
    if (data->tlist) puts("\nTargets:");
    for (t = data->tlist; t; t = t->next) puts(t->id);
    _N();
+   NEWLINE();
 
    /* read repository information from each device */
    for (d = data->dlist; d; d = d->next)
