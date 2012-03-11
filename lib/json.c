@@ -7,6 +7,11 @@
 #include "package.h"
 #include "repository.h"
 
+/* strings */
+static const char *BAD_JSON      = "Bad json data, won't process sync for: %s\n";
+static const char *NO_P_ARRAY    = "No packages array for: %s\n";
+static const char *NO_R_HEADER   = "No repo header for: %s\n";
+
 /* \brief helpfer string setter */
 static int _json_set_string(char *string, json_t *object, size_t max)
 {
@@ -287,7 +292,7 @@ int _pndman_json_process(pndman_repository *repo, FILE *data)
    fseek(data, 0L, SEEK_SET);
    root = json_loadf(data, 0, &error);
    if (!root) {
-      DEBUGP("WARN: Bad json data, won't process sync for: %s\n", repo->url);
+      DEBFAILP(BAD_JSON, repo->url);
       return RETURN_FAIL;
    }
 
@@ -297,9 +302,9 @@ int _pndman_json_process(pndman_repository *repo, FILE *data)
          packages = json_object_get(root, "packages");
          if (json_is_array(packages))
             _pndman_json_process_packages(packages, repo);
-         else DEBUGP("WARN: No packages array for: %s\n", repo->url);
+         else DEBUGP(2, NO_P_ARRAY, repo->url);
       }
-   } else DEBUGP("WARN: Bad repo header for: %s\n", repo->url);
+   } else DEBUGP(2, NO_R_HEADER, repo->url);
    json_decref(root);
 
    /* update timestamp */

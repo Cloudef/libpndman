@@ -8,13 +8,19 @@
 #include "device.h"
 #include "repository.h"
 
+/* strings */
+static const char *REPO_INIT_FAIL   = "Failed to allocate pndman_repository, shit might break.";
+
 /* \brief initialize repository struct */
 static pndman_repository* _pndman_repository_init()
 {
    pndman_repository *repo;
 
    repo = malloc(sizeof(pndman_repository));
-   if (!repo) return NULL;
+   if (!repo) {
+      DEBFAIL(REPO_INIT_FAIL);
+      return NULL;
+   }
 
    memset(repo->url,       0, REPO_URL);
    memset(repo->name,      0, REPO_NAME);
@@ -88,12 +94,12 @@ pndman_package* _pndman_repository_new_pnd_check(char *id, char *path, pndman_ve
                   if (!(pni = pni->next_installed = _pndman_new_pnd()))
                      return NULL;
                   pni->next = pnd->next; /* assign parent's next to next */
-                  DEBUGP("Older : %s\n", path);
+                  DEBUGP(3, "Older : %s\n", path);
                } else {
                   /* new pnd is newer, assign it to first */
                   if (!(pni = _pndman_new_pnd())) return NULL;
                   pr->next = pni; pni->next_installed = pnd; /* assign nexts */
-                  DEBUGP("Newer : %s\n", path);
+                  DEBUGP(3, "Newer : %s\n", path);
                }
                strncpy(pni->repository, repo->url, PND_STR-1);
                return pni;
@@ -149,6 +155,8 @@ int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *repo)
 
       pr = p; /* set the parent as previous again */
    }
+
+   /* pnd not found */
    return RETURN_FAIL;
 }
 
@@ -268,7 +276,6 @@ static int _pndman_repository_check(pndman_repository *repo)
 pndman_repository* pndman_repository_init()
 {
    pndman_repository *repo;
-   DEBUG("pndman repo init");
    repo = _pndman_repository_init();
    if (!repo) return NULL;
    strcpy(repo->name, LOCAL_DB_NAME);
@@ -278,16 +285,20 @@ pndman_repository* pndman_repository_init()
 /* \brief Add new repository */
 pndman_repository* pndman_repository_add(const char *url, pndman_repository *repo)
 {
-   DEBUG("pndman repo add");
-   if (!repo) return NULL;
+   if (!repo) {
+      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "repo list pointer is NULL");
+      return NULL;
+   }
    return _pndman_repository_add(url, repo);
 }
 
 /* \brief Clear repository, effectiely frees the PND list */
 void pndman_repository_clear(pndman_repository *repo)
 {
-   DEBUG("pndman repo clear");
-   if (!repo) return;
+   if (!repo) {
+      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "repo pointer is NULL");
+      return;
+   }
    _pndman_repository_free_pnd_all(repo);
    repo->pnd = NULL;
 }
@@ -295,8 +306,10 @@ void pndman_repository_clear(pndman_repository *repo)
 /* \brief Check local repository for bad/removed PNDs, returns number of packages removed */
 int pndman_repository_check_local(pndman_repository *local)
 {
-   DEBUG("pndman repo check local");
-   if (!local) return 0;
+   if (!local) {
+      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "local pointer is NULL");
+      return 0;
+   }
    local = _pndman_repository_first(local); /* make fool proof */
    return _pndman_repository_check(local);
 }
@@ -304,16 +317,20 @@ int pndman_repository_check_local(pndman_repository *local)
 /* \brief Free one repo, returns first repo */
 pndman_repository* pndman_repository_free(pndman_repository *repo)
 {
-   DEBUG("pndman repo free");
-   if (!repo) return NULL;
+   if (!repo) {
+      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "repo pointer is NULL");
+      return NULL;
+   }
    return _pndman_repository_free(repo);
 }
 
 /* \brief Free all repos */
 int pndman_repository_free_all(pndman_repository *repo)
 {
-   DEBUG("pndman repo free all");
-   if (!repo) return RETURN_FAIL;
+   if (!repo) {
+      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "repo pointer is NULL");
+      return RETURN_FAIL;
+   }
    return _pndman_repository_free_all(repo);
 }
 

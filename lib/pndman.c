@@ -2,11 +2,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdarg.h>
 #include "pndman.h"
 #include "device.h"
 #include "package.h"
 #include "repository.h"
 #include "version.h"
+
+/* \brief internal verbose level */
+static int  _PNDMAN_VERBOSE = 0;
+static char _PNDMAN_ERROR[PNDMAN_ERR_LEN] = { 0 };
+
+/* strings */
+static const char *TMP_FILE_CREATE = "Created temporary file";
 
 /* \brief strstr strings in uppercase */
 char* _strupstr(const char *hay, const char *needle)
@@ -62,7 +70,7 @@ FILE* _pndman_get_tmp_file()
    }
    free(name);
 #endif
-   DEBUG("created temporary file");
+   DEBUG(3, TMP_FILE_CREATE);
    return tmp;
 }
 
@@ -74,20 +82,44 @@ void _strip_slash(char *path)
       path[strlen(path)-1] = 0;
 }
 
-/* API */
-
-/* \brief Initializes the library and its resources. */
-int pndman_init()
+/* \brief store internal pndman error */
+void _pndman_set_error(const char *err)
 {
-   DEBUG("pndman init");
-   return RETURN_OK;
+   memset(_PNDMAN_ERROR, 0, PNDMAN_ERR_LEN);
+   strncpy(_PNDMAN_ERROR, err, PNDMAN_ERR_LEN-1);
 }
 
-/* \brief Shutdowns the library cleanly, frees all the resources. */
-int pndman_quit()
+/* \brief store internal pndman error (printf syntax) */
+void _pndman_set_errorp(const char *err, ...)
 {
-   DEBUG("pndman quit");
-   return RETURN_OK;
+   va_list args;
+   memset(_PNDMAN_ERROR, 0, PNDMAN_ERR_LEN);
+
+   va_start(args, err);
+   vsnprintf(_PNDMAN_ERROR, PNDMAN_ERR_LEN, err, args);
+   va_end(args);
+}
+
+/* API */
+
+/* \brief Set verbose level of library
+ * (prints debug output to stdout) */
+void pndman_set_verbose(int verbose)
+{
+   _PNDMAN_VERBOSE = verbose;
+}
+
+/* \brief return current verbose level,
+ * used internally by library as well. */
+int pndman_get_verbose()
+{
+   return _PNDMAN_VERBOSE;
+}
+
+/* \brief get error string from pndman */
+const char* pndman_get_error()
+{
+   return _PNDMAN_ERROR;
 }
 
 /* \brief Get library version (git head) */

@@ -11,6 +11,15 @@
 #include "curl.h"
 #include "json.h"
 
+/* strings */
+static const char *URL_CPY_FAIL     = "Failed to copy url from repository.";
+static const char *BAD_URL          = "Repository has empty url, or it is a local repository.";
+static const char *TMP_FILE_FAIL    = "Failed to get temporary file.";
+static const char *WRITE_FAIL       = "Failed to open %s, for writing.\n";
+static const char *READ_FAIL        = "Failed to open %s, for reading.\n";
+static const char *CURLM_FAIL       = "Internal CURLM initialization failed.";
+static const char *CURL_HANDLE_FAIL = "Failed to allocate CURL handle.";
+
 /* \brief flags for sync request to determite what to do */
 typedef enum pndman_sync_flags
 {
@@ -42,9 +51,9 @@ static char *str_replace(const char *s, const char *old, const char *new)
 {
    size_t slen = strlen(s)+1;
    char *cout=0, *p=0, *tmp=NULL; cout=malloc(slen); p=cout;
-   if( !p ) return 0;
-   while( *s )
-      if(!strncmp(s, old, strlen(old))) {
+   if (!p) return 0;
+   while (*s)
+      if (!strncmp(s, old, strlen(old))) {
          p  -= (intptr_t)cout;
          cout= realloc(cout, slen += strlen(new)-strlen(old) );
          tmp = strcpy(p=cout+(intptr_t)p, new);
@@ -63,13 +72,17 @@ static int _pndman_new_sync_handle(pndman_sync_handle *object, pndman_repository
 
    /* create temporary write, where to write the request */
    object->file = _pndman_get_tmp_file();
-   if (!object->file) return RETURN_FAIL;
+   if (!object->file) {
+      DEBFAIL(TMP_FILE_FAIL);
+      return RETURN_FAIL;
+   }
 
    /* reset curl */
    object->curl = curl_easy_init();
    if (!object->curl) {
       fclose(object->file);
-      return RETURN_FAIL;;
+      DEBFAIL(CURL_HANDLE_FAIL);
+      return RETURN_FAIL;
    }
 
    /* check wether, to do merging or full sync */
@@ -80,11 +93,12 @@ static int _pndman_new_sync_handle(pndman_sync_handle *object, pndman_repository
    if (!url) {
       curl_easy_cleanup(object->curl);
       fclose(object->file);
+      DEBFAIL(URL_CPY_FAIL);
       return RETURN_FAIL;
    }
 
-   DEBUGP("ADD: %s\n", url);
-   DEBUGP("PRI: %p\n", object);
+   DEBUGP(3, "ADD: %s\n", url);
+   DEBUGP(3, "PRI: %p\n", object);
 
    /* set download URL */
    curl_easy_setopt(object->curl, CURLOPT_URL, url);
@@ -129,9 +143,12 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
 
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/local.db", PATH_MAX-1);
-   DEBUGP("-!- writing to %s\n", db_path);
+   DEBUGP(1, "-!- writing to %s\n", db_path);
    f = fopen(db_path, "w");
-   if (!f) return RETURN_FAIL;
+   if (!f) {
+      DEBFAILP(WRITE_FAIL, db_path);
+      return RETURN_FAIL;
+   }
 
    /* write local db */
    _pndman_json_commit(repo, f);
@@ -159,9 +176,12 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
 
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/repo.db", PATH_MAX-1);
-   DEBUGP("-!- writing to %s\n", db_path);
+   DEBUGP(1, "-!- writing to %s\n", db_path);
    f = fopen(db_path, "w");
-   if (!f) return RETURN_FAIL;
+   if (!f) {
+      DEBFAILP(WRITE_FAIL, db_path);
+      return RETURN_FAIL;
+   }
 
    /* write repositories */
    r = repo;
@@ -190,9 +210,12 @@ static int _pndman_db_get_local(pndman_repository *repo, pndman_device *device)
    /* begin to read local database */
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/local.db", PATH_MAX-1);
-   DEBUGP("-!- local from %s\n", db_path);
+   DEBUGP(1, "-!- local from %s\n", db_path);
    f = fopen(db_path, "r");
-   if (!f) return RETURN_FAIL;
+   if (!f) {
+      DEBFAILP(READ_FAIL, db_path);
+      return RETURN_FAIL;
+   }
 
    /* read local database */
    _pndman_json_process(repo, f);
@@ -220,8 +243,10 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
    }
 
    /* invalid url */
-   if (!strlen(repo->url))
+   if (!strlen(repo->url)) {
+      DEBFAIL(BAD_URL);
       return RETURN_FAIL;
+   }
 
    /* check appdata */
    _pndman_device_get_appdata_no_create(appdata, device);
@@ -230,13 +255,20 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
    /* begin to read other repositories */
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/repo.db", PATH_MAX-1);
-   DEBUGP("-!- reading from %s\n", db_path);
+   DEBUGP(1, "-!- reading from %s\n", db_path);
    f = fopen(db_path, "r");
-   if (!f) return RETURN_FAIL;
+   if (!f) {
+      DEBFAILP(READ_FAIL, db_path);
+      return RETURN_FAIL;
+   }
 
    /* write parse result here */
    f2 = _pndman_get_tmp_file();
-   if (!f2) return RETURN_FAIL;
+   if (!f2) {
+      fclose(f);
+      DEBFAIL(TMP_FILE_FAIL);
+      return RETURN_FAIL;
+   }
 
    /* read repository */
    memset(s,  0, LINE_MAX);
@@ -328,13 +360,19 @@ static int _pndman_repository_sync_request(pndman_sync_handle *handle, unsigned 
    memset(handle->error, 0, LINE_MAX);
 
    /* no valid url == FAIL, same for local repository, this is expected */
-   if (!strlen(repo->url)) return RETURN_FAIL;
+   if (!strlen(repo->url)) {
+      DEBFAIL(BAD_URL);
+      return RETURN_FAIL;
+   }
 
    /* create curl handle if doesn't exist */
    if (!_pndman_curlm) {
       /* get multi curl handle */
       _pndman_curlm = curl_multi_init();
-      if (!_pndman_curlm) return RETURN_FAIL;
+      if (!_pndman_curlm) {
+         DEBFAIL(CURLM_FAIL);
+         return RETURN_FAIL;
+      }
    }
 
    /* create indivual curl requests */
@@ -417,7 +455,7 @@ int pndman_sync()
       still_running = 1;
    }
 
-   // DEBUGP("%d : %p\n", still_running, _pndman_internal_request);
+   // DEBUGP(3, "%d : %p\n", still_running, _pndman_internal_request);
    return still_running;
 }
 
@@ -425,16 +463,20 @@ int pndman_sync()
  * (if it's been committed there before) */
 int pndman_read_from_device(pndman_repository *repo, pndman_device *device)
 {
-   DEBUG("pndman_read_from_device");
-   if (!repo) return RETURN_FAIL;
+   if (!repo) {
+      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "repo pointer is NULL");
+      return RETURN_FAIL;
+   }
    return _pndman_db_get(repo, device);
 }
 
 /* \brief check for updates, returns the number of updates */
 int pndman_check_updates(pndman_repository *list)
 {
-   DEBUG("check updates");
-   if (!list) return RETURN_FAIL;
+   if (!list) {
+      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "list pointer is NULL");
+      return RETURN_FAIL;
+   }
    list = _pndman_repository_first(list); /* idiot proof */
    return _pndman_check_updates(list);
 }
@@ -443,24 +485,30 @@ int pndman_check_updates(pndman_repository *list)
  * call this for each repository you want to sync before pndman_sync */
 int pndman_sync_request(pndman_sync_handle *handle, unsigned int flags, pndman_repository *repo)
 {
-   DEBUG("pndman_sync_request");
-   if (!repo || !handle) return RETURN_FAIL;
+   if (!repo || !handle) {
+      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "repo or handle pointer is NULL");
+      return RETURN_FAIL;
+   }
    return _pndman_repository_sync_request(handle, flags, repo);
 }
 
 /* \brief free sync request */
 int pndman_sync_request_free(pndman_sync_handle *handle)
 {
-   DEBUG("pndman_sync_request_free");
-   if (!handle) return RETURN_FAIL;
+   if (!handle) {
+      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "handle pointer is NULL");
+      return RETURN_FAIL;
+   }
    return _pndman_sync_handle_free(handle);
 }
 
 /* \brief commits _all_ repositories to specific device */
 int pndman_commit_all(pndman_repository *repo, pndman_device *device)
 {
-   DEBUG("pndman_commit_database");
-   if (!repo || !device) return RETURN_FAIL;
+   if (!repo || !device) {
+      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "repo or device pointer is NULL");
+      return RETURN_FAIL;
+   }
    return _pndman_db_commit(repo, device);
 }
 

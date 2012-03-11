@@ -7,6 +7,14 @@
 #include "package.h"
 #include "md5.h"
 
+static const char *TRANS_ALLOC_FAIL = "Failed to allocate pndman_translated, shit might break now.";
+static const char *LIC_ALLOC_FAIL   = "Failed to allocate pndman_license, shit might break now.";
+static const char *PIC_ALLOC_FAIL   = "Failed to allocate pndman_previewpic, shit might break now.";
+static const char *CAT_ALLOC_FAIL   = "Failed to allocate pndman_category, shit might break now.";
+static const char *ASSOC_ALLOC_FAIL = "Failed to allocate pndman_association, shit might break now.";
+static const char *APP_ALLOC_FAIL   = "Failed to allocate pndman_application, shit might break now.";
+static const char *PND_ALLOC_FAIL   = "Failed to allocate pndman_package, shit might break now.";
+
 /* \brief compare package versions, return 1 on newer, 0 otherwise
  * NOTE: lp == package to use as base, rp == package to compare against
  *       so rp > lp == 1 */
@@ -138,7 +146,10 @@ static pndman_translated* _pndman_translated_new(void)
    pndman_translated *t;
 
    t = malloc(sizeof(pndman_translated));
-   if (!t) return NULL;
+   if (!t) {
+      DEBFAIL(TRANS_ALLOC_FAIL);
+      return NULL;
+   }
 
    /* init */
    memset(t->lang,   0, PND_SHRT_STR);
@@ -155,7 +166,10 @@ static pndman_translated* _pndman_copy_translated(pndman_translated *src)
 
    if (!src) return NULL;
    t = malloc(sizeof(pndman_translated));
-   if (!t) return NULL;
+   if (!t) {
+      DEBFAIL(TRANS_ALLOC_FAIL);
+      return NULL;
+   }
 
    memcpy(t->lang, src->lang, PND_SHRT_STR);
    memcpy(t->string, src->string, PND_STR);
@@ -170,7 +184,10 @@ static pndman_license* _pndman_license_new(void)
    pndman_license *l;
 
    l = malloc(sizeof(pndman_license));
-   if (!l) return NULL;
+   if (!l) {
+      DEBFAIL(LIC_ALLOC_FAIL);
+      return NULL;
+   }
 
    /* init */
    memset(l->name,            0, PND_SHRT_STR);
@@ -188,7 +205,10 @@ static pndman_license* _pndman_copy_license(pndman_license *src)
 
    if (!src) return NULL;
    l = malloc(sizeof(pndman_license));
-   if (!l) return NULL;
+   if (!l) {
+      DEBFAIL(LIC_ALLOC_FAIL);
+      return NULL;
+   }
 
    memcpy(l->name, src->name, PND_SHRT_STR);
    memcpy(l->url, src->url, PND_STR);
@@ -204,7 +224,10 @@ static pndman_previewpic* _pndman_previewpic_new(void)
    pndman_previewpic *p;
 
    p = malloc(sizeof(pndman_previewpic));
-   if (!p) return NULL;
+   if (!p) {
+      DEBFAIL(PIC_ALLOC_FAIL);
+      return NULL;
+   }
 
    /* init */
    memset(p->src,   0, PND_PATH);
@@ -220,7 +243,10 @@ static pndman_previewpic* _pndman_copy_previewpic(pndman_previewpic *src)
 
    if (!src) return NULL;
    p = malloc(sizeof(pndman_previewpic));
-   if (!p) return NULL;
+   if (!p) {
+      DEBFAIL(PIC_ALLOC_FAIL);
+      return NULL;
+   }
 
    memcpy(p->src, src->src, PND_PATH);
    p->next = _pndman_copy_previewpic(src->next);
@@ -234,7 +260,10 @@ static pndman_association* _pndman_association_new(void)
    pndman_association *a;
 
    a = malloc(sizeof(pndman_association));
-   if (!a) return NULL;
+   if (!a) {
+      DEBFAIL(ASSOC_ALLOC_FAIL);
+      return NULL;
+   }
 
    /* init */
    memset(a->name,            0, PND_STR);
@@ -252,7 +281,10 @@ static pndman_association* _pndman_copy_association(pndman_association *src)
 
    if (!src) return NULL;
    a = malloc(sizeof(pndman_association));
-   if (!a) return NULL;
+   if (!a) {
+      DEBFAIL(ASSOC_ALLOC_FAIL);
+      return NULL;
+   }
 
    memcpy(a->name, src->name, PND_STR);
    memcpy(a->filetype, src->filetype, PND_SHRT_STR);
@@ -268,7 +300,10 @@ static pndman_category* _pndman_category_new(void)
    pndman_category *c;
 
    c = malloc(sizeof(pndman_category));
-   if (!c) return NULL;
+   if (!c) {
+      DEBFAIL(CAT_ALLOC_FAIL);
+      return NULL;
+   }
 
    /* init */
    memset(c->main,   0, PND_SHRT_STR);
@@ -285,7 +320,10 @@ static pndman_category* _pndman_copy_category(pndman_category *src)
 
    if (!src) return NULL;
    c = malloc(sizeof(pndman_category));
-   if (!c) return NULL;
+   if (!c) {
+      DEBFAIL(CAT_ALLOC_FAIL);
+      return NULL;
+   }
 
    memcpy(c->main, src->main, PND_SHRT_STR);
    memcpy(c->sub, src->sub, PND_SHRT_STR);
@@ -301,8 +339,10 @@ static pndman_application* _pndman_new_application(void)
 
    /* allocate */
    app = malloc(sizeof(pndman_application));
-   if (!app)
+   if (!app) {
+      DEBFAIL(APP_ALLOC_FAIL);
       return NULL;
+   }
 
    /* NULL */
    memset(app->id,      0, PND_ID);
@@ -336,8 +376,10 @@ static pndman_application* _pndman_copy_application(pndman_application *src)
 
    if (!src) return NULL;
    app = _pndman_new_application();
-   if (!app)
+   if (!app) {
+      DEBFAIL(APP_ALLOC_FAIL);
       return NULL;
+   }
 
    /* copy */
    memcpy(app->id,      src->id,       PND_ID);
@@ -370,8 +412,10 @@ pndman_package* _pndman_new_pnd(void)
 
    /* allocate */
    pnd = malloc(sizeof(pndman_package));
-   if (!pnd)
+   if (!pnd) {
+      DEBFAIL(PND_ALLOC_FAIL);
       return NULL;
+   }
 
    /* NULL */
    memset(pnd->path,    0, PND_PATH);
