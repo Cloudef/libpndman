@@ -47,9 +47,6 @@ int main()
    puts("This test, tests crawl operation inside libpndman");
    puts("");
 
-   if (pndman_init() != 0)
-      err("pndman_init failed");
-
    /* add device */
    if (!(device = pndman_device_add(cwd, NULL)))
       err("failed to add device, check that it exists");
@@ -95,9 +92,6 @@ int main()
    pndman_device_free_all(device);
 
    free(cwd);
-   if (pndman_quit() == -1)
-      err("pndman_quit failed");
-
    return EXIT_SUCCESS;
 }
 

@@ -58,9 +58,6 @@ int main()
    printf("%s, is treated as virtual device.", cwd);
    puts("");
 
-   if (pndman_init() == -1)
-      err("pndman_init failed");
-
    if (!(device = pndman_device_add(cwd, NULL)))
       err("failed to add device, check that it exists");
 
@@ -142,12 +139,8 @@ int main()
    pndman_device_free_all(device);
 
    free(cwd);
-   if (pndman_quit() == -1)
-      err("pndman_quit failed");
-
    puts("");
    printf("Download Count: %zu\n", dcount);
-
    return EXIT_SUCCESS;
 }
 

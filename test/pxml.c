@@ -56,9 +56,6 @@ int main()
    puts("To get some pnds, run handle(.exe) first.");
    puts("");
 
-   if (pndman_init() == -1)
-      err("pndman init failed");
-
 #ifdef __linux__
    /* copy path */
    strncpy(path1, cwd, PATH_MAX-1);
@@ -96,12 +93,9 @@ int main()
 #endif
 
    free(cwd);
-   if (pndman_quit() == -1)
-      err("pndman quit failed");
 
    puts("");
    printf("%zu PNDs\n", count);
-
    return EXIT_SUCCESS;
 }
 

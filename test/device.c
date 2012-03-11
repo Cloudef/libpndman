@@ -52,9 +52,6 @@ int main()
    cwd = test_device();
    if (!cwd) err("failed to get virutal device path");
 
-   if (pndman_init() == -1)
-      err("pndman_init failed");
-
    /* add some devices */
    if (!(device = pndman_device_add(cwd, NULL)))
       err("failed to add device, does it exist?");
@@ -103,9 +100,6 @@ int main()
    pndman_device_free_all(device);
 
    free(cwd);
-   if (pndman_quit() == -1)
-      err("pndman_quit failed");
-
    return EXIT_SUCCESS;
 }
 
