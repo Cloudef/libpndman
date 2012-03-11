@@ -297,22 +297,25 @@ typedef struct pndman_sync_handle
    const void           *curl;
 } pndman_sync_handle;
 
-/*! \brief
- * Initializes the library and all the resources
- */
-int pndman_init();
-
-/*! \brief
- * Quits the library cleanly, frees all the resources
- */
-int pndman_quit();
-
+/* \brief get git head */
 const char* pndman_git_head();
+
+/* \brief get git commit description */
 const char* pndman_git_commit();
 
 /* \brief calculate new md5 for the PND,
  * Use this if you don't have md5 in pnd or want to recalculate */
 const char* pndman_get_md5(pndman_package *pnd);
+
+/* \brief set verbose level of pndman
+ * (prints to stdout) */
+void pndman_set_verbose(int level);
+
+/* \brief get current verbose level */
+int pndman_get_verbose();
+
+/* \brief get error string from pndman */
+const char* pndman_get_error();
 
 /* Current API functions
  * These are very likely to change.
