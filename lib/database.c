@@ -143,7 +143,7 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
 
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/local.db", PATH_MAX-1);
-   DEBUGP(1, "-!- writing to %s\n", db_path);
+   DEBUGP(3, "-!- writing to %s\n", db_path);
    f = fopen(db_path, "w");
    if (!f) {
       DEBFAILP(WRITE_FAIL, db_path);
@@ -176,7 +176,7 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
 
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/repo.db", PATH_MAX-1);
-   DEBUGP(1, "-!- writing to %s\n", db_path);
+   DEBUGP(3, "-!- writing to %s\n", db_path);
    f = fopen(db_path, "w");
    if (!f) {
       DEBFAILP(WRITE_FAIL, db_path);
@@ -210,7 +210,7 @@ static int _pndman_db_get_local(pndman_repository *repo, pndman_device *device)
    /* begin to read local database */
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/local.db", PATH_MAX-1);
-   DEBUGP(1, "-!- local from %s\n", db_path);
+   DEBUGP(3, "-!- local from %s\n", db_path);
    f = fopen(db_path, "r");
    if (!f) {
       DEBFAILP(READ_FAIL, db_path);
@@ -255,7 +255,7 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
    /* begin to read other repositories */
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/repo.db", PATH_MAX-1);
-   DEBUGP(1, "-!- reading from %s\n", db_path);
+   DEBUGP(3, "-!- reading from %s\n", db_path);
    f = fopen(db_path, "r");
    if (!f) {
       DEBFAILP(READ_FAIL, db_path);
