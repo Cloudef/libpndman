@@ -1552,7 +1552,6 @@ static void sigint(int sig)
 #ifdef __WIN32__
    _fcloseall();
 #endif
-   pndman_quit();
    exit(sig);
 }
 
@@ -1578,12 +1577,6 @@ int main(int argc, char **argv)
 
    /* by default, we fail :) */
    ret = EXIT_FAILURE;
-
-   /* init */
-   if (pndman_init() != RETURN_OK) {
-      _R(); puts("pndman_init failed.."); _N();
-      return EXIT_FAILURE;
-   }
 
    /* init userdata */
    init_usrdata(&data);
@@ -1619,12 +1612,6 @@ int main(int argc, char **argv)
    /* free targets && ignores */
    freetarget_all(data.tlist);
    freeignore_all(data.ilist);
-
-   /* quit */
-   if (pndman_quit() != RETURN_OK) {
-      _R(); puts("pndman_quit failed.."); _N();
-      return EXIT_FAILURE;
-   }
 
    return ret;
 }
