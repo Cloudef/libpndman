@@ -34,6 +34,9 @@
 /* name of directory inside $XDG_CONFIG_HOME */
 #define CFG_DIR      "milkyhelper"
 
+/* max length of descriptions */
+#define DESCRIPTION_LENGTH 84
+
 /* use colors? */
 char _USE_COLORS  = 1;
 
@@ -292,6 +295,26 @@ static void stripslash(char *path)
 {
    if (path[strlen(path)-1] == '/' || path[strlen(path)-1] == '\\')
       path[strlen(path)-1] = '\0';
+}
+
+/* strip string from bad characters */
+static char* strstrip(char *src)
+{
+   size_t size, i, p;
+   char space = 0, *dst;
+
+   i = 0; p = 0;
+   if (!src)                     return NULL;
+   if (!(size = strlen(src)))    return NULL;
+   if (!(dst = malloc(size+1)))  return NULL;
+   for(; i != size; ++i)
+   {
+      if (isspace(src[i])) { if(p) space = 1; }
+      else if (src[i] == '\n' || src[i] == '\t' || src[i] == '\r') ;
+      else { if (space) { dst[p++] = ' '; space = 0; } dst[p++] = src[i]; }
+   }
+   dst[p] = '\0';
+   return dst;
 }
 
 /* mkdir if it doesn't exist */
@@ -1046,20 +1069,20 @@ static void syncrepos(pndman_repository *rs, _USR_DATA *data)
    for (c = 0; r; r = r->next) pndman_sync_request(&handle[c++],
                (data->flags & S_NOMERGE)?PNDMAN_SYNC_FULL:0, r);
 
+   tdl = 0; ttdl = 0;
    while ((ret = pndman_sync() > 0)) {
+      progressbar(tdl, ttdl);
       r = rs; tdl = 0; ttdl = 0;
       for (c = 0; r; r = r->next) {
          tdl   += (float)handle[c].progress.download;
          ttdl  += (float)handle[c].progress.total_to_download;
          if (handle[c].progress.done) {
-           _B(); printf(_REPO_SYNCED, handle[c].repository->name); _N();
+            _B(); printf(_REPO_SYNCED, handle[c].repository->name); _N();
          }
          ++c;
       }
-      progressbar(tdl, ttdl);
       usleep(1000);
    }
-   NEWLINE();
 
    r = rs;
    for (c = 0; r; r = r->next) {
@@ -1070,14 +1093,170 @@ static void syncrepos(pndman_repository *rs, _USR_DATA *data)
    }
 }
 
-/* pndinfo */
-static void pndinfo(pndman_package *pnd)
+/* get pnd title */
+static const char* pndtitle(pndman_package *pnd, const char *lang)
 {
+   pndman_translated *t;
+   for (t = pnd->title; t; t = t->next)
+      if (!strupcmp(t->lang, lang)) return strlen(t->string)?t->string:NULL;
+   return NULL;
+}
+
+/* get pnd description */
+static const char* pnddesc(pndman_package *pnd, const char *lang)
+{
+   pndman_translated *t;
+   for (t = pnd->description; t; t = t->next)
+      if (!strupcmp(t->lang, lang)) return strlen(t->string)?t->string:NULL;
+   return NULL;
+}
+
+/* get human readable modified time */
+static char* getmodified(pndman_package *pnd)
+{
+   time_t nao;
+   unsigned int seconds, minutes, hours, days, months, years;
+   unsigned int rseconds, rminutes, rhours, rdays, rmonths, ryears;
+   char *str;
+
+   if (!(str = malloc(4+7+2+8+2+6+2+7+2+9+2+8+1)))
+      return NULL;
+
+   nao = time(0);
+   rseconds  = seconds = (unsigned int)(nao - pnd->modified_time);
+   rminutes  = minutes = seconds / 60;
+   rhours    = hours   = minutes / 60;
+   rdays     = days    = hours   / 24;
+   rmonths   = months  = days    / 31;
+   ryears    = years   = months  / 12;
+
+   if (years)   rmonths   = months  - years   * 12;
+   if (months)  rdays     = days    - months  * 31;
+   if (days)    rhours    = hours   - days    * 24;
+   if (hours)   rminutes  = minutes - hours   * 60;
+   if (minutes) rseconds  = seconds - minutes * 60;
+
+   memset(str, 0, 4+7+2+8+2+6+2+7+2+9+2+8+1);
+   sprintf(str, "%.0d%s%.0d%s%.0d%s%.0d%s%.0d%s%.0d%s",
+         ryears,  years    ? " years "   : "",
+         rmonths, months   ? " months "  : "",
+         rdays,   days     ? " days "    : "",
+         rhours,  hours    ? " hours "   : "",
+         rminutes, minutes ? " minutes " : "",
+         rseconds, seconds ? " seconds"  : "");
+   return str;
+}
+
+/* pndinfo */
+static void pndinfo(pndman_package *pnd, _USR_DATA *data)
+{
+   pndman_category *c;
+   pndman_license  *l;
+   char *title, *desc, *info, *time;
    assert(pnd);
-   _Y(); printf("%s", pnd->category ? strlen(pnd->category->sub) ?
-                      pnd->category->sub : pnd->category->main : "nogroup");
-   _W(); printf("/"); _G(); printf("%s\n", pnd->id); _N();
-   _W(); puts(pnd->title?strlen(pnd->title->string)?pnd->title->string:"notitle":"notitle"); _N();
+
+   /* get description */
+   desc  = strstrip((char*)pnddesc(pnd, "en_US"));
+
+   /* strip description to maximum length */
+   if (!(data->flags & A_INFO) && desc && strlen(desc) > DESCRIPTION_LENGTH)
+   {
+      desc[DESCRIPTION_LENGTH-4] = ' ';
+      desc[DESCRIPTION_LENGTH-3] = '.';
+      desc[DESCRIPTION_LENGTH-2] = '.';
+      desc[DESCRIPTION_LENGTH-1] = '.';
+      desc[DESCRIPTION_LENGTH]   = '\0';
+   }
+
+   /* info style */
+   if (data->flags & A_INFO) {
+      _G(); printf("ID            ");
+      _W(); printf(": %s\n", pnd->id);
+      _G(); printf("Installed     ");
+      _W(); printf(": %s\n", pndinstalled(pnd, data)?"Yes":"No");
+      _G(); printf("Repository    ");
+      _W(); printf(": %s\n", strlen(pnd->repository)?pnd->repository:"Foreign");
+      _G(); printf("Update        ");
+      _W(); printf(": %s\n", pnd->update?"Yes":"No");
+      if ((time = getmodified(pnd))) {
+         _G(); printf("Modified      ");
+         _W(); printf(": %s ago\n", time);
+         free(time);
+      }
+      if (pnd->category) {
+         _G(); printf("Categories    ");
+         _W(); printf(": ");
+         for (c = pnd->category; c; c = c->next)
+            printf("%s%s%s ", strlen(c->main)?c->main:"", strlen(c->sub)?" ":"", strlen(c->sub)?c->sub:"");
+         puts("");
+      }
+      if (pnd->license) {
+         _G(); printf("Licenses      ");
+         _W(); printf(": ");
+         for (l = pnd->license; l; l = l->next)
+            printf("%s ", strlen(l->name)?l->name:"");
+         puts("");
+      }
+      if ((title = strstrip((char*)pndtitle(pnd, "en_US")))) {
+         _G(); printf("Title         ");
+         _W(); printf(": %s\n", title?title:pnd->id);
+         free(title);
+      }
+      _G(); printf("Size          ");
+      _W(); printf(": %.2f MiB\n", (float)pnd->size/1048576);
+      _G(); printf("Version       ");
+      _W(); printf(": %s.%s.%s.%s %s\n",
+            pnd->version.major,
+            pnd->version.minor,
+            pnd->version.release,
+            pnd->version.build,
+            pnd->version.type==PND_VERSION_BETA?"Beta":
+            pnd->version.type==PND_VERSION_ALPHA?"Alpha":"Release");
+      _G(); printf("Rating        ");
+      _W(); printf(": %d\n", pnd->rating);
+      _G(); printf("URL           ");
+      _W(); printf(": %s\n", pnd->url);
+      _G(); printf("MD5           ");
+      _W(); printf(": %s\n", pnd->md5);
+      _G(); printf("Author        ");
+      _W(); printf(": %s\n", pnd->author.name);
+      _G(); printf("Author page   ");
+      _W(); printf(": %s\n", pnd->author.website);
+      _G(); printf("Vendor        ");
+      _W(); printf(": %s\n", pnd->vendor);
+      _G(); printf("Icon          ");
+      _W(); printf(": %s\n", pnd->icon);
+      if (desc) {
+         NEWLINE();
+         _B(); printf("Description   ");
+         _W(); printf(":\n%s\n", desc);
+      }
+      if ((info = strstrip((char*)pnd->info))) {
+         NEWLINE();
+         _B(); printf("Information   ");
+         _W(); printf(":\n%s\n", info);
+         free(info);
+      }
+   } else {
+      /* default style */
+      _Y(); printf("%s", pnd->category ? strlen(pnd->category->sub) ?
+                         pnd->category->sub : pnd->category->main : "nogroup");
+      _W(); printf("/");
+      _G(); printf("%s", pnd->id);
+      _W(); printf(" [");
+      _Y(); printf("%s.%s.%s.%s%s",
+            pnd->version.major,   pnd->version.minor,
+            pnd->version.release, pnd->version.build,
+            pnd->version.type==PND_VERSION_BETA?" Beta":
+            pnd->version.type==PND_VERSION_ALPHA?" Alpha":"");
+      _W(); printf("] ");
+      _W(); printf("["); _Y(); printf("%d", pnd->rating); _W(); printf("] ");
+      _B(); printf("%s", pndinstalled(pnd, data)?"[installed] ":"");
+      _W(); printf("%s\n", pnd->update?"--UPDATE-- ":"");
+      _W(); printf("  %s\n", desc?desc:"...");
+   }  _N();
+
+   if (desc)  free(desc);
 }
 
 /* returns true or false depending if query type matches */
@@ -1109,15 +1288,27 @@ static int searchrepo(pndman_repository *r, _USR_DATA *data)
 {
    pndman_package *p;
    _USR_TARGET *t;
+   char donl = 0;
    assert(r);
 
    /* lame search for now */
    if (!data->tlist)
-      for (p = r->pnd; p; p = p->next) pndinfo(p);
+      for (p = r->pnd; p; p = p->next) {
+         if ((data->flags & A_UPGRADE) && !p->update)
+            continue;
+         pndinfo(p, data);
+         if (p->next) NEWLINE();
+      }
    else
       for (t = data->tlist; t; t = t->next)
          for (p = r->pnd; p; p = p->next) {
-            if (matchquery(p, t, data)) pndinfo(p);
+            if ((data->flags & A_UPGRADE) && !p->update)
+               continue;
+            if (matchquery(p, t, data)) {
+               if (donl) NEWLINE();
+               pndinfo(p, data);
+               donl = 1;
+            }
          }
    return RETURN_OK;
 }
@@ -1136,7 +1327,7 @@ static int targetpnd(pndman_repository *rs, _USR_DATA *data, int up)
       for (r = rs; r; r = r->next) {
          for (p = r->pnd; p; p = p->next)
             if (!strcmp(p->id, t->id)) {
-               printf("A: %s %s\n", t->id, p->id);
+               if (_VERBOSE >= 1) printf("A: %s %s\n", t->id, p->id);
                strcpy(t->id, p->id);
                t->pnd = p; break;
             }
@@ -1150,7 +1341,7 @@ static int targetpnd(pndman_repository *rs, _USR_DATA *data, int up)
       for (r = rs; r; r = r->next) {
          for (p = r->pnd; p; p = p->next)
             if (strstr(p->id, t->id)) {
-               printf("A: %s %s\n", t->id, p->id);
+               if (_VERBOSE >= 1) printf("A: %s %s\n", t->id, p->id);
                strcpy(t->id, p->id);
                t->pnd = p; break;
             }
@@ -1245,22 +1436,23 @@ static int targetperform(_USR_DATA *data)
       ++c;
    }
 
+   tdl = 0; ttdl = 0;
    while ((ret = pndman_download()) > 0) {
+      progressbar(tdl, ttdl);
       t = data->tlist; tdl = 0; ttdl = 0;
       for (c = 0; t; t = t->next) {
          if (!handle[c].flags) { ++c; continue; } /* failed perform */
          tdl  += (float)handle[c].progress.download;
          ttdl += (float)handle[c].progress.total_to_download;
          if (handle[c].progress.done && !done[c]) {
+            NEWLINE();
             _B(); printf(opstrfromflags(1,data->flags), handle[c].name); _N();
             done[c] = 1;
          }
          ++c;
       }
-      progressbar(tdl, ttdl);
       usleep(1000);
    }
-   NEWLINE();
 
    t = data->tlist;
    for (c = 0; t; t = t->next) {
@@ -1467,48 +1659,50 @@ static int processflags(_USR_DATA *data)
    if (sanitycheck(data) != RETURN_OK)
       return RETURN_FAIL;
 
-   NEWLINE();
-   _B();
-   if ((data->flags & OP_YAOURT))   puts("::YAOURT");
-   if ((data->flags & OP_SYNC))     puts("::SYNC");
-   if ((data->flags & OP_UPGRADE))  puts("::UPGRADE");
-   if ((data->flags & OP_REMOVE))   puts("::REMOVE");
-   if ((data->flags & OP_QUERY))    puts("::QUERY");
-   if ((data->flags & OP_CRAWL))    puts("::CRAWL");
-   if ((data->flags & OP_CLEAN))    puts("::CLEAN");
-   if ((data->flags & OP_VERSION))  puts("::VERSION");
-   if ((data->flags & OP_HELP))     puts("::HELP");
-   _Y();
-   if ((data->flags & GB_FORCE))    puts(";;FORCE");
-   _G();
-   if ((data->flags & A_SEARCH))    puts("->SEARCH");
-   if ((data->flags & A_CATEGORY))  puts("->CATEGORY");
-   if ((data->flags & A_INFO))      puts("->INFO");
-   if ((data->flags & A_LIST))      puts("->LIST");
-   if ((data->flags & A_REFRESH))   puts("->REFRESH");
-   if ((data->flags & A_UPGRADE))   puts("->UPGRADE");
-   if ((data->flags & A_NOSAVE))    puts("->NOSAVE");
-   _R();
-   if ((data->flags & A_MENU))      puts("[MENU]");
-   if ((data->flags & A_DESKTOP))   puts("[DESKTOP]");
-   if ((data->flags & A_APPS))      puts("[APPS]");
-   _N();
-   NEWLINE();
+   if (_VERBOSE >= 1) {
+      NEWLINE();
+      _B();
+      if ((data->flags & OP_YAOURT))   puts("::YAOURT");
+      if ((data->flags & OP_SYNC))     puts("::SYNC");
+      if ((data->flags & OP_UPGRADE))  puts("::UPGRADE");
+      if ((data->flags & OP_REMOVE))   puts("::REMOVE");
+      if ((data->flags & OP_QUERY))    puts("::QUERY");
+      if ((data->flags & OP_CRAWL))    puts("::CRAWL");
+      if ((data->flags & OP_CLEAN))    puts("::CLEAN");
+      if ((data->flags & OP_VERSION))  puts("::VERSION");
+      if ((data->flags & OP_HELP))     puts("::HELP");
+      _Y();
+      if ((data->flags & GB_FORCE))    puts(";;FORCE");
+      _G();
+      if ((data->flags & A_SEARCH))    puts("->SEARCH");
+      if ((data->flags & A_CATEGORY))  puts("->CATEGORY");
+      if ((data->flags & A_INFO))      puts("->INFO");
+      if ((data->flags & A_LIST))      puts("->LIST");
+      if ((data->flags & A_REFRESH))   puts("->REFRESH");
+      if ((data->flags & A_UPGRADE))   puts("->UPGRADE");
+      if ((data->flags & A_NOSAVE))    puts("->NOSAVE");
+      _R();
+      if ((data->flags & A_MENU))      puts("[MENU]");
+      if ((data->flags & A_DESKTOP))   puts("[DESKTOP]");
+      if ((data->flags & A_APPS))      puts("[APPS]");
+      _N();
+      NEWLINE();
 
-   if (data->root) {
-      _B(); printf("Root: %s\n", data->root->mount); _N();
+      if (data->root) {
+         _B(); printf("Root: %s\n", data->root->mount); _N();
+      }
+
+      _R();
+      if (data->rlist) puts("\nRepositories:");
+      for (r = data->rlist; r; r = r->next) puts(strlen(r->name) ? r->name : r->url);
+      _N();
+
+      _W();
+      if (data->tlist) puts("\nTargets:");
+      for (t = data->tlist; t; t = t->next) puts(t->id);
+      _N();
+      NEWLINE();
    }
-
-   _R();
-   if (data->rlist) puts("\nRepositories:");
-   for (r = data->rlist; r; r = r->next) puts(strlen(r->name) ? r->name : r->url);
-   _N();
-
-   _W();
-   if (data->tlist) puts("\nTargets:");
-   for (t = data->tlist; t; t = t->next) puts(t->id);
-   _N();
-   NEWLINE();
 
    /* read repository information from each device */
    for (d = data->dlist; d; d = d->next)
