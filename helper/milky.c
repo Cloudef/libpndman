@@ -1460,6 +1460,9 @@ static int processflags(_USR_DATA *data)
    int ret = RETURN_FAIL;
    assert(data);
 
+   /* set pndman's verbose level */
+   pndman_set_verbose(_VERBOSE);
+
    /* sanity check */
    if (sanitycheck(data) != RETURN_OK)
       return RETURN_FAIL;
