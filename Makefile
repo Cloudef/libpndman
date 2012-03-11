@@ -1,9 +1,6 @@
 # debug build?
 DEBUG  := 1
 
-# use colors?
-COLOR  := 1
-
 # static library?
 STATIC := 1
 
@@ -56,10 +53,6 @@ ifeq (${STATIC},1)
    LIB_TARGET = lib$(addsuffix .a, $(basename ${TARGET}))
 else
    LIB_TARGET = lib$(addsuffix .so, $(basename ${TARGET}))
-endif
-
-ifeq (${COLOR},1)
-   CFLAGS += -DCOLOR=1
 endif
 
 all: ${LIB_TARGET} ${CLI_BIN} test
