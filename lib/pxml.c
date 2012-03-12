@@ -1004,7 +1004,7 @@ static int _pndman_crawl_process(char *pnd_file, pxml_parse *data)
 
    /* add size to the pnd */
    if ((f = fopen(pnd_file, "r"))) {
-      fseek(f, SEEK_END, 0);
+      fseek(f, 0, SEEK_END);
       data->pnd->size = ftell(f);
       fclose(f);
    }
