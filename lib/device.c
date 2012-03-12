@@ -45,7 +45,6 @@ static pndman_device* _pndman_device_init()
    device->available = 0;
    device->next = NULL;
    device->prev = NULL;
-
    return device;
 }
 
@@ -502,12 +501,16 @@ void _pndman_device_get_appdata_no_create(char *appdata, pndman_device *device)
 {
    assert(device && appdata);
    memset(appdata, 0, PATH_MAX);
-   if (!strlen(device->appdata)) {
+   if (strlen(device->appdata) && access(device->appdata, F_OK) == RETURN_OK)
+      strcpy(appdata, device->appdata);
+   else {
       strncpy(appdata, device->mount, PATH_MAX-1);
       strncat(appdata, "/pandora", PATH_MAX-1);
       strncat(appdata, "/appdata", PATH_MAX-1);
       strncat(appdata, "/"PNDMAN_APPDATA, PATH_MAX-1);
-   } else strcpy(appdata, device->appdata);
+      if (access(appdata, F_OK) != RETURN_OK)
+         memset(appdata, 0, PATH_MAX);
+   }
 }
 
 /* API */
@@ -517,7 +520,10 @@ pndman_device* pndman_device_detect(pndman_device *device)
 {
    pndman_device *d, *d2;
    if ((d = _pndman_device_detect(device)))
-      for (d2 = d; d2; d2 = d2->next) _pndman_remove_tmp_files(d2);
+      for (d2 = d; d2; d2 = d2->next) {
+         _pndman_remove_tmp_files(d2);
+         _pndman_device_get_appdata_no_create(d2->appdata, d2);
+      }
    return d;
 }
 
@@ -525,8 +531,10 @@ pndman_device* pndman_device_detect(pndman_device *device)
 pndman_device* pndman_device_add(const char *path, pndman_device *device)
 {
    pndman_device *d;
-   if ((d = _pndman_device_add(path, device)))
+   if ((d = _pndman_device_add(path, device))) {
       _pndman_remove_tmp_files(d);
+      _pndman_device_get_appdata_no_create(d->appdata, d);
+   }
    return d;
 }
 
