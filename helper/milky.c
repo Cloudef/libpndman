@@ -293,10 +293,9 @@ static int strnupcmp(const char *hay, const char *needle, size_t len)
 static char* strupstr(const char *hay, const char *needle)
 {
    size_t i, r, p, len, len2;
-   p = 0; r = 0;
    if (!strupcmp(hay, needle)) return (char*)hay;
    if ((len = strlen(hay)) < (len2 = strlen(needle))) return NULL;
-   for (i = 0; i != len; ++i) {
+   for (p = 0, r = 0, i = 0; i != len; ++i) {
       if (p == len2) return (char*)&hay[r]; /* THIS IS IT! */
       if (toupper(hay[i]) == toupper(needle[p++])) {
          if (!r) r = i; /* could this be.. */
@@ -856,8 +855,7 @@ static int readconfig_arg(const char *key, _CONFIG_FUNC func, _USR_DATA *data, c
    }
 
    /* get args */
-   in_quote = 0; p = 0; argc = 0;
-   for (; i != strlen(line); ++i) {
+   for (in_quote = 0, p = 0, argc = 0; i != strlen(line); ++i) {
       if (line[i] == _CONFIG_QUOTE) in_quote = !in_quote; /* check quote */
       /* check for seperator, and switch argument if:
        * we are not inside quote
@@ -1153,8 +1151,7 @@ static int rootdialog(_USR_DATA *data)
       return RETURN_FAIL;
 
    /* good answer got, set root */
-   i = 0;
-   for (d = data->dlist; d; d = d->next)
+   for (i = 0, d = data->dlist; d; d = d->next)
       if (++i==s) {
          data->root = d;
          return RETURN_OK;
@@ -1253,7 +1250,7 @@ static void progressbar(float downloaded, float total_to_download)
    unsigned int dots, i, pwdt;
    float fraction;
 
-   pwdt     = 40; /* width */
+   pwdt = 40; /* width */
    if (!total_to_download) {
       _Y(); for (i = 0; i != ((unsigned int)downloaded / 1024) % pwdt; ++i) printf("."); _N();
       printf("\r");
@@ -1393,8 +1390,7 @@ static void syncrepos(pndman_repository *rs, _USR_DATA *data)
       usleep(1000);
    }
 
-   r = rs;
-   for (c = 0; r; r = r->next) {
+   for (r = rs, c = 0; r; r = r->next) {
       if (!handle[c].progress.done) printf(_REPO_SYNCED_NOT, strlen(handle[c].repository->name) ?
                                            handle[c].repository->name : handle[c].repository->url);
       pndman_sync_request_free(&handle[c]);
