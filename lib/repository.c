@@ -86,11 +86,11 @@ pndman_package* _pndman_repository_new_pnd_check(char *id, char *path, pndman_ve
          /* if local repository, create instance */
          if (!repo->prev) {
             /* create instance here, path differs! */
-            if (!repo->prev && strlen(path) && _strupcmp(path, pnd->path)) { /* only local repo can have next installed */
+            if (!repo->prev && strlen(path) && strcmp(path, pnd->path)) { /* only local repo can have next installed */
                if (!_pndman_vercmp(&pnd->version, ver)) {
                   /* new pnd is older, assing it to end */
                   for (pni = pnd; pni && pni->next_installed; pni = pni->next_installed)
-                     if (!_strupcmp(path, pni->path)) return pni; /* it's next installed */
+                     if (!strcmp(path, pni->path)) return pni; /* it's next installed */
                   if (!(pni = pni->next_installed = _pndman_new_pnd()))
                      return NULL;
                   pni->next = pnd->next; /* assign parent's next to next */
