@@ -568,13 +568,8 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
          if (!memcmp(tag, PXML_AUTHOR_TAG, strlen(PXML_AUTHOR_TAG)))
             _pxml_pnd_author_tag(&pnd->author, attrs);
          /* <version */
-         else if (!memcmp(tag, PXML_VERSION_TAG, strlen(PXML_VERSION_TAG))) {
-            if (!strcmp(pnd->id, "java")) {
-               printf("%s.%s.%s.%s\n", pnd->version.major, pnd->version.minor,
-                     pnd->version.release, pnd->version.build);
-            }
+         else if (!memcmp(tag, PXML_VERSION_TAG, strlen(PXML_VERSION_TAG)))
             _pxml_pnd_version_tag(&pnd->version, attrs);
-         }
          /* <icon */
          else if (!memcmp(tag, PXML_ICON_TAG, strlen(PXML_ICON_TAG)))
             _pxml_pnd_icon_tag(pnd, attrs);
