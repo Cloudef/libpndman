@@ -568,8 +568,13 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
          if (!memcmp(tag, PXML_AUTHOR_TAG, strlen(PXML_AUTHOR_TAG)))
             _pxml_pnd_author_tag(&pnd->author, attrs);
          /* <version */
-         else if (!memcmp(tag, PXML_VERSION_TAG, strlen(PXML_VERSION_TAG)))
+         else if (!memcmp(tag, PXML_VERSION_TAG, strlen(PXML_VERSION_TAG))) {
+            if (!strcmp(pnd->id, "java")) {
+               printf("%s.%s.%s.%s\n", pnd->version.major, pnd->version.minor,
+                     pnd->version.release, pnd->version.build);
+            }
             _pxml_pnd_version_tag(&pnd->version, attrs);
+         }
          /* <icon */
          else if (!memcmp(tag, PXML_ICON_TAG, strlen(PXML_ICON_TAG)))
             _pxml_pnd_icon_tag(pnd, attrs);
@@ -786,7 +791,7 @@ static void _pxml_pnd_end_tag(void *data, char *tag)
    /* </application */
    else if (!memcmp(tag, PXML_APPLICATION_TAG, strlen(PXML_APPLICATION_TAG)))
    {
-      *parse_state = PXML_PARSE_PACKAGE;
+      *parse_state = PXML_PARSE_DEFAULT;
       ((pxml_parse*)data)->app = NULL;
    }
    /* </titles> */
@@ -1227,6 +1232,25 @@ int pndman_crawl(int full_crawl, pndman_device *device, pndman_repository *local
    }
    local = _pndman_repository_first(local);
    return _pndman_crawl_to_repository(full_crawl, device, local);
+}
+
+/* \brief fill single PND's data fully by crawling it locally */
+int pndman_crawl_pnd(int full_crawl, pndman_package *pnd)
+{
+   pxml_parse data;
+
+   if (!pnd) {
+      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "pnd pointer is NULL");
+      return RETURN_FAIL;
+   }
+
+   data.pnd   = pnd;
+   data.app   = NULL;
+   data.data  = NULL;
+   data.bckward_title = 1; /* backwards compatibility with PXML titles */
+   data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
+   data.state = PXML_PARSE_DEFAULT;
+   return _pndman_crawl_process(pnd->path, &data);
 }
 
 /* \brief
