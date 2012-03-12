@@ -390,7 +390,7 @@ static int _pndman_version_check(pndman_package *lp, pndman_package *rp)
       if (rp->modified_time > lp->modified_time) {
          if (lp->update) lp->update->update = NULL;
          lp->update = rp; rp->update = lp;
-         return 1;
+         return RETURN_TRUE;
       }
    }
 
@@ -400,14 +400,14 @@ static int _pndman_version_check(pndman_package *lp, pndman_package *rp)
          lp->update->update = NULL;
          lp->update = rp; rp->update = lp;
       }
-      else return 0;
+      else return RETURN_FALSE;
    }
 
    if (_pndman_vercmp(&lp->version, &rp->version)) {
       lp->update = rp;
       rp->update = lp;
    }
-   return lp->update?1:0;
+   return lp->update?RETURN_TRUE:RETURN_FALSE;
 }
 
 /* \brief check updates, returns the number of updates found */

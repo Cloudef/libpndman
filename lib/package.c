@@ -22,6 +22,7 @@ int _pndman_vercmp(pndman_version *lp, pndman_version *rp)
 {
    int major, minor, release, build;
    int major2, minor2, release2, build2;
+   int ret;
 
    /* do vanilla version checking */
    major     = strtol(lp->major, (char **) NULL, 10);
@@ -35,15 +36,23 @@ int _pndman_vercmp(pndman_version *lp, pndman_version *rp)
    release2  = strtol(rp->release, (char **) NULL, 10);
    build2    = strtol(rp->build, (char **) NULL, 10);
 
+   ret = RETURN_FALSE;
    if (major2 > major)
-      return 1;
+      ret = RETURN_TRUE;
    else if (major2 == major && minor2 > minor)
-      return 1;
+      ret = RETURN_TRUE;
    else if (major2 == major && minor2 == minor && release2 > release)
-      return 1;
+      ret = RETURN_TRUE;
    else if (major2 == major && minor2 == minor && release2 == release && build2 > build)
-      return 1;
-   return 0;
+      ret = RETURN_TRUE;
+
+   if (ret == RETURN_TRUE) {
+      DEBUGP(3, "L: %d.%d.%d.%d < R: %d.%d.%d.%d\n",
+            major, minor, release, build,
+            major2, minor2, release2, build2);
+   }
+
+   return ret;
 }
 
 /* \brief Init version struct */
