@@ -386,7 +386,7 @@ static int _pndman_repository_sync_request(pndman_sync_handle *handle, unsigned 
 static int _pndman_version_check(pndman_package *lp, pndman_package *rp)
 {
    /* check if we can check against modified_time */
-   if (!strcmp(lp->repository, rp->repository)) {
+   if (lp->modified_time && !strcmp(lp->repository, rp->repository)) {
       if (rp->modified_time > lp->modified_time) {
          if (lp->update) lp->update->update = NULL;
          lp->update = rp; rp->update = lp;
