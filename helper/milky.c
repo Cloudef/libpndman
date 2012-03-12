@@ -35,7 +35,7 @@
 #define CFG_DIR      "milkyhelper"
 
 /* max length of descriptions */
-#define DESCRIPTION_LENGTH 84
+#define DESCRIPTION_LENGTH 74
 
 /* use colors? */
 char _USE_COLORS  = 1;
@@ -69,6 +69,7 @@ typedef struct _USR_IGNORE
 
 typedef struct _USR_DATA
 {
+   char              *bin;
    unsigned int      flags;
    pndman_device     *dlist;
    pndman_device     *root;
@@ -84,7 +85,7 @@ static void init_usrdata(_USR_DATA *data)
    data->flags = 0;
    data->dlist = NULL; data->root  = NULL;
    data->rlist = NULL; data->tlist = NULL;
-   data->ilist = NULL;
+   data->ilist = NULL; data->bin   = "milky";
 }
 
 /*  ____ _____ ____  ___ _   _  ____ ____
@@ -101,6 +102,8 @@ static void init_usrdata(_USR_DATA *data)
  *                  with this we could get rid of all those _R(); _N();
  *                  etc.. color functions. Plus it would allow colors to
  *                  be customized more easily! */
+#define _DEVICE_CLEANED          "Cleaned libpndman database from %s!\n"
+#define _PNDS_CRAWLED            "%d PND's were succesfully crawled.\n"
 #define _REPO_WONT_DO_ANYTHING   "There is only local repository available, %s operations won't do anything.\n"
 #define _NO_SYNCED_REPO          "None of repositories is synced. Sync the repositories first.\n"
 #define _REPO_SYNCED             "%s, synchorized succesfully.\n"
@@ -121,12 +124,25 @@ static void init_usrdata(_USR_DATA *data)
 #define _PND_REINSTALL           "Package %s is already installed, reinstall?"
 #define _NO_ROOT_YET             "Sir! You haven't selected your mount where to store PND's yet.\n"
 #define _WARNING_SKIPPING        "Warning: skipping %s\n"
+#define _WARNING_UPDATE          "Warning: %s is up-to-date, skipping.\n"
+#define _NOTHING_TO_DO           "There is nothing to do"
 #define _FAILED_TO_DEVICES       "Failed to detect devices.\n"
 #define _FAILED_TO_REPOS         "Failed to initialize local repository..\n"
 #define _COMMIT_FAIL             "Warning: failed to commit repositories to %s\n"
 #define _ROOT_FAIL               "Warning: failed to store your current root device.\n"
 #define _MKCONFIG                "Creating default configuration file in %s\n"
 #define _CONFIG_READ_FAIL        "Warning: failed to read configuration from %s\n"
+#define _YAOURT_DIALOG           "Enter number of packages to be installed (ex: 1 2 3)"
+#define _TARGET_MEDIA            "Target media "
+#define _TARGET_PATH             "Target path  "
+#define _DOWNLOAD_SIZE           "Download size"
+#define _REMOVE_SIZE             "Removal size "
+#define _CONTINUE_INSTALL        "Continue install?"
+#define _CONTINUE_UNINSTALL      "Continue uninstall?"
+#define _TARGET_LINE             "Targets"
+#define _UNIT_KIB                "KiB"
+#define _UNIT_MIB                "MiB"
+#define _UNIT_BYTE               "B"
 #define _INPUT_LINE              "> "
 #define _YESNO                   "[Y/n]"
 #define _NOYES                   "[y/N]"
@@ -428,8 +444,10 @@ static _USR_TARGET* addtarget(const char *id, _USR_TARGET **list)
    _USR_TARGET *new, *t;
    assert(id);
 
+   if (!strlen(id)) return NULL;
    if (*list) {
-      for (t = *list; t; t = t->next) if (!strcmp(t->id, id)) return NULL;
+      for (t = *list; t; t = t->next) if (!strcmp(t->id, id) ||
+                                          !strcmp(t->pnd?t->pnd->id:t->id, id)) return NULL;
       for (t = *list; t && t->next; t = t->next);
       t->next = new = malloc(sizeof(_USR_TARGET));
    } else new = malloc(sizeof(_USR_TARGET));
@@ -478,6 +496,7 @@ static _USR_IGNORE* addignore(char *id, _USR_IGNORE **list)
    _USR_IGNORE *new, *t;
    assert(id);
 
+   if (!strlen(id)) return NULL;
    if (*list) {
       for (t = *list; t; t = t->next) if (!strcmp(t->id, id)) return NULL;
       for (t = *list; t && t->next; t = t->next);
@@ -522,7 +541,8 @@ static int checkignore(const char *id, _USR_DATA *data)
 
    for (i = data->ilist; i; i = i->next)
       for (t = data->tlist; t; t = t->next)
-         if (!strcmp(i->id, t->id)) return RETURN_TRUE;
+         if (!strcmp(i->id, t->id) ||
+             !strcmp(i->id, t->pnd?t->pnd->id:t->id)) return RETURN_TRUE;
    return RETURN_FALSE;
 }
 
@@ -564,10 +584,10 @@ static void _setroot(char *root, _USR_DATA *data)
 #define _PASSTHS(x) { x(arg, data); return; }               /* pass current argument to function */
 #define _PASSFLG(x) { data->flags |= x; return; }           /* pass flag */
 static const char* _G_ARG  = "vftr";         /* global arguments */
-static const char* _OP_ARG = "SURQPCVh";     /* operations */
+static const char* _OP_ARG = "hSURQPCV";     /* operations */
 static const char* _S_ARG  = "scilyumda";    /* sync operation arguments */
 static const char* _R_ARG  = "n";            /* remove operation arguments */
-static const char* _Q_ARG  = "scilu";        /* query operation arguments */
+static const char* _Q_ARG  = "sciu";         /* query operation arguments */
 
 /* milkyhelper's operation flags */
 typedef enum _HELPER_FLAGS
@@ -582,7 +602,8 @@ typedef enum _HELPER_FLAGS
    A_REFRESH   = 0x004000, A_UPGRADE    = 0x008000,
    A_MENU      = 0x010000, A_DESKTOP    = 0x020000,
    A_APPS      = 0x040000, A_NOSAVE     = 0x080000,
-   S_NOMERGE   = 0x100000, A_NOCONFIRM  = 0x200000,
+   GB_NOMERGE  = 0x100000, GB_NOCONFIRM = 0x200000,
+   GB_NEEDED   = 0x400000, GB_NOBAR     = 0x800000
 } _HELPER_FLAGS;
 typedef _HELPER_FLAGS (*_PARSE_FUNC)(char, char*, int*, _USR_DATA*); /* function prototype for parsing flags */
 
@@ -592,8 +613,7 @@ static int hasop(unsigned int flags)
    return ((flags & OP_YAOURT) || (flags & OP_SYNC)    ||
            (flags & OP_REMOVE) || (flags & OP_UPGRADE) ||
            (flags & OP_CRAWL)  || (flags & OP_CLEAN)   ||
-           (flags & OP_QUERY)  || (flags & OP_VERSION) ||
-           (flags & OP_HELP));
+           (flags & OP_QUERY)  || (flags & OP_VERSION));
 }
 
 /* are we querying information? */
@@ -673,7 +693,6 @@ static _HELPER_FLAGS getquery(char c, char *arg, int *skipn, _USR_DATA *data)
    if (c == 's')        return A_SEARCH;
    else if (c == 'c')   return A_CATEGORY;
    else if (c == 'i')   return A_INFO;
-   else if (c == 'l')   return A_LIST;
    else if (c == 'u')   return A_UPGRADE;
    return 0;
 }
@@ -686,7 +705,7 @@ static void parse(_PARSE_FUNC func, const char *ref, char *arg, char *narg, int 
       for (x = 0; x != strlen(arg); ++x)
          if (arg[x] == ref[y]) {
             data->flags |= func(ref[y], narg, skipn, data);
-            if (func == getop) return; /* only one OP */
+            if (func == getop && hasop(data->flags)) return; /* only one OP */
          }
 }
 
@@ -697,8 +716,11 @@ static void parsearg(char *arg, char *narg, int *skipn, _USR_DATA *data)
    if (!strcmp(arg, "--root"))         _PASSARG(_setroot);     /* argument with argument */
    if (!strcmp(arg, "--help"))         _PASSFLG(OP_HELP);      /* another way of calling help */
    if (!strcmp(arg, "--version"))      _PASSFLG(OP_VERSION);   /* another way of calling version */
-   if (!strcmp(arg, "--noconfirm"))    _PASSFLG(A_NOCONFIRM);  /* noconfirm option */
-   if (!strcmp(arg, "--nomerge"))      _PASSFLG(S_NOMERGE);    /* nomerge option */
+   if (!strcmp(arg, "--noconfirm"))    _PASSFLG(GB_NOCONFIRM); /* noconfirm option */
+   if (!strcmp(arg, "--nomerge"))      _PASSFLG(GB_NOMERGE);   /* nomerge option */
+   if (!strcmp(arg, "--needed"))       _PASSFLG(GB_NEEDED);    /* needed option */
+   if (!strcmp(arg, "--nobar"))        _PASSFLG(GB_NOBAR);     /* nobar option */
+   if (!strcmp(arg, "--nosave"))       _PASSFLG(A_NOSAVE);     /* nosave option */
    if (arg[0] != '-')                  _PASSTHS(_addtarget);   /* not argument */
    parse(getglob, _G_ARG, arg, narg, skipn, data);
    if (!hasop(data->flags))         parse(getop, _OP_ARG, arg, narg, skipn, data);
@@ -774,7 +796,7 @@ static int _addignore(char **argv, int argc, _USR_DATA *data)
 static int _nomerge(char **argv, int argc, _USR_DATA *data)
 {
    assert(data);
-   data->flags |= S_NOMERGE;
+   data->flags |= GB_NOMERGE;
    return RETURN_OK;
 }
 
@@ -925,98 +947,6 @@ static int getconfigpath(char *path)
  * |___|_| \_|_|    \___/  |_|
  */
 
-/* dialog for asking root device where to perform operations on, when no such device isn't available yet */
-static int rootdialog(_USR_DATA *data)
-{
-   unsigned int i, s;
-   char response[32];
-   pndman_device *d;
-   assert(data);
-
-   i = 0;
-   fflush(stdout);
-   NEWLINE();
-   _Y(); printf(_NO_ROOT_YET); _N();
-   _B(); for (d = data->dlist; d; d = d->next) printf("%d. %s\n", ++i, d->mount); _N();
-   _Y(); printf(_INPUT_LINE); _N();
-   fflush(stdout);
-
-   if (!fgets(response, sizeof(response), stdin))
-      return RETURN_FAIL;
-
-   if (!strtrim(response)) return RETURN_FAIL;
-   if ((s = strtol(response, (char **) NULL, 10)) <= 0)
-      return RETURN_FAIL;
-
-   /* good answer got, set root */
-   i = 0;
-   for (d = data->dlist; d; d = d->next)
-      if (++i==s) {
-         data->root = d;
-         return RETURN_OK;
-      }
-
-   return RETURN_FAIL;
-}
-
-/* Yes/No question dialog */
-static int _yesno_dialog(char noconfirm, char yn, char *fmt, va_list args)
-{
-   char response[32];
-
-   fflush(stdout);
-   _B(); vprintf(fmt, args); _W();
-   printf(" %s %s", yn?_YESNO:_NOYES, noconfirm?"\n":""); _N();
-   if (noconfirm) return yn;
-
-   fflush(stdout);
-   if (!fgets(response, sizeof(response), stdin))
-      return RETURN_FALSE;
-
-   if (!strtrim(response)) return yn;
-   if (!strupcmp(response, "Y") || !strupcmp(response, "YES"))   return RETURN_TRUE;
-   if (!strupcmp(response, "N") || !strupcmp(response, "NO"))    return RETURN_FALSE;
-   return RETURN_FALSE;
-}
-
-#define yesno(c, x, ...) _yesno_base(c->flags & A_NOCONFIRM, 1, x, ##__VA_ARGS__) /* shows [Y/n] dialog, Y = default */
-#define noyes(c, x, ...) _yesno_base(c->flags & A_NOCONFIRM, 0, x, ##__VA_ARGS__) /* shows [y/N] dialog, N = default */
-
-/* base for macro */
-static int _yesno_base(char noconfirm, int yn, char *fmt, ...)
-{
-   int ret; va_list args;
-   va_start(args, fmt);
-   ret = _yesno_dialog(noconfirm, yn, fmt, args);
-   va_end(args);
-   return ret;
-}
-
-/* show progressbar, shows dots instead when total_to_download is not known */
-static void progressbar(float downloaded, float total_to_download)
-{
-   unsigned int dots, i, pwdt;
-   float fraction;
-
-   pwdt     = 40; /* width */
-   if (!total_to_download) {
-      _Y(); for (i = 0; i != ((unsigned int)downloaded / 1024) % pwdt; ++i) printf("."); _N();
-      printf("\r");
-      fflush(stdout);
-      return;
-   }
-   fraction = (float)downloaded / (float)total_to_download;
-   dots     = round(fraction * pwdt);
-
-   _Y(); printf("%3.0f%% ", fraction * 100); _W();
-   printf("["); _R();
-   for (i = 0; i != dots; ++i) printf("=");
-   for (     ; i != pwdt; ++i) printf(" ");
-   _W(); printf("] "); _B();
-   printf("%4.2f MiB / %4.2f MiB\r", downloaded/1048576, total_to_download/1048567); _N();
-   fflush(stdout);
-}
-
 /* check if pnd is installed */
 static int pndinstalled(pndman_package *pnd, _USR_DATA *data)
 {
@@ -1025,72 +955,6 @@ static int pndinstalled(pndman_package *pnd, _USR_DATA *data)
    for (p = data->rlist->pnd; p; p = p->next)
       if (!strcmp(pnd->id, p->id)) return RETURN_TRUE;
    return RETURN_FALSE;
-}
-
-/* ask whether to skip ignored packages that where still passed as target by user */
-static void pre_op_dialog(_USR_DATA *data)
-{
-   _USR_TARGET *t, *tn;
-   assert(data);
-
-   for (t = data->tlist; t; t = tn) {
-      tn = t->next;
-      if (!pndinstalled(t->pnd, data)) {
-         if (checkignore(t->id, data))
-            if (!yesno(data, _PND_IGNORED_FORCE, t->id)) {
-               _R(); printf(_WARNING_SKIPPING, t->id); _N();
-               data->tlist = freetarget(t);
-            }
-      } else {
-         if (!(data->flags & A_UPGRADE) && !(data->flags & OP_UPGRADE) &&
-             !yesno(data, _PND_REINSTALL, t->id))
-            data->tlist = freetarget(t);
-      }
-   }
-}
-
-/*  ____  ____   ___   ____ _____ ____ ____
- * |  _ \|  _ \ / _ \ / ___| ____/ ___/ ___|
- * | |_) | |_) | | | | |   |  _| \___ \___ \
- * |  __/|  _ <| |_| | |___| |___ ___) |__) |
- * |_|   |_| \_\\___/ \____|_____|____/____/
- */
-
-/* synchorize repositories */
-static void syncrepos(pndman_repository *rs, _USR_DATA *data)
-{
-   pndman_repository *r;
-   float tdl, ttdl; /* total download, total total to download */
-   int ret;
-   unsigned int c = 0;
-
-   for (r = rs; r; r = r->next) ++c;
-   pndman_sync_handle handle[c]; r = rs;
-   for (c = 0; r; r = r->next) pndman_sync_request(&handle[c++],
-               (data->flags & S_NOMERGE)?PNDMAN_SYNC_FULL:0, r);
-
-   tdl = 0; ttdl = 0;
-   while ((ret = pndman_sync() > 0)) {
-      progressbar(tdl, ttdl);
-      r = rs; tdl = 0; ttdl = 0;
-      for (c = 0; r; r = r->next) {
-         tdl   += (float)handle[c].progress.download;
-         ttdl  += (float)handle[c].progress.total_to_download;
-         if (handle[c].progress.done) {
-            _B(); printf(_REPO_SYNCED, handle[c].repository->name); _N();
-         }
-         ++c;
-      }
-      usleep(1000);
-   }
-
-   r = rs;
-   for (c = 0; r; r = r->next) {
-      if (!handle[c].progress.done) printf(_REPO_SYNCED_NOT, strlen(handle[c].repository->name) ?
-                                           handle[c].repository->name : handle[c].repository->url);
-      pndman_sync_request_free(&handle[c]);
-      ++c;
-   }
 }
 
 /* get pnd title */
@@ -1161,7 +1025,6 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data)
    /* strip description to maximum length */
    if (!(data->flags & A_INFO) && desc && strlen(desc) > DESCRIPTION_LENGTH)
    {
-      desc[DESCRIPTION_LENGTH-4] = ' ';
       desc[DESCRIPTION_LENGTH-3] = '.';
       desc[DESCRIPTION_LENGTH-2] = '.';
       desc[DESCRIPTION_LENGTH-1] = '.';
@@ -1237,7 +1100,7 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data)
          _W(); printf(":\n%s\n", info);
          free(info);
       }
-   } else {
+   } else if ((data->flags & A_SEARCH)) {
       /* default style */
       _Y(); printf("%s", pnd->category ? strlen(pnd->category->sub) ?
                          pnd->category->sub : pnd->category->main : "nogroup");
@@ -1247,16 +1110,296 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data)
       _Y(); printf("%s.%s.%s.%s%s",
             pnd->version.major,   pnd->version.minor,
             pnd->version.release, pnd->version.build,
-            pnd->version.type==PND_VERSION_BETA?" Beta":
-            pnd->version.type==PND_VERSION_ALPHA?" Alpha":"");
+            pnd->version.type==PND_VERSION_BETA?" beta":
+            pnd->version.type==PND_VERSION_ALPHA?" alpha":"");
       _W(); printf("] ");
       _W(); printf("["); _Y(); printf("%d", pnd->rating); _W(); printf("] ");
       _B(); printf("%s", pndinstalled(pnd, data)?"[installed] ":"");
       _W(); printf("%s\n", pnd->update?"--UPDATE-- ":"");
-      _W(); printf("  %s\n", desc?desc:"...");
+      _W(); printf("    %s", desc?desc:"...");
+   } else {
+      _G(); printf("%s ", pnd->id);
+      _Y(); printf("%s.%s.%s.%s%s",
+            pnd->version.major,   pnd->version.minor,
+            pnd->version.release, pnd->version.build,
+            pnd->version.type==PND_VERSION_BETA?" beta":
+            pnd->version.type==PND_VERSION_ALPHA?" alpha":"");
    }  _N();
 
    if (desc)  free(desc);
+}
+
+/* dialog for asking root device where to perform operations on, when no such device isn't available yet */
+static int rootdialog(_USR_DATA *data)
+{
+   unsigned int i, s;
+   char response[32];
+   pndman_device *d;
+   assert(data);
+
+   i = 0;
+   fflush(stdout);
+   NEWLINE();
+   _Y(); printf(_NO_ROOT_YET); _N();
+   _B(); for (d = data->dlist; d; d = d->next) printf("%d. %s\n", ++i, d->mount); _N();
+   _Y(); printf(_INPUT_LINE); _N();
+   fflush(stdout);
+
+   if (!fgets(response, sizeof(response), stdin))
+      return RETURN_FAIL;
+
+   if (!strtrim(response)) return RETURN_FAIL;
+   if ((s = strtol(response, (char **) NULL, 10)) <= 0)
+      return RETURN_FAIL;
+
+   /* good answer got, set root */
+   i = 0;
+   for (d = data->dlist; d; d = d->next)
+      if (++i==s) {
+         data->root = d;
+         return RETURN_OK;
+      }
+
+   return RETURN_FAIL;
+}
+
+/* yaourt mode dialog */
+static int yaourtdialog(_USR_DATA *data)
+{
+   char response[1024], num[5];
+   unsigned int i, c, match;
+   _USR_TARGET *t, *nt, *nlist = NULL;
+
+   if (!data->tlist) return RETURN_FALSE;
+
+   /* output query */
+   for (i = 0, t = data->tlist; t; t = t->next) {
+      _W(); printf("%d. ", ++i);
+      pndinfo(t->pnd, data);
+      NEWLINE();
+   }
+
+   /* output question */
+   _Y(); puts(_YAOURT_DIALOG);
+   _Y(); printf(_INPUT_LINE); _N();
+   fflush(stdout);
+
+   /* get number */
+   if (!fgets(response, sizeof(response), stdin))
+      return RETURN_FALSE;
+
+   /* go through all numbers */
+   memset(num, 0, 5);
+   for (i = 0, c = 0; i != strlen(response); ++i) {
+      if (!isspace(response[i])) num[c++] = response[i];
+      else {
+         c = 1; t = data->tlist;
+         match = strtol(num, (char **) NULL, 10);
+         while (c != match) {
+            if (t) t = t->next;
+            ++c;
+         }
+         memset(num, 0, 5); c = 0;
+         if (t && (nt = addtarget(t->pnd->id, &nlist))) {
+            if (!nlist) nlist = nt;
+            nt->pnd = t->pnd;
+         }
+      }
+   }
+   NEWLINE();
+
+   /* swap target lists */
+   freetarget_all(data->tlist);
+   data->tlist = nlist;
+   return RETURN_TRUE;
+}
+
+/* Yes/No question dialog */
+static int _yesno_dialog(int noconfirm, char yn, char *fmt, va_list args)
+{
+   char response[32];
+
+   fflush(stdout);
+   _B(); vprintf(fmt, args); _W();
+   printf(" %s %s", yn?_YESNO:_NOYES, noconfirm?"\n":""); _N();
+   if (noconfirm) return yn;
+
+   fflush(stdout);
+   if (!fgets(response, sizeof(response), stdin))
+      return RETURN_FALSE;
+
+   if (!strtrim(response)) return yn;
+   if (!strupcmp(response, "Y") || !strupcmp(response, "YES"))   return RETURN_TRUE;
+   if (!strupcmp(response, "N") || !strupcmp(response, "NO"))    return RETURN_FALSE;
+   return RETURN_FALSE;
+}
+
+#define yesno(c, x, ...) _yesno_base((c->flags & GB_NOCONFIRM), 1, x, ##__VA_ARGS__) /* shows [Y/n] dialog, Y = default */
+#define noyes(c, x, ...) _yesno_base((c->flags & GB_NOCONFIRM), 0, x, ##__VA_ARGS__) /* shows [y/N] dialog, N = default */
+
+/* base for macro */
+static int _yesno_base(int noconfirm, int yn, char *fmt, ...)
+{
+   int ret; va_list args;
+   va_start(args, fmt);
+   ret = _yesno_dialog(noconfirm, yn, fmt, args);
+   va_end(args);
+   return ret;
+}
+
+/* show progressbar, shows dots instead when total_to_download is not known */
+static void progressbar(float downloaded, float total_to_download)
+{
+   unsigned int dots, i, pwdt;
+   float fraction;
+
+   pwdt     = 40; /* width */
+   if (!total_to_download) {
+      _Y(); for (i = 0; i != ((unsigned int)downloaded / 1024) % pwdt; ++i) printf("."); _N();
+      printf("\r");
+      fflush(stdout);
+      return;
+   }
+   fraction = (float)downloaded / (float)total_to_download;
+   dots     = round(fraction * pwdt);
+
+   _Y(); printf("%3.0f%% ", fraction * 100); _W();
+   printf("["); _R();
+   for (i = 0; i != dots; ++i) printf("=");
+   for (     ; i != pwdt; ++i) printf(" ");
+   _W(); printf("] "); _B();
+   printf("%4.2f MiB / %4.2f MiB\r", downloaded/1048576, total_to_download/1048567); _N();
+   fflush(stdout);
+}
+
+/* dialog shown before performing action */
+static int pre_op_dialog(_USR_DATA *data)
+{
+   _USR_TARGET *t, *tn;
+   unsigned int count;
+   double size;
+   char *unit, gotdialog = 0;
+   assert(data);
+
+   /* ask for ignores */
+   for (count = 0, t = data->tlist; t; t = tn) {
+      tn = t->next; ++count;
+      if (!pndinstalled(t->pnd, data)) {
+         if (checkignore(t->pnd->id, data))
+            if (!yesno(data, _PND_IGNORED_FORCE, t->pnd->id)) {
+               _R(); printf(_WARNING_SKIPPING, t->pnd->id); _N();
+               data->tlist = freetarget(t);
+               --count; gotdialog = 1;
+            }
+      } else {
+         if ((data->flags & GB_NEEDED)  && !t->pnd->update ||
+             !(data->flags & A_UPGRADE) && !(data->flags & OP_UPGRADE) &&
+             !(data->flags & OP_REMOVE) && !t->pnd->update &&
+             !yesno(data, _PND_REINSTALL, t->pnd->id)) {
+            if ((data->flags & GB_NEEDED)) {
+               _R(); printf(_WARNING_UPDATE, t->pnd->id); _N();
+            }
+            data->tlist = freetarget(t);
+            --count; gotdialog = 1;
+         }
+      }
+   }
+
+   /* nothing to perform action on */
+   if (!count) {
+      _Y(); puts(_NOTHING_TO_DO); _N();
+      return RETURN_FALSE;
+   }
+
+   /* formatting */
+   if (gotdialog) NEWLINE();
+
+   /* show target line */
+   _G(); printf(_TARGET_LINE); _W(); printf(" (");
+   _Y(); printf("%d", count);  _W(); printf(")  : ");
+   for (size = 0, t = data->tlist; t; t = t->next) {
+      _Y(); printf("%s", t->pnd->id);
+      if (t->next) { _W(); printf(", "); }
+      size += t->pnd->size;
+   }
+   NEWLINE();
+
+   /* get size unit, and divide bytes */
+   if (size < 1024) {
+      unit = _UNIT_BYTE;
+   } else if (size < 1024*1024) {
+      size /= 1024;
+      unit = _UNIT_KIB;
+   } else {
+      size /= 1024*1024;
+      unit = _UNIT_MIB;
+   }
+
+   /* print action target paths */
+   if ((data->flags & OP_SYNC))
+   {
+      _Y(); printf(_TARGET_MEDIA);
+      _W(); printf(": %s\n", data->root->device);
+      _Y(); printf(_TARGET_PATH);
+      _W(); printf(": %s\n", (data->flags & A_APPS)?"/apps":
+                             (data->flags & A_MENU)?"/menu":"/desktop");
+   }
+   NEWLINE();
+
+   /* print action size */
+   _B(); printf("%s", (data->flags & OP_REMOVE)?_REMOVE_SIZE:_DOWNLOAD_SIZE);
+   _W(); printf(": %.2f %s\n", size, unit); _N();
+
+   NEWLINE();
+   if (!yesno(data, (data->flags & OP_REMOVE)?_CONTINUE_UNINSTALL:_CONTINUE_INSTALL))
+      return RETURN_FALSE;
+
+   NEWLINE();
+   return RETURN_TRUE;
+}
+
+/*  ____  ____   ___   ____ _____ ____ ____
+ * |  _ \|  _ \ / _ \ / ___| ____/ ___/ ___|
+ * | |_) | |_) | | | | |   |  _| \___ \___ \
+ * |  __/|  _ <| |_| | |___| |___ ___) |__) |
+ * |_|   |_| \_\\___/ \____|_____|____/____/
+ */
+
+/* synchorize repositories */
+static void syncrepos(pndman_repository *rs, _USR_DATA *data)
+{
+   pndman_repository *r;
+   float tdl, ttdl; /* total download, total total to download */
+   int ret;
+   unsigned int c = 0;
+
+   for (r = rs; r; r = r->next) ++c;
+   pndman_sync_handle handle[c]; r = rs;
+   for (c = 0; r; r = r->next) pndman_sync_request(&handle[c++],
+               (data->flags & GB_NOMERGE)?PNDMAN_SYNC_FULL:0, r);
+
+   tdl = 0; ttdl = 0;
+   while ((ret = pndman_sync() > 0)) {
+      if (!(data->flags & GB_NOBAR)) progressbar(tdl, ttdl);
+      r = rs; tdl = 0; ttdl = 0;
+      for (c = 0; r; r = r->next) {
+         tdl   += (float)handle[c].progress.download;
+         ttdl  += (float)handle[c].progress.total_to_download;
+         if (handle[c].progress.done) {
+            _G(); printf(_REPO_SYNCED, handle[c].repository->name); _N();
+         }
+         ++c;
+      }
+      usleep(1000);
+   }
+
+   r = rs;
+   for (c = 0; r; r = r->next) {
+      if (!handle[c].progress.done) printf(_REPO_SYNCED_NOT, strlen(handle[c].repository->name) ?
+                                           handle[c].repository->name : handle[c].repository->url);
+      pndman_sync_request_free(&handle[c]);
+      ++c;
+   }
 }
 
 /* returns true or false depending if query type matches */
@@ -1310,6 +1453,9 @@ static int searchrepo(pndman_repository *r, _USR_DATA *data)
                donl = 1;
             }
          }
+
+   /* formatting */
+   if (!(data->flags & A_INFO)) NEWLINE();
    return RETURN_OK;
 }
 
@@ -1318,38 +1464,47 @@ static int targetpnd(pndman_repository *rs, _USR_DATA *data, int up)
 {
    pndman_package    *p;
    pndman_repository *r;
-   _USR_TARGET       *t, *tn;
+   _USR_TARGET       *t, *tn, *ts = NULL;
    assert(rs && data);
 
    /* try cmp first */
-   for (t = data->tlist; t; t = t->next) {
-      if (t->pnd) continue;
+   for (t = data->tlist; t && t != ts; t = t->next) {
+      if (!(data->flags & OP_YAOURT) && t->pnd) continue;
       for (r = rs; r; r = r->next) {
          for (p = r->pnd; p; p = p->next)
             if (!strcmp(p->id, t->id)) {
                if (_VERBOSE >= 1) printf("A: %s %s\n", t->id, p->id);
-               strcpy(t->id, p->id);
-               t->pnd = p; break;
+               if (t->pnd && (tn = addtarget(p->id, &data->tlist))) {
+                  if (!ts) ts = tn;
+                  tn->pnd = p;
+               } else if (!t->pnd)
+                  t->pnd = p;
+               if (!(data->flags & OP_YAOURT)) break;
             }
          if (rs == data->rlist) break; /* we only want local repository */
       }
    }
 
    /* then strstr first */
-   for (t = data->tlist; t; t = t->next) {
-      if (t->pnd) continue;
+   for (t = data->tlist; t && t != ts; t = t->next) {
+      if (!(data->flags & OP_YAOURT) && t->pnd) continue;
       for (r = rs; r; r = r->next) {
          for (p = r->pnd; p; p = p->next)
             if (strstr(p->id, t->id)) {
                if (_VERBOSE >= 1) printf("A: %s %s\n", t->id, p->id);
-               strcpy(t->id, p->id);
-               t->pnd = p; break;
+               if (t->pnd && (tn = addtarget(p->id, &data->tlist))) {
+                  if (!ts) ts = tn;
+                  tn->pnd = p;
+               } else if (!t->pnd)
+                  t->pnd = p;
+               if (!(data->flags & OP_YAOURT)) break;
             }
          if (rs == data->rlist) break; /* we only want local repository */
       }
    }
 
-   for (t = data->tlist; t; t = tn) {
+   /* clean pnd's which wasn't found */
+   for (t = data->tlist; t && t != ts; t = tn) {
       tn = t->next;
       if (!t->pnd) {
          _R(); printf(_PND_NOT_FOUND, t->id); _N();
@@ -1362,7 +1517,9 @@ static int targetpnd(pndman_repository *rs, _USR_DATA *data, int up)
          continue;
       }
    }
-   return data->tlist ? 1 : 0;
+
+   /* return true if something found, else false */
+   return data->tlist ? RETURN_TRUE : RETURN_FALSE;
 }
 
 /* make pnd's which have update a target */
@@ -1373,7 +1530,7 @@ static void targetup(pndman_repository *r, _USR_DATA *data)
    for (; r; r = r->next)
       for (p = r->pnd; p; p = p->next)
          if (p->update && !checkignore(p->id, data)) {
-            puts(p->id);
+            if (_VERBOSE >= 1) puts(p->id);
             addtarget(p->id, &data->tlist);
          }
 }
@@ -1414,6 +1571,42 @@ static const char* opstrfromflags(char done, unsigned int flags)
    return _UNKNOWN_OPERATION;
 }
 
+/* commit handle to repository */
+static void commithandle(_USR_DATA *data, pndman_handle *handle)
+{
+   assert(data && handle);
+   if (!handle->progress.done && !(data->flags & OP_REMOVE)) {
+      _R(); printf(opstrfromflags(0,data->flags), handle->name); _N();
+   } else if (pndman_handle_commit(handle, data->rlist) != RETURN_OK) {
+      _R(); printf(opstrfromflags(0,data->flags), handle->name); _N();
+   } else {
+      _G(); printf(opstrfromflags(1,data->flags), handle->name); _N();
+   }
+}
+
+/* remove PND's appdata */
+static void removeappdata(pndman_package *pnd, _USR_DATA *data)
+{
+   pndman_application *a;
+   pndman_device *d, *dev;
+   assert(pnd && data);
+
+   /* user don't want this */
+   if (!(data->flags & A_NOSAVE)) return;
+
+   /* find device the PND is on */
+   for (dev = NULL, d = data->dlist; d; d = d->next)
+      if(!strcmp(d->device, pnd->device)) {
+         dev = d;
+         break;
+      }
+
+   /* TODO: remove appdata */
+   for (a = pnd->app; a; a = a->next) {
+      _W(); printf("%s appdata is: %s/pandora/appdata/%s, however this functionality is not yet added.\n", pnd->id, dev->mount, a->appdata); _N();
+   }
+}
+
 /* perform target's action */
 static int targetperform(_USR_DATA *data)
 {
@@ -1438,15 +1631,16 @@ static int targetperform(_USR_DATA *data)
 
    tdl = 0; ttdl = 0;
    while ((ret = pndman_download()) > 0) {
-      progressbar(tdl, ttdl);
+      if (!(data->flags & GB_NOBAR)) progressbar(tdl, ttdl);
       t = data->tlist; tdl = 0; ttdl = 0;
       for (c = 0; t; t = t->next) {
          if (!handle[c].flags) { ++c; continue; } /* failed perform */
          tdl  += (float)handle[c].progress.download;
          ttdl += (float)handle[c].progress.total_to_download;
          if (handle[c].progress.done && !done[c]) {
-            NEWLINE();
-            _B(); printf(opstrfromflags(1,data->flags), handle[c].name); _N();
+            if (!(data->flags & GB_NOBAR)) NEWLINE();
+            /* commit to repository */
+            commithandle(data, &handle[c]);
             done[c] = 1;
          }
          ++c;
@@ -1454,13 +1648,15 @@ static int targetperform(_USR_DATA *data)
       usleep(1000);
    }
 
+   /* free handles */
    t = data->tlist;
    for (c = 0; t; t = t->next) {
-      if (!handle[c].progress.done && !(data->flags & OP_REMOVE))
-      { _R(); printf(opstrfromflags(0,data->flags), handle[c].name); _N(); }
-      else if (pndman_handle_commit(&handle[c], data->rlist) != RETURN_OK)
-      { _R(); printf(opstrfromflags(0,data->flags), handle[c].name); _N(); }
-
+      /* this is for non download operations */
+      if ((data->flags & OP_REMOVE)) {
+         pndman_crawl_pnd(1, handle[c].pnd);
+         removeappdata(handle[c].pnd, data);
+         commithandle(data, &handle[c]);
+      }
       pndman_handle_free(&handle[c]);
       ++c;
    }
@@ -1489,8 +1685,26 @@ static int checksyncedrepo(pndman_repository *r)
 /* yaourt operation logic */
 static int yaourtprocess(_USR_DATA *data)
 {
-   _R(); puts("Yaourt mode not yet implented..."); _N();
-   return RETURN_OK;
+   pndman_repository *rs;
+
+   /* check that we aren't using local repository */
+   if (!(rs = checkremoterepo("sync", data)))
+      return RETURN_FAIL;
+
+   /* we need synced repos */
+   if (!checksyncedrepo(rs)) return RETURN_FAIL;
+
+   /* set PND's for targets */
+   if (!targetpnd(rs, data, 0)) return RETURN_FAIL;
+
+   /* show yaourt dialog and get targets from user */
+   if (!yaourtdialog(data)) return RETURN_FAIL;
+
+   /* operation dialog */
+   if (!pre_op_dialog(data)) return RETURN_FAIL;
+
+   /* perform action here */
+   return targetperform(data);
 }
 
 /* sync operation logic */
@@ -1526,8 +1740,8 @@ static int syncprocess(_USR_DATA *data)
    /* set PND's for targets here */
    if (!targetpnd(rs, data, (data->flags & A_UPGRADE))) return RETURN_FAIL;
 
-   /* ask for ignores */
-   pre_op_dialog(data);
+   /* operation dialog */
+   if (!pre_op_dialog(data)) return RETURN_FAIL;
 
    /* Actual sync here */
    return targetperform(data);
@@ -1543,14 +1757,14 @@ static int upgradeprocess(_USR_DATA *data)
       return RETURN_FAIL;
 
    /* we need synced repo as well */
-   if (!checksyncedrepo(rs))  return RETURN_FAIL;
+   if (!checksyncedrepo(rs)) return RETURN_FAIL;
 
    /* handle targets */
-   if (!data->tlist)          targetup(rs, data);
+   if (!data->tlist) targetup(rs, data);
    if (!targetpnd(rs, data, 1))  return RETURN_FAIL;
 
-   /* ask for ignores */
-   pre_op_dialog(data);
+   /* operation dialog */
+   if (!pre_op_dialog(data)) return RETURN_FAIL;
 
    /* do oepration */
    return targetperform(data);
@@ -1561,6 +1775,10 @@ static int removeprocess(_USR_DATA *data)
 {
    /* search local repo from the targets */
    if (!targetpnd(data->rlist, data, 0)) return RETURN_FAIL;
+
+   /* operation dialog */
+   if (!pre_op_dialog(data)) return RETURN_FAIL;
+
    return targetperform(data);
 }
 
@@ -1578,13 +1796,36 @@ static int crawlprocess(_USR_DATA *data)
    unsigned int f = 0;
 
    for (d = data->dlist; d; d = d->next) f += pndman_crawl(0, d, data->rlist);
-   printf("%d pnds crawled\n",f);
+   pndman_check_updates(data->rlist);
+   listupdate(data);
+   _G(); printf(_PNDS_CRAWLED,f); _N();
    return RETURN_OK;
 }
 
 /* clean operation logic */
 static int cleanprocess(_USR_DATA *data)
 {
+   pndman_device *d;
+   char tmp[PATH_MAX];
+   FILE *f;
+
+   memset(tmp, 0, PATH_MAX);
+   for (d = data->dlist; d; d = d->next)
+      if (strlen(d->appdata)) {
+         strncpy(tmp, d->appdata, PATH_MAX-1);
+         strncat(tmp, "/local.db", PATH_MAX-1);
+         if ((f = fopen(tmp,"r"))) {
+            fclose(f);
+            unlink(tmp);
+         }
+         strncpy(tmp, d->appdata, PATH_MAX-1);
+         strncat(tmp, "/repo.db", PATH_MAX-1);
+         if ((f = fopen(tmp,"r"))) {
+            fclose(f);
+            unlink(tmp);
+         }
+         _G(); printf(_DEVICE_CLEANED, d->mount); _N();
+      }
    return RETURN_OK;
 }
 
@@ -1603,7 +1844,80 @@ static int version(_USR_DATA *data)
 /* help operation logic */
 static int help(_USR_DATA *data)
 {
-   _R(); printf("Read the source code for help.\n"); _N();
+   int i;
+
+   printf("usage: %s [-%s] ", data->bin, _G_ARG);
+   for (i = 0; i != strlen(_OP_ARG); ++i) {
+      printf("[-%c%s] ", _OP_ARG[i],
+            _OP_ARG[i]=='S'?_S_ARG:
+            _OP_ARG[i]=='R'?_R_ARG:
+            _OP_ARG[i]=='Q'?_Q_ARG:"");
+   }
+   NEWLINE();
+
+   data->flags &= ~OP_HELP;
+   if (!hasop(data->flags)) {
+      NEWLINE();
+      _G(); printf("~ Global arguments:\n");
+      _W(); printf("  -v : Verbose mode, combine to increase verbose level.\n");
+            printf("  -f : Force install even if MD5 checking fails.\n");
+            printf("  -t : Plain text mode, do not use colors.\n");
+            printf("  -r : Root device/directory.\n%s\n%s\n%s\n",
+                   "       All operations are going to be done under this device/directory.",
+                   "       You can leave argument empty, if you want to choose device from a list.",
+                   "       NOTE: Directory must be a absolute path!");
+
+      NEWLINE();
+      _G(); printf("~ Operation arguments:\n");
+      _W(); printf("  -S : Sync/Search/Install operation.\n");
+      _W(); printf("  -U : Upgrade operation.\n");
+      _W(); printf("  -R : Removal operation.\n");
+      _W(); printf("  -Q : Local query operation.\n");
+      _W(); printf("  -P : Crawls PND's from media.\n");
+      _W(); printf("  -C : Cleans all database files.\n");
+      _W(); printf("  -V : Show version information.\n");
+      _W(); printf("  -h : Show help. Combine with operation to get more help.\n");
+
+      NEWLINE();
+      _G(); printf("~ Other arguments:\n");
+      _W(); printf("  --root      : Alias for -r option.\n");
+      _W(); printf("  --help      : Alias for -h option.\n");
+      _W(); printf("  --version   : Alias for -V option.\n");
+      _W(); printf("  --noconfirm : Don't prompt questions.\n");
+      _W(); printf("  --nomerge   : Do full repository synchorization.\n");
+      _W(); printf("  --needed    : Don't reinstall up-to-date PND's.\n");
+      _W(); printf("  --nobar     : Don't show progress bar.\n");
+   } else if ((data->flags & OP_SYNC)) {
+      NEWLINE();
+      _G(); printf("~ Sync arguments:\n");
+      _W(); printf("  -s : Search remote repositories, by matching id/title/description.\n");
+      _W(); printf("  -c : Search remote repositories, by matching category.\n");
+      _W(); printf("  -i : Show full information of matching PND.\n");
+      _W(); printf("  -l : List all remote PND's.\n");
+      _W(); printf("  -y : Synchorize remote repository with local database.\n");
+      _W(); printf("  -u : Upgrade PND's / Filter by upgrade status.\n");
+      _W(); printf("  -m : Use /menu as install target.\n");
+      _W(); printf("  -d : Use /desktop as install target.\n");
+      _W(); printf("  -a : Use /apps as install target.\n");
+   } else if ((data->flags & OP_REMOVE)) {
+      NEWLINE();
+      _G(); printf("~ Removal arguments:\n");
+      _W(); printf("  -n : Remove also appdata.\n");
+   } else if ((data->flags & OP_QUERY)) {
+      NEWLINE();
+      _G(); printf("~ Query arguments:\n");
+      _W(); printf("  -s : Search local database, by matching id/title/description.\n");
+      _W(); printf("  -c : Search local database, by matching category.\n");
+      _W(); printf("  -i : Show full information of matching PND.\n");
+      _W(); printf("  -u : Filter query with upgrade status.\n");
+   } else if ((data->flags & OP_UPGRADE)) {
+      _G(); printf("~ Upgrade operation:\n");
+      _W(); printf("  This operation is just a alias for -Su.\n");
+   } else {
+      _R(); printf("This operation has no arguments.\n");
+   }
+
+   _N();
    return RETURN_OK;
 }
 
@@ -1621,24 +1935,24 @@ static int sanitycheck(_USR_DATA *data)
    if ((data->flags & OP_VERSION) || (data->flags & OP_HELP))
       return RETURN_OK;
 
-   /* check target list, NOTE: OP_CLEAN && OP_QUERY can perform without targets */
-   if (!data->tlist && needtarget(data->flags)) {
-      _R(); printf(_NO_X_SPECIFIED, "targets"); _N();
-      return RETURN_FAIL;
-   } else if (!hasop(data->flags)) data->flags |= OP_YAOURT;
-
-   /* check flags */
-   if (!data->flags || !hasop(data->flags)) {
-      _R(); printf(_NO_X_SPECIFIED, "operation"); _N();
-      return RETURN_FAIL;
-   }
-
    /* no root, ask for it */
    if (!data->root)
       if (rootdialog(data) != RETURN_OK) {
          _R(); NEWLINE(); printf(_BAD_DEVICE_SELECTED); _N();
          return RETURN_FAIL;
       }
+
+   /* check target list, NOTE: OP_CLEAN && OP_QUERY can perform without targets */
+   if (!data->tlist && needtarget(data->flags)) {
+      _R(); printf(_NO_X_SPECIFIED, "targets"); _N();
+      return RETURN_FAIL;
+   } else if (!hasop(data->flags)) data->flags |= OP_YAOURT | OP_SYNC;
+
+   /* check flags */
+   if (!data->flags || !hasop(data->flags)) {
+      _R(); printf(_NO_X_SPECIFIED, "operation"); _N();
+      return RETURN_FAIL;
+   }
 
    return RETURN_OK;
 }
@@ -1672,7 +1986,11 @@ static int processflags(_USR_DATA *data)
       if ((data->flags & OP_VERSION))  puts("::VERSION");
       if ((data->flags & OP_HELP))     puts("::HELP");
       _Y();
-      if ((data->flags & GB_FORCE))    puts(";;FORCE");
+      if ((data->flags & GB_FORCE))     puts(";;FORCE");
+      if ((data->flags & GB_NOCONFIRM)) puts(";;NOCONFIRM");
+      if ((data->flags & GB_NOMERGE))   puts(";;NOMERGE");
+      if ((data->flags & GB_NEEDED))    puts(";;NEEDED");
+      if ((data->flags & GB_NOBAR))     puts(";;NOBAR");
       _G();
       if ((data->flags & A_SEARCH))    puts("->SEARCH");
       if ((data->flags & A_CATEGORY))  puts("->CATEGORY");
@@ -1711,15 +2029,15 @@ static int processflags(_USR_DATA *data)
    pndman_check_updates(data->rlist);           /* check for updates */
 
    /* logic */
-   if ((data->flags & OP_YAOURT))         ret = yaourtprocess(data);
+   if ((data->flags & OP_VERSION))        ret = version(data);
+   else if ((data->flags & OP_HELP))      ret = help(data);
+   else if ((data->flags & OP_YAOURT))    ret = yaourtprocess(data);
    else if ((data->flags & OP_SYNC))      ret = syncprocess(data);
    else if ((data->flags & OP_UPGRADE))   ret = upgradeprocess(data);
    else if ((data->flags & OP_REMOVE))    ret = removeprocess(data);
    else if ((data->flags & OP_QUERY))     ret = queryprocess(data);
    else if ((data->flags & OP_CRAWL))     ret = crawlprocess(data);
    else if ((data->flags & OP_CLEAN))     ret = cleanprocess(data);
-   else if ((data->flags & OP_VERSION))   ret = version(data);
-   else if ((data->flags & OP_HELP))      ret = help(data);
 
    /* commit everything to disk */
    if (pndman_commit_all(data->rlist, data->root) != RETURN_OK)
@@ -1778,6 +2096,7 @@ int main(int argc, char **argv)
 
    /* init userdata */
    init_usrdata(&data);
+   data.bin = argv[0];
 
    /* detect devices */
    if (!(data.dlist = pndman_device_detect(NULL))) {
