@@ -1180,7 +1180,7 @@ static int _pndman_crawl_to_pnd_list(pndman_device *device, pndman_package *list
 /* \brief crawl to repository, return number of pnd's found, and -1 on error */
 static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_repository *local)
 {
-   pndman_package *list, *p, *n, *pnd;
+   pndman_package *list, *p, *n = NULL, *pnd;
    int ret;
    assert(device && local);
 
@@ -1289,8 +1289,8 @@ int pnd_do_something(char *pnd_file)
    _pxml_pnd_post_process(test);
 
    /* debug filled PND */
-   if (test->version.type == PND_VERSION_RELEASE)     type = PND_TYPE_RELEASE;
-   else if (test->version.type == PND_VERSION_BETA)   type = PND_TYPE_BETA;
+   type = PND_TYPE_RELEASE;
+   if (test->version.type == PND_VERSION_BETA)        type = PND_TYPE_BETA;
    else if (test->version.type == PND_VERSION_ALPHA)  type = PND_TYPE_ALPHA;
 
    DEBUG(0, "");

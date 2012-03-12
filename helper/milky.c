@@ -440,7 +440,7 @@ static int saveroot(_USR_DATA *data)
 /* add target package, which to perform operation on */
 static _USR_TARGET* addtarget(const char *id, _USR_TARGET **list)
 {
-   _USR_TARGET *new, *t;
+   _USR_TARGET *new, *t = NULL;
    assert(id);
 
    if (!strlen(id)) return NULL;
@@ -492,7 +492,7 @@ static void freetarget_all(_USR_TARGET *t)
 /* add package which will be ignored from target list */
 static _USR_IGNORE* addignore(char *id, _USR_IGNORE **list)
 {
-   _USR_IGNORE *new, *t;
+   _USR_IGNORE *new, *t = NULL;
    assert(id);
 
    if (!strlen(id)) return NULL;
