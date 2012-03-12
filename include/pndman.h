@@ -342,6 +342,7 @@ int pndman_sync_request(pndman_sync_handle *handle, unsigned int flags, pndman_r
 int pndman_sync_request_free(pndman_sync_handle *handle);
 int pndman_commit_all(pndman_repository *repo, pndman_device *device);
 int pndman_crawl(int full_crawl, pndman_device *device, pndman_repository *local);
+int pndman_crawl_pnd(int full_crawl, pndman_package *pnd);
 int pndman_check_updates(pndman_repository *list);
 
 /* test thing, for surely */
