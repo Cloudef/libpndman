@@ -19,6 +19,12 @@ MINGW := 0
 # x86 binary
 X86 := 0
 
+# install binary
+INSTALL := install
+
+# strip binary
+STRIP := strip
+
 # depencies for pndman
 LIB_LIBS := -lexpat `pkg-config --libs libcurl jansson`
 
@@ -92,8 +98,13 @@ clean:
 	@echo "Cleaning objects.."
 	rm -f ${LIB_OBJ}
 
+# NOTE: Install and uninstall rules are only for CLI helper
+# 	Library can be found on root directory, and include files in include directory.
 install:
-	@echo "Install not yet implented"
+	@echo "Installing ${CLI_BIN}"
+	${INSTALL} -m 755 bin/${CLI_BIN} ${PREFIX}/bin
+	${STRIP} ${PREFIX}/bin/${CLI_BIN}
 
 uninstall:
-	@echo "Uninstall not yet implented"
+	@echo "Uninstalling ${CLI_BIN}"
+	rm -f ${PREFIX}/bin/${CLI_BIN}
