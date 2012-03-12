@@ -364,9 +364,11 @@ int pndman_handle_init(const char *name, pndman_handle *handle)
       return RETURN_FAIL;
    }
 
+   handle->request.result.data = NULL;
    handle->request.curl = NULL;
    handle->device       = NULL;
    handle->pnd          = NULL;
+   handle->file         = NULL;
    memset(handle->name, 0, HANDLE_NAME);
    strncpy(handle->name, name, HANDLE_NAME-1);
    memset(handle->error, 0, LINE_MAX);
@@ -395,7 +397,7 @@ int pndman_handle_free(pndman_handle *handle)
       curl_multi_remove_handle(_pndman_curlm, handle->request.curl);
 
    /* free request */
-   if (!handle->request.curl)
+   if (handle->request.curl)
       curl_free_request(&handle->request);
 
    /* get rid of the temporary file */
