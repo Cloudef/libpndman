@@ -7,10 +7,10 @@
 #define PND_ID       256
 #define PND_NAME     24
 #define PND_VER      8
-#define PND_STR      256
+#define PND_STR      LINE_MAX
 #define PND_SHRT_STR 24
 #define PND_MD5      33
-#define PND_INFO     1024
+#define PND_INFO     LINE_MAX
 #define PND_PATH     PATH_MAX
 
 #define PND_DEFAULT_ICON "icon.png"
@@ -94,7 +94,7 @@ typedef struct pndman_translated
 /* \brief Struct holding license information */
 typedef struct pndman_license
 {
-   char name[PND_SHRT_STR];
+   char name[PND_STR];
    char url[PND_STR];
    char sourcecodeurl[PND_STR];
 

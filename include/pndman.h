@@ -20,10 +20,10 @@
 #define PND_ID       256
 #define PND_NAME     24
 #define PND_VER      8
-#define PND_STR      256
+#define PND_STR      LINE_MAX
 #define PND_SHRT_STR 24
 #define PND_MD5      33
-#define PND_INFO     1024
+#define PND_INFO     LINE_MAX
 #define PND_PATH     PATH_MAX
 #define REPO_URL     LINE_MAX
 #define REPO_NAME    24
@@ -116,7 +116,7 @@ typedef struct pndman_translated
 /* \brief Struct holding license information */
 typedef struct pndman_license
 {
-   const char name[PND_SHRT_STR];
+   const char name[PND_STR];
    const char url[PND_STR];
    const char sourcecodeurl[PND_STR];
 
