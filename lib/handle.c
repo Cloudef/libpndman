@@ -311,6 +311,7 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    /* remove old pnd from repo */
    if (handle->pnd->update)
       _pndman_repository_free_pnd(handle->pnd->update, local);
+   handle->pnd->update = NULL;
 
    /* Copy the pnd object to local database
     * path should be always "" when installing from remote repository */
