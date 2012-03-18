@@ -121,6 +121,9 @@ int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *repo)
    pndman_package *p, *pn, *pr;
    assert(pnd && repo);
 
+   /* return fail if no pnd at repo */
+   if (!repo->pnd) return RETURN_FAIL;
+
    /* check first first */
    if (repo->pnd == pnd) {
       /* if no next_installed, assing next pnd in repo list */
