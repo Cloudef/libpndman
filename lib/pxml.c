@@ -1205,7 +1205,7 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
       if (!pnd) continue;
       if (!full) _pndman_package_free_applications(pnd);
       _pndman_copy_pnd(pnd, p);
-      strcpy(pnd->device, device->device);
+      strcpy(pnd->mount, device->mount);
 
       /* free */
       n = p->next;

@@ -1592,7 +1592,7 @@ static void removeappdata(pndman_package *pnd, _USR_DATA *data)
 
    /* find device the PND is on */
    for (dev = NULL, d = data->dlist; d; d = d->next)
-      if(!strcmp(d->device, pnd->device)) {
+      if(!strcmp(d->mount, pnd->mount)) {
          dev = d;
          break;
       }

@@ -137,7 +137,7 @@ static int _pndman_handle_download(pndman_handle *handle)
          DEBFAIL(HANDLE_WTF);
          return RETURN_FAIL; /* should not happen really */
       }
-      for (d = _pndman_device_first(handle->device); d && strcmp(d->device, handle->pnd->update->device); d = d->next);
+      for (d = _pndman_device_first(handle->device); d && strcmp(d->mount, handle->pnd->update->mount); d = d->next);
       if (!d) return RETURN_FAIL; /* can't find installed device */
       handle->device = d; /* assign device, old pnd is installed on */
    }
@@ -330,7 +330,7 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    /* mark installed */
    DEBUG(3, "install mark");
    strcpy(pnd->path, install);
-   strcpy(pnd->device, handle->device->device);
+   strcpy(pnd->mount, handle->device->mount);
    return RETURN_OK;
 }
 
