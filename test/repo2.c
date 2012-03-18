@@ -9,6 +9,8 @@ int main()
    pndman_repository *repo, *r;
    int c = 0;
 
+   pndman_set_verbose(3);
+
    repo = pndman_repository_init();
    pndman_repository_add("http://repo.openpandora.org/includes/get_data.php", repo);
 

@@ -40,6 +40,8 @@ int main()
    int i;
    char *cwd;
 
+   pndman_set_verbose(3);
+
    puts("This test, tests various device operations within libpndman.");
    puts("It should find all devices and mount points which are writable, within your system.");
    puts("Additionally it tries to add virtual device path two times, where second time will fail.");

@@ -44,6 +44,8 @@ int main()
    unsigned int x;
    char *cwd;
 
+   pndman_set_verbose(3);
+
    cwd = test_device();
    if (!cwd) err("failed to get virtual device path");
 

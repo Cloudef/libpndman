@@ -18,6 +18,8 @@ int main()
    pndman_device *device, *d;
    pndman_repository *repo, *r;
 
+   pndman_set_verbose(3);
+
    device = pndman_device_add("/tmp", NULL);
    pndman_device *d2 = pndman_device_add("/media/Storage", device);
    pndman_device *d3 = pndman_device_add("/media/Anime", device);
