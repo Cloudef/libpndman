@@ -99,6 +99,7 @@ pndman_package* _pndman_repository_new_pnd_check(char *id, char *path, pndman_ve
                   /* new pnd is newer, assign it to first */
                   if (!(pni = _pndman_new_pnd())) return NULL;
                   pr->next = pni; pni->next_installed = pnd; /* assign nexts */
+                  pni->next = pnd->next;
                   DEBUGP(3, "Newer : %s\n", path);
                }
                strncpy(pni->repository, repo->url, PND_STR-1);
