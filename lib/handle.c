@@ -351,6 +351,11 @@ static int _pndman_handle_remove(pndman_handle *handle, pndman_repository *local
    DEBUGP(3, "remove: %s\n", handle->pnd->path);
    if (unlink(handle->pnd->path) != 0) return RETURN_FAIL;
 
+   /* this can't be updated anymore */
+   if (handle->pnd->update)
+      handle->pnd->update->update = NULL;
+   handle->pnd->update = NULL;
+
    /* remove from local repo */
    return _pndman_repository_free_pnd(handle->pnd, local);
 }
