@@ -129,7 +129,7 @@ int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *repo)
    if (repo->pnd == pnd) {
       /* if no next_installed, assing next pnd in repo list */
       if (!(repo->pnd = _pndman_free_pnd(pnd)))
-         repo->pnd = repo->pnd->next; /* next pnd */
+         repo->pnd = pnd->next; /* next pnd */
       return RETURN_OK;
    }
 
