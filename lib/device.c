@@ -409,12 +409,12 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
    memset(strings, 0, 4096);
    while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
       if ((mnt.mnt_dir != NULL) && (statfs(mnt.mnt_dir, &fs) == 0)) {
-         if(strstr(mnt.mnt_fsname, "/dev/")	        != 0 &&
+         if(strstr(mnt.mnt_fsname, "/dev")                   &&
             strcmp(mnt.mnt_dir, "/")		        != 0 &&
             strcmp(mnt.mnt_dir, "/home")		!= 0 &&
             strcmp(mnt.mnt_dir, "/boot")		!= 0
 #ifdef PANDORA /* don't add /mnt/utmp entries, PND's are there */
-            && strstr(mnt.mnt_dir, "/mnt/utmp")         != 1
+            && !strstr(mnt.mnt_dir, "/mnt/utmp")
 #endif
             )
          {
@@ -426,7 +426,6 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
                break;
 
             DEBUGP(3, "DETECT: %s\n", mnt.mnt_dir);
-
             strncpy(device->mount,  mnt.mnt_dir,    PATH_MAX-1);
             strncpy(device->device, mnt.mnt_fsname, PATH_MAX-1);
             device->free      = fs.f_bfree  * fs.f_bsize;
