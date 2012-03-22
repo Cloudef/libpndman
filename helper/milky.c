@@ -1834,6 +1834,23 @@ static int cleanprocess(_USR_DATA *data)
 /* version operation logic */
 static int version(_USR_DATA *data)
 {
+printf(
+" ____                 _                       \n"
+"|  _ \\ __ _ _ __   __| | ___  _ __ __ _      \n"
+"| |_) / _` | '_ \\ / _` |/ _ \\| '__/ _` |    \n"
+"|  __/ (_| | | | | (_| | (_) | | | (_| |      \n"
+"|_|   \\__,_|_| |_|\\__,_|\\___/|_|  \\__,_|    "
+);
+puts("");
+printf(
+" ____      _     _      _   _          \n"
+"|  _ \\ ___| |__ (_)_ __| |_| |__      \n"
+"| |_) / _ \\ '_ \\| | '__| __| '_ \\   \n"
+"|  _ <  __/ |_) | | |  | |_| | | |     \n"
+"|_| \\_\\___|_.__/|_|_|   \\__|_| |_|    "
+);
+puts("\n");
+
    _Y(); printf("libpndman && milkyhelper\n\n");
    _B(); printf("https://github.com/Cloudef/libpndman\n"); _W();
    printf("~ %s\n", pndman_git_head());
