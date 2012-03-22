@@ -76,6 +76,7 @@ typedef struct _USR_DATA
    pndman_repository *rlist;
    _USR_TARGET       *tlist;
    _USR_IGNORE       *ilist;
+   char *no_action;
 } _USR_DATA;
 
 /* initialize _USR_DATA struct */
@@ -86,6 +87,7 @@ static void init_usrdata(_USR_DATA *data)
    data->dlist = NULL; data->root  = NULL;
    data->rlist = NULL; data->tlist = NULL;
    data->ilist = NULL; data->bin   = "milky";
+   data->no_action = NULL;
 }
 
 /*  ____ _____ ____  ___ _   _  ____ ____
@@ -117,6 +119,7 @@ static void init_usrdata(_USR_DATA *data)
 #define _INSTALL_FAIL            "Failed to install %s\n"
 #define _REMOVE_DONE             "Removed %s\n"
 #define _REMOVE_FAIL             "Failed to remove %s\n"
+#define _CLEANING_DB             "Cleaning database files: %s\n"
 #define _UNKNOWN_OPERATION       "unknown operation: %s"
 #define _NO_X_SPECIFIED          "No %s specified.\n"
 #define _BAD_DEVICE_SELECTED     "Bad device selected, exiting..\n"
@@ -130,6 +133,7 @@ static void init_usrdata(_USR_DATA *data)
 #define _FAILED_TO_REPOS         "Failed to initialize local repository..\n"
 #define _COMMIT_FAIL             "Warning: failed to commit repositories to %s\n"
 #define _ROOT_FAIL               "Warning: failed to store your current root device.\n"
+#define _ROOT_SET                "Root was set."
 #define _MKCONFIG                "Creating default configuration file in %s\n"
 #define _CONFIG_READ_FAIL        "Warning: failed to read configuration from %s\n"
 #define _YAOURT_DIALOG           "Enter number of packages to be installed (ex: 1 2 3)"
@@ -426,7 +430,7 @@ static int saveroot(_USR_DATA *data)
    memset(path, 0, PATH_MAX);
    if (oldrootcfgpath(path) != RETURN_OK) return RETURN_FAIL;
    if (!(f = fopen(path, "w")))           return RETURN_FAIL;
-   fputs(data->root->device, f); fclose(f);
+   fputs(data->root->mount, f); fclose(f);
    return RETURN_OK;
 }
 
@@ -570,6 +574,7 @@ static void _setroot(char *root, _USR_DATA *data)
 {
    assert(data);
    data->root = setroot(root, data->dlist);
+   if (data->root) data->no_action = _ROOT_SET;
 }
 
 /*     _    ____   ____ _   _ __  __ _____ _   _ _____ ____
@@ -1336,7 +1341,7 @@ static int pre_op_dialog(_USR_DATA *data)
    if ((data->flags & OP_SYNC))
    {
       _Y(); printf(_TARGET_MEDIA);
-      _W(); printf(": %s\n", data->root->device);
+      _W(); printf(": %s\n", data->root->mount);
       _Y(); printf(_TARGET_PATH);
       _W(); printf(": %s\n", (data->flags & A_APPS)?"/apps":
                              (data->flags & A_MENU)?"/menu":"/desktop");
@@ -1809,6 +1814,7 @@ static int cleanprocess(_USR_DATA *data)
    for (d = data->dlist; d; d = d->next)
       if (strlen(d->appdata)) {
          strncpy(tmp, d->appdata, PATH_MAX-1);
+         _Y(); printf(_CLEANING_DB, tmp); _N();
          strncat(tmp, "/local.db", PATH_MAX-1);
          if ((f = fopen(tmp,"r"))) {
             fclose(f);
@@ -1938,15 +1944,27 @@ static int sanitycheck(_USR_DATA *data)
          return RETURN_FAIL;
       }
 
+   /* save root */
+   if (saveroot(data) != RETURN_OK)
+   { _R(); printf(_ROOT_FAIL); _N(); }
+
    /* check target list, NOTE: OP_CLEAN && OP_QUERY can perform without targets */
    if (!data->tlist && needtarget(data->flags)) {
-      _R(); printf(_NO_X_SPECIFIED, "targets"); _N();
+      if (!data->no_action) {
+         _R(); printf(_NO_X_SPECIFIED, "targets"); _N();
+      } else {
+         _Y(); puts(data->no_action); _N();
+      }
       return RETURN_FAIL;
    } else if (!hasop(data->flags)) data->flags |= OP_YAOURT | OP_SYNC;
 
    /* check flags */
    if (!data->flags || !hasop(data->flags)) {
-      _R(); printf(_NO_X_SPECIFIED, "operation"); _N();
+      if (!data->no_action) {
+         _R(); printf(_NO_X_SPECIFIED, "operation"); _N();
+      } else {
+         _Y(); puts(data->no_action); _N();
+      }
       return RETURN_FAIL;
    }
 
@@ -2036,12 +2054,10 @@ static int processflags(_USR_DATA *data)
    else if ((data->flags & OP_CLEAN))     ret = cleanprocess(data);
 
    /* commit everything to disk */
-   if (pndman_commit_all(data->rlist, data->root) != RETURN_OK)
-   { _R(); printf(_COMMIT_FAIL, data->root->mount); _N(); }
-
-   /* save root */
-   if (saveroot(data) != RETURN_OK)
-   { _R(); printf(_ROOT_FAIL); _N(); }
+   if (!(data->flags & OP_CLEAN)) {
+      if (pndman_commit_all(data->rlist, data->root) != RETURN_OK)
+      { _R(); printf(_COMMIT_FAIL, data->root->mount); _N(); }
+   }
 
    return ret;
 }
