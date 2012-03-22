@@ -133,6 +133,7 @@ static void init_usrdata(_USR_DATA *data)
 #define _FAILED_TO_REPOS         "Failed to initialize local repository..\n"
 #define _COMMIT_FAIL             "Warning: failed to commit repositories to %s\n"
 #define _ROOT_FAIL               "Warning: failed to store your current root device.\n"
+#define _ROOT_SET_FAIL           "Failed to set root."
 #define _ROOT_SET                "Root was set."
 #define _MKCONFIG                "Creating default configuration file in %s\n"
 #define _CONFIG_READ_FAIL        "Warning: failed to read configuration from %s\n"
@@ -390,11 +391,10 @@ static int getcfgpath(char *path)
 static pndman_device* setroot(char *root, pndman_device *list)
 {
    pndman_device *d;
-   if (!root) return NULL;
+   if (!root || !strlen(root)) return NULL;
    for (d = list; d; d = d->next)
       if (!strcmp(root, d->mount) || !strcmp(root, d->device)) return d;
    if ((d = pndman_device_add(root, list))) return d;
-   _R(); printf("Failed to root: %s\n", root); _N();
    return NULL;
 }
 
@@ -418,7 +418,7 @@ static pndman_device* getroot(_USR_DATA *data)
    if (!(f = fopen(path, "r")))           return NULL;
    fgets(dev, LINE_MAX, f); fclose(f);
    if (dev[strlen(dev)-1] == '\n') dev[strlen(dev)-1] = '\0';
-   return setroot(dev, data->dlist);
+   return data->root = setroot(dev, data->dlist);
 }
 
 /* save root */
@@ -427,6 +427,7 @@ static int saveroot(_USR_DATA *data)
    FILE *f;
    char path[PATH_MAX];
 
+   if (!data->root) return RETURN_OK;
    memset(path, 0, PATH_MAX);
    if (oldrootcfgpath(path) != RETURN_OK) return RETURN_FAIL;
    if (!(f = fopen(path, "w")))           return RETURN_FAIL;
@@ -573,8 +574,10 @@ static void _addtarget(char *id, _USR_DATA *data)
 static void _setroot(char *root, _USR_DATA *data)
 {
    assert(data);
+   if (!root || !strlen(root)) { data->root = NULL; return; }
    data->root = setroot(root, data->dlist);
    if (data->root) data->no_action = _ROOT_SET;
+   else            data->no_action = _ROOT_SET_FAIL;
 }
 
 /*     _    ____   ____ _   _ __  __ _____ _   _ _____ ____
@@ -1159,6 +1162,7 @@ static int rootdialog(_USR_DATA *data)
    for (i = 0, d = data->dlist; d; d = d->next)
       if (++i==s) {
          data->root = d;
+         if (data->root) data->no_action = _ROOT_SET;
          return RETURN_OK;
       }
 
@@ -1963,7 +1967,7 @@ static int sanitycheck(_USR_DATA *data)
       return RETURN_OK;
 
    /* no root, ask for it */
-   if (!data->root)
+   if (!data->no_action && !data->root)
       if (rootdialog(data) != RETURN_OK) {
          _R(); NEWLINE(); printf(_BAD_DEVICE_SELECTED); _N();
          return RETURN_FAIL;
