@@ -1098,7 +1098,7 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data)
          _W(); printf(":\n%s\n", info);
          free(info);
       }
-   } else if ((data->flags & A_SEARCH)) {
+   } else if ((data->flags & A_SEARCH) || (data->flags & OP_YAOURT)) {
       /* default style */
       _Y(); printf("%s", pnd->category ? strlen(pnd->category->sub) ?
                          pnd->category->sub : pnd->category->main : "nogroup");
