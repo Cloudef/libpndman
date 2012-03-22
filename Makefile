@@ -41,8 +41,8 @@ endif
 ifeq (${MINGW},1)
    X86 = 1
    CFLAGS += -DCURL_STATICLIB
-   LIB_LIBS += -static -static-libgcc -mwindows
-   LIB_LIBS += -lssl -lcrypto -lz -lws2_32 -lmingw32 -lkernel32
+   LIB_LIBS += -static -static-libgcc
+   LIB_LIBS += -lssl -lcrypto -lz -lws2_32 -lmingw32 -lkernel32 -lgdi32
    EXT=.exe
 else
    LIB_LIBS += `pkg-config --libs openssl`
