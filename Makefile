@@ -48,9 +48,10 @@ ifeq (${MINGW},1)
    LIB_LIBS += -lssl -lcrypto -lz -lws2_32 -lmingw32 -lkernel32 -lgdi32
    EXT=.exe
 else
-   LIB_LIBS += `pkg-config --libs openssl gnutls zlib` -lgcrypt -lgpg-error
-   ifeq (${STATIC_BIN},1)
-   	LIB_LIBS += -static `pkg-config --libs libssh2` -lpthread -ldl -lrt
+   ifeq (${STATIC_BIN},0)
+   	LIB_LIBS += `pkg-config --libs openssl gnutls zlib` -lgcrypt -lgpg-error
+     else
+   	LIB_LIBS += -static `pkg-config --libs openssl libssh2 zlib` -lpthread -ldl -lrt
    endif
 endif
 
