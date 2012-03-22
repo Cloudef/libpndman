@@ -200,7 +200,11 @@ static pndman_device* _pndman_device_new_if_exist(pndman_device **device, const 
    if (check_existing) {
       d = _pndman_device_first(*device);
       for(; d; d = d->next)
+#ifdef __WIN32__ /* windows is incasesensitive */
          if (!_strupcmp(d->mount, check_existing)) {
+#else
+         if (!strcmp(d->mount, check_existing)) {
+#endif
             DEBFAILP(DEVICE_EXISTS, d->mount);
             return NULL;
          }
@@ -313,8 +317,8 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
    memset(strings, 0, 4096);
    while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
       if (mnt.mnt_dir != NULL) {
-         if (!_strupcmp(mnt.mnt_fsname, path) ||
-             !_strupcmp(mnt.mnt_dir,    path))
+         if (!strcmp(mnt.mnt_fsname, path) ||
+             !strcmp(mnt.mnt_dir,    path))
              break;
       }
       m = NULL;
@@ -405,10 +409,14 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
    memset(strings, 0, 4096);
    while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
       if ((mnt.mnt_dir != NULL) && (statfs(mnt.mnt_dir, &fs) == 0)) {
-         if(_strupstr(mnt.mnt_fsname, "/dev/")	        != 0 &&
-            _strupcmp(mnt.mnt_dir, "/")		        != 0 &&
-            _strupcmp(mnt.mnt_dir, "/home")		!= 0 &&
-            _strupcmp(mnt.mnt_dir, "/boot")		!= 0 )
+         if(strstr(mnt.mnt_fsname, "/dev/")	        != 0 &&
+            strcmp(mnt.mnt_dir, "/")		        != 0 &&
+            strcmp(mnt.mnt_dir, "/home")		!= 0 &&
+            strcmp(mnt.mnt_dir, "/boot")		!= 0
+#ifdef PANDORA /* don't add /mnt/utmp entries, PND's are there */
+            && strcmp(mnt.mnt_dir, "/mnt/utmp")         != 0
+#endif
+            )
          {
             /* check for read && write perms */
             if (access(mnt.mnt_dir, R_OK | W_OK) == -1)
