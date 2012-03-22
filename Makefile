@@ -4,6 +4,9 @@ DEBUG  := 1
 # static library?
 STATIC := 1
 
+# static binary? (not recommended)
+STATIC_BIN := 0
+
 # install prefix
 PREFIX := /usr
 
@@ -45,7 +48,10 @@ ifeq (${MINGW},1)
    LIB_LIBS += -lssl -lcrypto -lz -lws2_32 -lmingw32 -lkernel32 -lgdi32
    EXT=.exe
 else
-   LIB_LIBS += `pkg-config --libs openssl`
+   LIB_LIBS += `pkg-config --libs openssl gnutls zlib` -lgcrypt -lgpg-error
+   ifeq (${STATIC_BIN},1)
+   	LIB_LIBS += -static `pkg-config --libs libssh2` -lpthread -ldl -lrt
+   endif
 endif
 
 ifeq (${X86},1)
