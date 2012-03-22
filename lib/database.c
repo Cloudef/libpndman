@@ -332,7 +332,8 @@ static int _pndman_sync_perform()
    while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left))) {
       curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &handle);
       if (msg->msg == CURLMSG_DONE) { /* DONE */
-         handle->progress.done = 1;
+         handle->progress.done = msg->data.result==CURLE_OK?1:0;
+         if (msg->data.result != CURLE_OK) strncpy(handle->error, curl_easy_strerror(msg->data.result), LINE_MAX);
          _pndman_json_process(handle->repository, handle->file);
       }
    }

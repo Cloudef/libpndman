@@ -440,6 +440,7 @@ int pndman_handle_perform(pndman_handle *handle)
 
    /* reset done */
    handle->progress.done = 0;
+   memset(handle->error, 0, LINE_MAX);
 
    if ((handle->flags & PNDMAN_HANDLE_INSTALL))
       if (_pndman_handle_download(handle) != RETURN_OK) {
@@ -497,8 +498,10 @@ int pndman_download()
    /* update status of curl handles */
    while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left))) {
       curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &handle);
-      if (msg->msg == CURLMSG_DONE)
-         handle->progress.done = 1;
+      if (msg->msg == CURLMSG_DONE) {
+         handle->progress.done = msg->data.result==CURLE_OK?1:0;
+         if (msg->data.result != CURLE_OK) strncpy(handle->error, curl_easy_strerror(msg->data.result), LINE_MAX);
+      }
    }
 
    /* it's okay to get rid of this */
