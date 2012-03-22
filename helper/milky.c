@@ -1396,8 +1396,14 @@ static void syncrepos(pndman_repository *rs, _USR_DATA *data)
    }
 
    for (r = rs, c = 0; r; r = r->next) {
-      if (!handle[c].progress.done) printf(_REPO_SYNCED_NOT, strlen(handle[c].repository->name) ?
-                                           handle[c].repository->name : handle[c].repository->url);
+      if (!handle[c].progress.done) {
+         _R();
+         printf(_REPO_SYNCED_NOT, strlen(handle[c].repository->name) ?
+                handle[c].repository->name : handle[c].repository->url);
+         if (strlen(handle[c].error))
+            puts(handle[c].error);
+         _N();
+      }
       pndman_sync_request_free(&handle[c]);
       ++c;
    }
@@ -1577,7 +1583,9 @@ static void commithandle(_USR_DATA *data, pndman_handle *handle)
 {
    assert(data && handle);
    if (!handle->progress.done && !(data->flags & OP_REMOVE)) {
-      _R(); printf(opstrfromflags(0,data->flags), handle->name); _N();
+      _R(); printf(opstrfromflags(0,data->flags), handle->name);
+      if (strlen(handle->error)) puts(handle->error);
+      _N();
    } else if (pndman_handle_commit(handle, data->rlist) != RETURN_OK) {
       _R(); printf(opstrfromflags(0,data->flags), handle->name); _N();
    } else {
