@@ -414,7 +414,7 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
             strcmp(mnt.mnt_dir, "/home")		!= 0 &&
             strcmp(mnt.mnt_dir, "/boot")		!= 0
 #ifdef PANDORA /* don't add /mnt/utmp entries, PND's are there */
-            && strstr(mnt.mnt_dir, "/mnt/utmp")         != 0
+            && strstr(mnt.mnt_dir, "/mnt/utmp")         != 1
 #endif
             )
          {
