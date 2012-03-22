@@ -370,7 +370,7 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
       return NULL;
 
    /* create new if needed */
-   if (!_pndman_device_new_if_exist(&device, szDrive))
+   if (!_pndman_device_new_if_exist(&device, strlen(path)>3?path:szDrive))
       return NULL;
 
    /* fill device struct */
