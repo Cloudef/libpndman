@@ -3,6 +3,12 @@
 #include <assert.h>
 #include <malloc.h>
 #include <stdint.h>
+#include <unistd.h>
+
+#ifdef __POSIX__
+#  include <fcntl.h>
+#endif
+
 #include <curl/curl.h>
 #include "pndman.h"
 #include "package.h"
@@ -62,6 +68,86 @@ static char *str_replace(const char *s, const char *old, const char *new)
       } else *p++=*s++;
    *p=0;
    return cout;
+}
+
+/* \brief locks file from other processes from reading and writing */
+#ifdef __POSIX__
+static int lockfile(char *path)
+#else
+static FILE* lockfile(char *path)
+#endif
+{
+#ifdef __POSIX__
+   struct flock fl;
+   int fd, timeout = 5;
+
+   /* lock the file */
+   fl.l_type   = F_WRLCK | F_RDLCK;
+   fl.l_whence = SEEK_SET;
+   fl.l_start  = 0;
+   fl.l_len    = 0;
+   fl.l_pid    = getpid();
+   if ((fd = open(path, O_WRONLY)) == -1)
+      return -1;
+
+   /* block until file ready for use */
+   while (fcntl(fd, F_SETLK, &fl) != 0) {
+      sleep(1);
+
+      /* timeout */
+      if (--timeout==0) {
+         close(fd);
+         return -1;
+      }
+   }
+   return fd;
+#else
+   FILE *f;
+   int timeout = 5;
+   /* on non posix, do it uncertain way by creating lock file */
+   strncat(path, ".lck", PATH_MAX-1);
+
+   /* block until lock doesn't exist */
+   while ((f = fopen(path, "r"))) {
+      fclose(f);
+#ifdef __WIN32__
+      Sleep(1000);
+#else
+      sleep(1);
+#endif
+
+      /* timeout */
+      if (--timeout==0) {
+         return NULL;
+      }
+   }
+
+   /* create .lck file */
+   if (!(f = fopen(path, "w")))
+      return NULL;
+
+   /* make sure it's created */
+   fflush(f);
+   return f;
+#endif
+}
+
+/* \brief unlock the file */
+#ifdef __POSIX__
+static void unlockfile(int fd)
+#else
+static void unlockfile(FILE *f, char *path)
+#endif
+{
+#ifdef __POSIX__
+   struct flock fl;
+   fl.l_type = F_UNLCK;
+   fcntl(fd, F_SETLK, &lockinfo);
+   close(fd);
+#else
+   fclose(f);
+   unlink(path);
+#endif
 }
 
 /* \brief allocate internal sync request */
@@ -133,8 +219,7 @@ static int _pndman_sync_handle_free(pndman_sync_handle *object)
 static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *device)
 {
    FILE *f;
-   char db_path[PATH_MAX];
-   char *appdata;
+   char db_path[PATH_MAX], *appdata;
    assert(device);
 
    /* check appdata */
@@ -144,6 +229,18 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/local.db", PATH_MAX-1);
    DEBUGP(3, "-!- writing to %s\n", db_path);
+
+   /* lock the file */
+#ifdef __POSIX__
+   int fd;
+   if ((fd = lockfile(db_path)) == -1)
+      return RETURN_FAIL;
+#else
+   FILE *fd; char lckpath[PATH_MAX];
+   if (!(fd = lockfile(lckpath)))
+      return RETURN_FAIL;
+#endif
+
    f = fopen(db_path, "w");
    if (!f) {
       DEBFAILP(WRITE_FAIL, db_path);
@@ -154,6 +251,12 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
    _pndman_json_commit(repo, f);
 
    fclose(f);
+
+#ifdef __POSIX__
+   unlockfile(fd);
+#else
+   unlockfile(fd, lckpath);
+#endif
    return RETURN_OK;
 }
 
@@ -162,8 +265,7 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
 {
    FILE *f;
    pndman_repository *r;
-   char db_path[PATH_MAX];
-   char *appdata;
+   char db_path[PATH_MAX], *appdata;
    assert(device);
 
    /* find local db and read it first */
@@ -177,12 +279,23 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/repo.db", PATH_MAX-1);
    DEBUGP(3, "-!- writing to %s\n", db_path);
+
+   /* lock the file */
+#ifdef __POSIX__
+   int fd;
+   if ((fd = lockfile(db_path)) == -1)
+      return RETURN_FAIL;
+#else
+   FILE *fd; char lckpath[PATH_MAX];
+   if (!(fd = lockfile(lckpath)))
+      return RETURN_FAIL;
+#endif
+
    f = fopen(db_path, "w");
    if (!f) {
       DEBFAILP(WRITE_FAIL, db_path);
       return RETURN_FAIL;
    }
-
    /* write repositories */
    r = repo;
    for (; r; r = r->next) {
@@ -192,6 +305,11 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
    }
 
    fclose(f);
+#ifdef __POSIX__
+   unlockfile(fd);
+#else
+   unlockfile(fd, lckpath);
+#endif
    return RETURN_OK;
 }
 
