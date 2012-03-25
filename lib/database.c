@@ -278,7 +278,7 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
 
    /* check appdata */
    appdata = _pndman_device_get_appdata(device);
-   if (!strlen(appdata)) return RETURN_FAIL;
+   if (!appdata || !strlen(appdata)) return RETURN_FAIL;
 
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/local.db", PATH_MAX-1);
@@ -328,7 +328,7 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
 
    /* check appdata */
    appdata = _pndman_device_get_appdata(device);
-   if (!strlen(appdata)) return RETURN_FAIL;
+   if (!appdata || !strlen(appdata)) return RETURN_FAIL;
 
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/repo.db", PATH_MAX-1);
