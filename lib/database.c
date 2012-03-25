@@ -25,6 +25,7 @@ static const char *WRITE_FAIL       = "Failed to open %s, for writing.\n";
 static const char *READ_FAIL        = "Failed to open %s, for reading.\n";
 static const char *CURLM_FAIL       = "Internal CURLM initialization failed.";
 static const char *CURL_HANDLE_FAIL = "Failed to allocate CURL handle.";
+static const char *LOCK_BLOCK_TIMEOUT = "%s blocking for IO operation timed out.";
 
 /* \brief flags for sync request to determite what to do */
 typedef enum pndman_sync_flags
@@ -70,43 +71,27 @@ static char *str_replace(const char *s, const char *old, const char *new)
    return cout;
 }
 
-/* \brief locks file from other processes from reading and writing */
+/* \brief internal blocking function with timeout */
 #ifdef __POSIX__
-static int lockfile(char *path)
+static int blockfile(int fd, char *path)
 #else
-static FILE* lockfile(char *path)
+static int blockfile(char *path)
 #endif
 {
+   int timeout=5;
 #ifdef __POSIX__
-   struct flock fl;
-   int fd, timeout = 5;
-
-   /* lock the file */
-   fl.l_type   = F_WRLCK | F_RDLCK;
-   fl.l_whence = SEEK_SET;
-   fl.l_start  = 0;
-   fl.l_len    = 0;
-   fl.l_pid    = getpid();
-   if ((fd = open(path, O_WRONLY)) == -1)
-      return -1;
-
    /* block until file ready for use */
    while (fcntl(fd, F_SETLK, &fl) != 0) {
       sleep(1);
 
       /* timeout */
       if (--timeout==0) {
-         close(fd);
-         return -1;
+         DEBFAILP(LOCK_BLOCK_TIMEOUT, path);
+         return RETURN_FAIL;
       }
    }
-   return fd;
 #else
    FILE *f;
-   int timeout = 5;
-   /* on non posix, do it uncertain way by creating lock file */
-   strncat(path, ".lck", PATH_MAX-1);
-
    /* block until lock doesn't exist */
    while ((f = fopen(path, "r"))) {
       fclose(f);
@@ -118,9 +103,69 @@ static FILE* lockfile(char *path)
 
       /* timeout */
       if (--timeout==0) {
-         return NULL;
+         DEBFAILP(LOCK_BLOCK_TIMEOUT, path);
+         return RETURN_FAIL;
       }
    }
+#endif
+   return RETURN_OK;
+}
+
+/* \brief block read until file is unlocked */
+static int readblock(char *path)
+{
+#ifdef __POSIX__
+   int fd;
+   if ((fd = open(path, O_WRONLY)) == -1)
+      return RETURN_FAIL;
+   if (blockfile(fd, db_path) != RETURN_OK) {
+      close(fd);
+      return RETURN_FAIL;
+   }
+   close(fd);
+#else
+   char lckpath[PATH_MAX];
+   /* on non posix, do it uncertain way by creating lock file */
+   strcpy(lckpath, path);
+   strncat(lckpath, ".lck", PATH_MAX-1);
+   if (blockfile(lckpath) != RETURN_OK)
+      return RETURN_FAIL;
+#endif
+   return RETURN_OK;
+}
+
+/* \brief locks file from other processes from reading and writing */
+#ifdef __POSIX__
+static int lockfile(char *path)
+#else
+static FILE* lockfile(char *path)
+#endif
+{
+#ifdef __POSIX__
+   struct flock fl;
+   int fd;
+
+   /* lock the file */
+   fl.l_type   = F_WRLCK | F_RDLCK;
+   fl.l_whence = SEEK_SET;
+   fl.l_start  = 0;
+   fl.l_len    = 0;
+   fl.l_pid    = getpid();
+   if ((fd = open(path, O_WRONLY)) == -1)
+      return -1;
+
+   /* block until ready */
+   if (blockfile(fd, path) != RETURN_OK) {
+      close(fd);
+      return -1;
+   }
+   return fd;
+#else
+   FILE *f;
+
+   /* block until ready */
+   if (blockfile(path) != RETURN_OK)
+      return NULL;
 
    /* create .lck file */
    if (!(f = fopen(path, "w")))
@@ -237,6 +282,9 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
       return RETURN_FAIL;
 #else
    FILE *fd; char lckpath[PATH_MAX];
+   /* on non posix, do it uncertain way by creating lock file */
+   strcpy(lckpath, db_path);
+   strncat(lckpath, ".lck", PATH_MAX-1);
    if (!(fd = lockfile(lckpath)))
       return RETURN_FAIL;
 #endif
@@ -329,6 +377,11 @@ static int _pndman_db_get_local(pndman_repository *repo, pndman_device *device)
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/local.db", PATH_MAX-1);
    DEBUGP(3, "-!- local from %s\n", db_path);
+
+   /* block until ready for read */
+   if (readblock(db_path) != RETURN_OK)
+      return RETURN_FAIL;
+
    f = fopen(db_path, "r");
    if (!f) {
       DEBFAILP(READ_FAIL, db_path);
@@ -374,6 +427,11 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/repo.db", PATH_MAX-1);
    DEBUGP(3, "-!- reading from %s\n", db_path);
+
+   /* block until ready for read */
+   if (readblock(db_path) != RETURN_OK)
+      return RETURN_FAIL;
+
    f = fopen(db_path, "r");
    if (!f) {
       DEBFAILP(READ_FAIL, db_path);
