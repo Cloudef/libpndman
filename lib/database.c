@@ -73,7 +73,7 @@ static char *str_replace(const char *s, const char *old, const char *new)
 
 /* \brief internal blocking function with timeout */
 #ifdef __POSIX__
-static int blockfile(int fd, char *path)
+static int blockfile(int fd, char *path, flock *fl)
 #else
 static int blockfile(char *path)
 #endif
@@ -81,7 +81,7 @@ static int blockfile(char *path)
    int timeout=5;
 #ifdef __POSIX__
    /* block until file ready for use */
-   while (fcntl(fd, F_SETLK, &fl) != 0) {
+   while (fcntl(fd, F_SETLK, fl) != 0) {
       sleep(1);
 
       /* timeout */
@@ -155,20 +155,25 @@ static FILE* lockfile(char *path)
       return -1;
 
    /* block until ready */
-   if (blockfile(fd, path) != RETURN_OK) {
+   if (blockfile(fd, path, &fl) != RETURN_OK) {
       close(fd);
       return -1;
    }
    return fd;
 #else
    FILE *f;
+   char lckpath[PATH_MAX];
+
+   /* on non posix, do it uncertain way by creating lock file */
+   strcpy(lckpath, path);
+   strncat(lckpath, ".lck", PATH_MAX-1);
 
    /* block until ready */
-   if (blockfile(path) != RETURN_OK)
+   if (blockfile(lckpath) != RETURN_OK)
       return NULL;
 
    /* create .lck file */
-   if (!(f = fopen(path, "w")))
+   if (!(f = fopen(lckpath, "w")))
       return NULL;
 
    /* make sure it's created */
@@ -190,8 +195,12 @@ static void unlockfile(FILE *f, char *path)
    fcntl(fd, F_SETLK, &lockinfo);
    close(fd);
 #else
+   char lckpath[PATH_MAX];
+   /* on non posix, do it uncertain way by creating lock file */
+   strcpy(lckpath, path);
+   strncat(lckpath, ".lck", PATH_MAX-1);
    fclose(f);
-   unlink(path);
+   unlink(lckpath);
 #endif
 }
 
@@ -281,11 +290,8 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
    if ((fd = lockfile(db_path)) == -1)
       return RETURN_FAIL;
 #else
-   FILE *fd; char lckpath[PATH_MAX];
-   /* on non posix, do it uncertain way by creating lock file */
-   strcpy(lckpath, db_path);
-   strncat(lckpath, ".lck", PATH_MAX-1);
-   if (!(fd = lockfile(lckpath)))
+   FILE *fd;
+   if (!(fd = lockfile(db_path)))
       return RETURN_FAIL;
 #endif
 
@@ -303,7 +309,7 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
 #ifdef __POSIX__
    unlockfile(fd);
 #else
-   unlockfile(fd, lckpath);
+   unlockfile(fd, db_path);
 #endif
    return RETURN_OK;
 }
@@ -334,8 +340,8 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
    if ((fd = lockfile(db_path)) == -1)
       return RETURN_FAIL;
 #else
-   FILE *fd; char lckpath[PATH_MAX];
-   if (!(fd = lockfile(lckpath)))
+   FILE *fd;
+   if (!(fd = lockfile(db_path)))
       return RETURN_FAIL;
 #endif
 
@@ -356,7 +362,7 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
 #ifdef __POSIX__
    unlockfile(fd);
 #else
-   unlockfile(fd, lckpath);
+   unlockfile(fd, db_path);
 #endif
    return RETURN_OK;
 }
