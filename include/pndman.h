@@ -10,7 +10,7 @@
 #ifdef __WIN32__
 #  include <windows.h>
 #  include <limits.h>
-#  define LINE_MAX 256
+#  define LINE_MAX 2048
 #  ifdef _UNICODE
 #     error "Suck it unicde.."
 #  endif
