@@ -402,11 +402,11 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
    struct mntent *m;
    struct mntent mnt;
    struct statfs fs;
-   char strings[4096];
+   char strings[4096], pandoradir[PATH_MAX];
 
    first = device;
    mtab = setmntent(LINUX_MTAB, "r");
-   memset(strings, 0, 4096);
+   memset(strings, 0, 4096); memset(pandoradir, 0, PATH_MAX);
    while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
       if ((mnt.mnt_dir != NULL) && (statfs(mnt.mnt_dir, &fs) == 0)) {
          if(strstr(mnt.mnt_fsname, "/dev")                   &&
@@ -418,8 +418,14 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
 #endif
             )
          {
-            /* check for read && write perms */
-            if (access(mnt.mnt_dir, R_OK | W_OK) == -1)
+            /* check for read && write perms
+             * test against both, / and /pandora,
+             * this might be SD with rootfs install.
+             * where only /pandora is owned by everyone. */
+            strcpy(pandoradir, mnt.mnt_dir);
+            strncat(pandoradir, "/pandora", PATH_MAX-1);
+            if (access(pandoradir,  R_OK | W_OK) == -1 &&
+                access(mnt.mnt_dir, R_OK | W_OK) == -1)
                continue;
 
             if (!_pndman_device_new_if_exist(&device, mnt.mnt_dir))
@@ -439,13 +445,12 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
    }
    endmntent(mtab);
 #elif __WIN32__
-   char szTemp[512];
-   char szName[PATH_MAX-1];
+   char szTemp[512], szName[PATH_MAX-1];
    char szDrive[3] = { ' ', ':', '\0' };
-   char *p;
+   char pandoradir[PATH_MAX], *p;
    ULARGE_INTEGER bytes_free, bytes_available, bytes_size;
 
-   memset(szTemp, 0, 512);
+   memset(szTemp, 0, 512); memset(pandoradir, 0, PATH_MAX);
    if (!GetLogicalDriveStrings(511, szTemp))
       return NULL;
 
@@ -455,9 +460,15 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
       *szDrive = *p;
 
       if (QueryDosDevice(szDrive, szName, PATH_MAX-1)) {
-         /* check for read && write perms */
-         if (access(szDrive, R_OK | W_OK) == -1)
-         { while (*p++);  continue; }
+         /* check for read && write perms
+          * test against both, / and /pandora,
+          * this might be SD with rootfs install.
+          * where only /pandora is owned by everyone. */
+         strcpy(pandoradir, szDrive);
+         strncat(pandoradir, "/pandora", PATH_MAX-1);
+         if (access(pandoradir,  R_OK | W_OK) == -1 &&
+             access(szDrive,     R_OK | W_OK) == -1)
+         { while (*p++); continue; }
 
          if (!GetDiskFreeSpaceEx(szDrive,
             &bytes_available, &bytes_size, &bytes_free))
