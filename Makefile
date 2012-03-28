@@ -66,6 +66,7 @@ ifeq (${STATIC},1)
    LIB_TARGET = lib$(addsuffix .a, $(basename ${TARGET}))
 else
    LIB_TARGET = lib$(addsuffix .so, $(basename ${TARGET}))
+   CFLAGS += -fPIC
 endif
 
 all: ${LIB_TARGET} ${CLI_BIN} test
