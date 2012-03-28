@@ -414,10 +414,8 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
    assert(device);
 
    /* find local db and read it first */
-   if (!repo->prev) {
-      _pndman_db_get_local(repo, device);
-      return RETURN_OK;
-   }
+   if (!repo->prev)
+      return _pndman_db_get_local(repo, device);
 
    /* invalid url */
    if (!strlen(repo->url)) {
