@@ -1342,13 +1342,13 @@ static int pre_op_dialog(_USR_DATA *data)
    }
 
    /* print action target paths */
-   if ((data->flags & OP_SYNC))
+   if ((data->flags & OP_SYNC) && !(data->flags & A_UPGRADE))
    {
       _Y(); printf(_TARGET_MEDIA);
       _W(); printf(": %s\n", data->root->mount);
       _Y(); printf(_TARGET_PATH);
       _W(); printf(": %s\n", (data->flags & A_APPS)?"/apps":
-                             (data->flags & A_MENU)?"/menu":"/desktop");
+                             (data->flags & A_DESKTOP)?"/desktop":"/menu");
    }
    NEWLINE();
 
