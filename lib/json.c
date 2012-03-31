@@ -306,10 +306,6 @@ int _pndman_json_process(pndman_repository *repo, FILE *data)
       }
    } else DEBUGP(2, NO_R_HEADER, repo->url);
    json_decref(root);
-
-   /* update timestamp */
-   repo->timestamp = time(0);
-
    return RETURN_OK;
 }
 

@@ -514,7 +514,10 @@ static int _pndman_sync_perform()
       if (msg->msg == CURLMSG_DONE) { /* DONE */
          handle->progress.done = msg->data.result==CURLE_OK?1:0;
          if (msg->data.result != CURLE_OK) strncpy(handle->error, curl_easy_strerror(msg->data.result), LINE_MAX);
-         _pndman_json_process(handle->repository, handle->file);
+         if (_pndman_json_process(handle->repository, handle->file) == RETURN_OK) {
+            /* update timestamp */
+            handle->repository->timestamp = time(0);
+         }
       }
    }
 #endif
