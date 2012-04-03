@@ -21,7 +21,8 @@ static const char *RM_FAIL          = "Failed to remove file %s\n";
 static const char *CURLM_FAIL       = "Failed to init internal CURLM";
 static const char *HANDLE_NO_PND    = "Handle has no PND!";
 static const char *HANDLE_PND_URL   = "PND assigned to handle has invalid url.";
-static const char *HANDLE_NO_DEV    = "Handle has no device!";
+static const char *HANDLE_NO_DEV    = "Handle has no device! (install)";
+static const char *HANDLE_NO_DEV_UP = "Handle has no device list! (update)";
 static const char *HANDLE_NO_DST    = "Handle has no destination, nor the PND has upgrade.";
 static const char *HANDLE_WTF       = "WTF. Something that should never happen, just happened!";
 static const char *CURL_REQ_FAIL    = "Failed to init curl request.";
@@ -117,7 +118,11 @@ static int _pndman_handle_download(pndman_handle *handle)
       return RETURN_FAIL;
    }
    if (!handle->device) {
-      DEBFAIL(HANDLE_NO_DEV);
+      if (!handle->pnd->update) {
+         DEBFAIL(HANDLE_NO_DEV);
+      } else {
+         DEBFAIL(HANDLE_NO_DEV_UP);
+      }
       return RETURN_FAIL;
    }
 
