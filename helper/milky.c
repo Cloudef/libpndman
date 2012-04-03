@@ -1806,9 +1806,12 @@ static int queryprocess(_USR_DATA *data)
 static int crawlprocess(_USR_DATA *data)
 {
    pndman_device *d;
-   unsigned int f = 0;
+   int f = 0, ret = 0;
 
-   for (d = data->dlist; d; d = d->next) f += pndman_crawl(0, d, data->rlist);
+   /* crawl and count on success */
+   for (d = data->dlist; d; d = d->next)
+      if ((ret = pndman_crawl(0, d, data->rlist)) != RETURN_FAIL) f += ret;
+
    pndman_check_updates(data->rlist);
    listupdate(data);
    _G(); printf(_PNDS_CRAWLED,f); _N();
