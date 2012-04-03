@@ -1037,6 +1037,9 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
    pnd = NULL; p = NULL;
    ret = 0;
 
+   /* jump to end of list */
+   if (strlen(list->id)) for (p = list; p && p->next; p = p->next);
+
 #ifndef __WIN32__ /* POSIX */
    dp = opendir(path);
    if (!dp) return 0;
