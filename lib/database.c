@@ -569,6 +569,14 @@ static int _pndman_repository_sync_request(pndman_sync_handle *handle, unsigned 
 /* \brief do version comparision and set update pointer */
 static int _pndman_version_check(pndman_package *lp, pndman_package *rp)
 {
+   /* md5sums are same, no update */
+   if (!strcmp(lp->md5, rp->md5))
+      return RETURN_FALSE;
+
+   /* the md5 checking won't be enough here,
+    * since if user has different repos.
+    * They might provide even newer version. */
+
    /* check if we can check against modified_time */
    if (lp->modified_time && !strcmp(lp->repository, rp->repository)) {
       if (rp->modified_time > lp->modified_time) {
@@ -591,6 +599,10 @@ static int _pndman_version_check(pndman_package *lp, pndman_package *rp)
       lp->update = rp;
       rp->update = lp;
    }
+
+   /* maybe as last resort use the md5 differ?
+    * might be good idea if no other way was update detected */
+
    return lp->update?RETURN_TRUE:RETURN_FALSE;
 }
 
