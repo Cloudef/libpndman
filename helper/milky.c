@@ -1194,13 +1194,19 @@ static int yaourtdialog(_USR_DATA *data)
    if (!fgets(response, sizeof(response), stdin))
       return RETURN_FALSE;
 
+   /* everything non number as first character cancels */
+   if (response[0]  <  48 ||
+       response[0]  >  57)
+      return RETURN_FALSE;
+
    /* go through all numbers */
    memset(num, 0, 5);
    for (i = 0, c = 0; i != strlen(response); ++i) {
       if (!isspace(response[i])) num[c++] = response[i];
       else {
+         if (!(match = strtol(num, (char **) NULL, 10)))
+         { c = 0; continue; }
          c = 1; t = data->tlist;
-         match = strtol(num, (char **) NULL, 10);
          while (c != match) {
             if (t) t = t->next;
             ++c;
