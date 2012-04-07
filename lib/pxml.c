@@ -231,7 +231,7 @@ static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
    /* failure? */
    if (!ret) {
       fclose(pnd);
-      DEBFAIL(START_TAG_FAIL);
+      DEBFAILP("%s: %s\n", pnd_file, START_TAG_FAIL);
       return RETURN_FAIL;
    }
 
@@ -254,7 +254,7 @@ static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
    /* read fail */
    if (!ret) {
       fclose(pnd);
-      DEBFAIL(END_TAG_FAIL);
+      DEBFAILP("%s: %s\n", pnd_file, END_TAG_FAIL);
       return RETURN_FAIL;
    }
 
