@@ -143,6 +143,7 @@ static void init_usrdata(_USR_DATA *data)
 #define _DOWNLOAD_SIZE           "Download size"
 #define _REMOVE_SIZE             "Removal size "
 #define _CONTINUE_INSTALL        "Continue install?"
+#define _CONTINUE_UPGRADE        "Continue upgrade?"
 #define _CONTINUE_UNINSTALL      "Continue uninstall?"
 #define _TARGET_LINE             "Targets"
 #define _UNIT_KIB                "KiB"
@@ -592,25 +593,26 @@ static void _setroot(char *root, _USR_DATA *data)
 #define _PASSFLG(x) { data->flags |= x; return; }           /* pass flag */
 static const char* _G_ARG  = "vftr";         /* global arguments */
 static const char* _OP_ARG = "hSURQPCV";     /* operations */
-static const char* _S_ARG  = "scilyumda";    /* sync operation arguments */
+static const char* _S_ARG  = "scilyumdab";   /* sync operation arguments */
 static const char* _R_ARG  = "n";            /* remove operation arguments */
 static const char* _Q_ARG  = "sciu";         /* query operation arguments */
 
 /* milkyhelper's operation flags */
 typedef enum _HELPER_FLAGS
 {
-   GB_FORCE    = 0x000001, OP_YAOURT    = 0x000002,
-   OP_SYNC     = 0x000004, OP_UPGRADE   = 0x000008,
-   OP_REMOVE   = 0x000010, OP_QUERY     = 0x000020,
-   OP_CLEAN    = 0x000040, OP_VERSION   = 0x000080,
-   OP_HELP     = 0x000100, OP_CRAWL     = 0x000200,
-   A_SEARCH    = 0x000400, A_CATEGORY   = 0x000800,
-   A_INFO      = 0x001000, A_LIST       = 0x002000,
-   A_REFRESH   = 0x004000, A_UPGRADE    = 0x008000,
-   A_MENU      = 0x010000, A_DESKTOP    = 0x020000,
-   A_APPS      = 0x040000, A_NOSAVE     = 0x080000,
-   GB_NOMERGE  = 0x100000, GB_NOCONFIRM = 0x200000,
-   GB_NEEDED   = 0x400000, GB_NOBAR     = 0x800000
+   GB_FORCE    = 0x0000001, OP_YAOURT    = 0x0000002,
+   OP_SYNC     = 0x0000004, OP_UPGRADE   = 0x0000008,
+   OP_REMOVE   = 0x0000010, OP_QUERY     = 0x0000020,
+   OP_CLEAN    = 0x0000040, OP_VERSION   = 0x0000080,
+   OP_HELP     = 0x0000100, OP_CRAWL     = 0x0000200,
+   A_SEARCH    = 0x0000400, A_CATEGORY   = 0x0000800,
+   A_INFO      = 0x0001000, A_LIST       = 0x0002000,
+   A_REFRESH   = 0x0004000, A_UPGRADE    = 0x0008000,
+   A_MENU      = 0x0010000, A_DESKTOP    = 0x0020000,
+   A_APPS      = 0x0040000, A_NOSAVE     = 0x0080000,
+   GB_NOMERGE  = 0x0100000, GB_NOCONFIRM = 0x0200000,
+   GB_NEEDED   = 0x0400000, GB_NOBAR     = 0x0800000,
+   A_BACKUP    = 0x1000000,
 } _HELPER_FLAGS;
 typedef _HELPER_FLAGS (*_PARSE_FUNC)(char, char*, int*, _USR_DATA*); /* function prototype for parsing flags */
 
@@ -684,6 +686,7 @@ static _HELPER_FLAGS getsync(char c, char *arg, int *skipn, _USR_DATA *data)
    else if (c == 'm')   return setdest(A_MENU, data);
    else if (c == 'd')   return setdest(A_DESKTOP, data);
    else if (c == 'a')   return setdest(A_APPS, data);
+   else if (c == 'b')   return A_BACKUP;
    return 0;
 }
 
@@ -728,6 +731,7 @@ static void parsearg(char *arg, char *narg, int *skipn, _USR_DATA *data)
    if (!strcmp(arg, "--needed"))       _PASSFLG(GB_NEEDED);    /* needed option */
    if (!strcmp(arg, "--nobar"))        _PASSFLG(GB_NOBAR);     /* nobar option */
    if (!strcmp(arg, "--nosave"))       _PASSFLG(A_NOSAVE);     /* nosave option */
+   if (!strcmp(arg, "--backup"))       _PASSFLG(A_BACKUP);     /* backup option */
    if (arg[0] != '-')                  _PASSTHS(_addtarget);   /* not argument */
    parse(getglob, _G_ARG, arg, narg, skipn, data);
    if (!hasop(data->flags))         parse(getop, _OP_ARG, arg, narg, skipn, data);
@@ -1043,6 +1047,10 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data)
       _W(); printf(": %s\n", pnd->id);
       _G(); printf("Installed     ");
       _W(); printf(": %s\n", pndinstalled(pnd, data)?"Yes":"No");
+      if ((data->flags & OP_QUERY)) {
+         _G(); printf("Path          ");
+         _W(); printf(": %s\n", pnd->path);
+      }
       _G(); printf("Repository    ");
       _W(); printf(": %s\n", strlen(pnd->repository)?pnd->repository:"Foreign");
       _G(); printf("Update        ");
@@ -1363,7 +1371,9 @@ static int pre_op_dialog(_USR_DATA *data)
    _W(); printf(": %.2f %s\n", size, unit); _N();
 
    NEWLINE();
-   if (!yesno(data, (data->flags & OP_REMOVE)?_CONTINUE_UNINSTALL:_CONTINUE_INSTALL))
+   if (!yesno(data, (data->flags & OP_REMOVE)?_CONTINUE_UNINSTALL:
+                    (data->flags & A_UPGRADE)||(data->flags & OP_UPGRADE)?
+                    _CONTINUE_UPGRADE:_CONTINUE_INSTALL))
       return RETURN_FALSE;
 
    NEWLINE();
@@ -1575,6 +1585,9 @@ static unsigned int handleflagsfromflags(unsigned int flags)
       else if ((flags & A_APPS))       hflags |= PNDMAN_HANDLE_INSTALL_APPS;
       else                             hflags |= PNDMAN_HANDLE_INSTALL_MENU; /* default to menu */
    }
+
+   /* create backup of old file */
+   if (flags & A_BACKUP) hflags |= PNDMAN_HANDLE_BACKUP;
    return hflags;
 }
 
@@ -1939,6 +1952,7 @@ static int help(_USR_DATA *data)
       _W(); printf("  -m : Use /menu as install target.\n");
       _W(); printf("  -d : Use /desktop as install target.\n");
       _W(); printf("  -a : Use /apps as install target.\n");
+      _W(); printf("  -b : Make backup of original file.\n");
    } else if ((data->flags & OP_REMOVE)) {
       NEWLINE();
       _G(); printf("~ Removal arguments:\n");
@@ -2051,6 +2065,7 @@ static int processflags(_USR_DATA *data)
       if ((data->flags & A_REFRESH))   puts("->REFRESH");
       if ((data->flags & A_UPGRADE))   puts("->UPGRADE");
       if ((data->flags & A_NOSAVE))    puts("->NOSAVE");
+      if ((data->flags & A_BACKUP))    puts("->BACKUP");
       _R();
       if ((data->flags & A_MENU))      puts("[MENU]");
       if ((data->flags & A_DESKTOP))   puts("[DESKTOP]");
