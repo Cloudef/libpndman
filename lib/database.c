@@ -602,7 +602,7 @@ static int _pndman_version_check(pndman_package *lp, pndman_package *rp)
 
    /* maybe as last resort use the md5 differ?
     * might be good idea if no other way was update detected */
-   if (!lp->update) {
+   if (!lp->update && strlen(lp->md5)) {
       lp->update = rp;
       rp->update = lp;
    }
