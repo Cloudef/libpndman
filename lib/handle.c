@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <libgen.h>
 #include <curl/curl.h>
 #include "pndman.h"
@@ -11,6 +12,10 @@
 #include "curl.h"
 #include "md5.h"
 
+#ifdef __linux__
+#  include <sys/stat.h>
+#endif
+
 #define HANDLE_NAME PND_ID
 
 /* strings */
@@ -18,6 +23,8 @@ static const char *MD5_FAIL         = "MD5 check fail for %s\n";
 static const char *MD5_DIFF         = "MD5 differ, but forcing anyways.\n";
 static const char *MV_FAIL          = "Failed to move from %s, to %s\n";
 static const char *RM_FAIL          = "Failed to remove file %s\n";
+static const char *BACKUP_EXT_FAIL  = "Backup failed with wrong PND extension: %s\n";
+static const char *BACKUP_DIR_FAIL  = "Failed to create backup directory to device: %s\n";
 static const char *CURLM_FAIL       = "Failed to init internal CURLM";
 static const char *HANDLE_NO_PND    = "Handle has no PND!";
 static const char *HANDLE_PND_URL   = "PND assigned to handle has invalid url.";
@@ -39,6 +46,7 @@ typedef enum pndman_handle_flags
    PNDMAN_HANDLE_INSTALL_DESKTOP = 0x008,
    PNDMAN_HANDLE_INSTALL_MENU    = 0x010,
    PNDMAN_HANDLE_INSTALL_APPS    = 0x020,
+   PNDMAN_HANDLE_BACKUP          = 0x040,
 } pndman_handle_flags;
 
 /* \brief pndman_handle struct */
@@ -79,6 +87,72 @@ static int _pndman_move_file(char* src, char* dst)
    }
 
    return RETURN_OK;
+}
+
+/* \brief get backup directory */
+static int _get_backup_dir(char *buffer, pndman_device *device)
+{
+   strcpy(buffer, device->mount);
+   strncat(buffer, "/pandora", PATH_MAX-1);
+   strncat(buffer, "/backup", PATH_MAX-1);
+   if (access(buffer, F_OK) != 0) {
+      if (errno == EACCES)
+         return RETURN_FAIL;
+#ifdef __WIN32__
+      if (mkdir(buffer) == -1)
+#else
+      if (mkdir(buffer, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
+#endif
+            return RETURN_FAIL;
+   }
+   return RETURN_OK;
+}
+
+/* \brief backup pnd */
+static int _pndman_backup(pndman_package *pnd, pndman_device *device)
+{
+   char tmp[PATH_MAX], bckdir[PATH_MAX];
+
+   /* can't backup from void */
+   if (!strlen(pnd->path))
+      return RETURN_FAIL;
+
+   /* get backup directory */
+   if (_get_backup_dir(bckdir, device) != RETURN_OK) {
+      DEBFAILP(BACKUP_DIR_FAIL, device);
+      return RETURN_FAIL;
+   }
+
+   /* copy path */
+   strcpy(tmp, bckdir);
+   strncat(tmp, "/", PATH_MAX-1);
+   strncat(tmp, pnd->id, PATH_MAX-1);
+   strncat(tmp, " - ", PATH_MAX-1);
+   strncat(tmp, pnd->version.major, PATH_MAX-1);
+   strncat(tmp, ".", PATH_MAX-1);
+   strncat(tmp, pnd->version.minor, PATH_MAX-1);
+   strncat(tmp, ".", PATH_MAX-1);
+   strncat(tmp, pnd->version.release, PATH_MAX-1);
+   strncat(tmp, ".", PATH_MAX-1);
+   strncat(tmp, pnd->version.build, PATH_MAX-1);
+   strncat(tmp, ".pnd", PATH_MAX-1);
+
+   DEBUGP(3, "backup: %s -> %s\n", pnd->path, tmp);
+   return _pndman_move_file(pnd->path, tmp);
+}
+
+/* \brief check if file exists */
+static int _file_exist(char *path)
+{
+   FILE *f;
+
+   if ((f = fopen(path, "r"))) {
+      fclose(f);
+      DEBUGP(1, "CONFLICT: %s\n", path);
+      return RETURN_TRUE;
+   }
+
+   return RETURN_FALSE;
 }
 
 /* \brief Internal allocation of curl multi handle with checks */
@@ -226,9 +300,9 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
 {
    char install[PATH_MAX];
    char filename[PATH_MAX];
-   char tmp[PATH_MAX];
-   char *appdata;
-   char *md5;
+   char tmp[PATH_MAX], tmp2[PATH_MAX];
+   char *appdata, *md5;
+   int uniqueid = 0;
    pndman_package *pnd, *oldp;
 
    if (!handle->device) {
@@ -301,17 +375,42 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
       strncat(filename, ".pnd", PATH_MAX-1); /* add extension! */
    }
 
-   /* join filename to install path */
-   strncat(install, "/", PATH_MAX-1);
-   strncat(install, filename, PATH_MAX-1);
-
-   /* check if we have same pnd id installed already */
+   /* check if we have same pnd id installed already,
+    * skip the search if this is update. We know old one already. */
    oldp = NULL;
-   for (pnd = local->pnd; pnd; pnd = pnd->next)
-      if (!strcmp(pnd->id, handle->pnd->id)) {
+   if (handle->pnd->update) oldp = handle->pnd->update;
+   for (pnd = local->pnd; pnd && !oldp; pnd = pnd->next)
+      if (!strcmp(handle->pnd->id, pnd->id))
          oldp = pnd;
-         break;
+
+   /* temporary path used for conflict checking */
+   strcpy(tmp2, install);
+   strncat(tmp2, "/", PATH_MAX-1);
+   strncat(tmp2, filename, PATH_MAX-1);
+
+   /* if there is conflict use pnd id as filename */
+   if ((!oldp || strcmp(oldp->path, tmp2)) && _file_exist(tmp2)) {
+      strncat(install, "/", PATH_MAX-1);
+      strncat(install, handle->pnd->id, PATH_MAX-1);
+      snprintf(tmp2, PATH_MAX-1, "%s.pnd", install);
+      while (_file_exist(tmp2)) {
+         uniqueid++;
+         snprintf(tmp2, PATH_MAX-1, "%s_%d.pnd", install, uniqueid);
       }
+      strcpy(install, tmp2);
+   } else {
+      /* join filename to install path */
+      strncat(install, "/", PATH_MAX-1);
+      strncat(install, filename, PATH_MAX-1);
+   }
+
+   /* backup? */
+   if (oldp && (handle->flags & PNDMAN_HANDLE_BACKUP))
+      _pndman_backup(oldp, handle->device);
+   else
+   /* remove old pnd if no backup specified and path differs */
+   if (oldp && strcmp(oldp->path, install))
+      unlink(oldp->path);
 
    /* remove old pnd from repo */
    if (handle->pnd->update)
@@ -323,10 +422,6 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    pnd = _pndman_repository_new_pnd_check(handle->pnd->id, install, &handle->pnd->version, local);
    if (!pnd) return RETURN_FAIL;
    _pndman_copy_pnd(pnd, handle->pnd);
-
-   /* remove old pnd if it's in other path */
-   if (oldp && strcmp(install, oldp->path))
-      unlink(oldp->path);
 
    DEBUGP(3, "install: %s\n", install);
    DEBUGP(3, "from: %s\n", tmp);

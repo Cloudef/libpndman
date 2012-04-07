@@ -49,6 +49,7 @@ typedef enum pndman_handle_flags
    PNDMAN_HANDLE_INSTALL_DESKTOP = 0x008,
    PNDMAN_HANDLE_INSTALL_MENU    = 0x010,
    PNDMAN_HANDLE_INSTALL_APPS    = 0x020,
+   PNDMAN_HANDLE_BACKUP          = 0x040,
 } pndman_handle_flags;
 
 /* \brief type enum for version struct */
