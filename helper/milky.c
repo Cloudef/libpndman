@@ -615,7 +615,7 @@ typedef enum _HELPER_FLAGS
    A_APPS      = 0x0040000, A_NOSAVE     = 0x0080000,
    GB_NOMERGE  = 0x0100000, GB_NOCONFIRM = 0x0200000,
    GB_NEEDED   = 0x0400000, GB_NOBAR     = 0x0800000,
-   A_BACKUP    = 0x1000000,
+   A_BACKUP    = 0x1000000, A_ALL        = 0x2000000,
 } _HELPER_FLAGS;
 typedef _HELPER_FLAGS (*_PARSE_FUNC)(char, char*, int*, _USR_DATA*); /* function prototype for parsing flags */
 
@@ -641,7 +641,8 @@ static int needtarget(unsigned int flags)
 {
    return  (!(flags & OP_CLEAN)  && !isquery(flags)       &&
             !(flags & A_REFRESH) && !(flags & OP_UPGRADE) &&
-            !(flags & A_UPGRADE) && !(flags & OP_CRAWL));
+            !(flags & A_UPGRADE) && !(flags & OP_CRAWL)   &&
+            !(flags & A_ALL));
 }
 
 /* set destination */
@@ -735,6 +736,7 @@ static void parsearg(char *arg, char *narg, int *skipn, _USR_DATA *data)
    if (!strcmp(arg, "--nobar"))        _PASSFLG(GB_NOBAR);     /* nobar option */
    if (!strcmp(arg, "--nosave"))       _PASSFLG(A_NOSAVE);     /* nosave option */
    if (!strcmp(arg, "--backup"))       _PASSFLG(A_BACKUP);     /* backup option */
+   if (!strcmp(arg, "--all"))          _PASSFLG(A_ALL);        /* all option */
    if (arg[0] != '-')                  _PASSTHS(_addtarget);   /* not argument */
    parse(getglob, _G_ARG, arg, narg, skipn, data);
    if (!hasop(data->flags))         parse(getop, _OP_ARG, arg, narg, skipn, data);
@@ -2056,6 +2058,7 @@ static int processflags(_USR_DATA *data)
    _USR_TARGET       *t;
    pndman_device     *d;
    pndman_repository *r;
+   pndman_package    *p;
    int ret = RETURN_FAIL;
    assert(data);
 
@@ -2093,6 +2096,7 @@ static int processflags(_USR_DATA *data)
       if ((data->flags & A_UPGRADE))   puts("->UPGRADE");
       if ((data->flags & A_NOSAVE))    puts("->NOSAVE");
       if ((data->flags & A_BACKUP))    puts("->BACKUP");
+      if ((data->flags & A_ALL))       puts("->ALL");
       _R();
       if ((data->flags & A_MENU))      puts("[MENU]");
       if ((data->flags & A_DESKTOP))   puts("[DESKTOP]");
@@ -2121,6 +2125,17 @@ static int processflags(_USR_DATA *data)
       for (r = data->rlist; r; r = r->next) pndman_read_from_device(r, d);
    pndman_repository_check_local(data->rlist);  /* check for removed/bad pnds */
    pndman_check_updates(data->rlist);           /* check for updates */
+
+   /* targetting everything */
+   if ((data->flags & A_ALL) && data->rlist->next) {
+      for (r = data->rlist->next; r; r = r->next)
+         for (p = r->pnd; p; p = p->next)
+            addtarget(p->id, &data->tlist);
+
+      if (!data->tlist) {
+         _R(); printf(_NO_X_SPECIFIED, "targets"); _N();
+      }
+   }
 
    /* logic */
    if ((data->flags & OP_VERSION))        ret = version(data);
