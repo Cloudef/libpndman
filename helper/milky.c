@@ -1969,6 +1969,7 @@ static int help(_USR_DATA *data)
       _W(); printf("  --nomerge   : Do full repository synchorization.\n");
       _W(); printf("  --needed    : Don't reinstall up-to-date PND's.\n");
       _W(); printf("  --nobar     : Don't show progress bar.\n");
+      _W(); printf("  --all       : Target everything.\n");
    } else if ((data->flags & OP_SYNC)) {
       NEWLINE();
       _G(); printf("~ Sync arguments:\n");
