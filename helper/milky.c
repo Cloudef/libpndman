@@ -43,6 +43,9 @@ char _USE_COLORS  = 1;
 /* verbose level? */
 char _VERBOSE     = 0;
 
+/* max concurrent downloads? */
+char _QUEUE       = 5;
+
 typedef enum _RETURN_STATUS
 {
    RETURN_FAIL    = -1,
@@ -811,6 +814,16 @@ static int _nomerge(char **argv, int argc, _USR_DATA *data)
    return RETURN_OK;
 }
 
+/* configuration wrapper for setting queue limit */
+static int _queue(char **argv, int argc, _USR_DATA *data)
+{
+   assert(data);
+   if (!argc) return RETURN_FAIL;
+   if ((_QUEUE = strtol(argv[0], (char **) NULL, 10)) <= 0)
+      _QUEUE = 5;
+   return RETURN_OK;
+}
+
 /*   ____ ___  _   _ _____ ___ ____
  *  / ___/ _ \| \ | |  ___|_ _/ ___|
  * | |  | | | |  \| | |_   | | |  _
@@ -840,6 +853,7 @@ static _CONFIG_KEYS _CONFIG_KEY[] = {
    { "ignore",                _addignore },
    { "destination",           _setdest },
    { "nomerge",               _nomerge },
+   { "queue",                 _queue },
    { "<this ends the list>",  NULL },
 };
 
@@ -909,6 +923,8 @@ static int mkconfig(const char *path)
    fputs("# destination MENU DESKTOP APPS\n", f);
    fputs("\n# To disable repository merges when synchorizing, use 'nomerge' key\n", f);
    fputs("# nomerge\n", f);
+   fputs("\n# Queue limit for concurrent downloads\n", f);
+   fputs("# queue 5\n", f);
    fputs("\n# milkshake's repo is enabled by default\n", f);
    fputs("repository \"http://repo.openpandora.org/includes/get_data.php\"\n",f );
    fclose(f);
@@ -1645,38 +1661,49 @@ static int targetperform(_USR_DATA *data)
    _USR_TARGET *t;
    float tdl, ttdl; /* total download, total total to download */
    int ret;
-   unsigned int c = 0;
+   unsigned int c = 0, count = 0;
    assert(data);
 
    for (t = data->tlist; t; t = t->next) ++c;
-   pndman_handle handle[c]; t = data->tlist; char done[c];
+   pndman_handle handle[c]; t = data->tlist; char done[c], start[c];
    for (c = 0; t; t = t->next) {
       pndman_handle_init(strlen(t->pnd->id)?t->pnd->id:"notitle", &handle[c]);
       handle[c].pnd     = t->pnd;
       handle[c].device  = ((data->flags & OP_UPGRADE) || (data->flags & A_UPGRADE))?data->dlist:data->root;
       handle[c].flags   = handleflagsfromflags(data->flags);
       done[c]           = 0;
-      if (pndman_handle_perform(&handle[c]) != RETURN_OK)
-         handle[c].flags = 0;
+      start[c]          = 0;
+      if (c<_QUEUE) {
+         if (pndman_handle_perform(&handle[c]) != RETURN_OK)
+            handle[c].flags = 0;
+         start[c] = 1;
+      }
+      ttdl += t->pnd->size;
       ++c;
    }
 
-   tdl = 0; ttdl = 0;
+   tdl = 0; /* ttdl = 0; */
    while ((ret = pndman_download()) > 0) {
       if (!(data->flags & GB_NOBAR)) progressbar(tdl, ttdl);
-      t = data->tlist; tdl = 0; ttdl = 0;
+      t = data->tlist; tdl = 0; /* ttdl = 0; */
       for (c = 0; t; t = t->next) {
          if (!handle[c].flags) { ++c; continue; } /* failed perform */
          tdl  += (float)handle[c].progress.download;
-         ttdl += (float)handle[c].progress.total_to_download;
+         /* ttdl += (float)handle[c].progress.total_to_download; */
          if (handle[c].progress.done && !done[c]) {
             if (!(data->flags & GB_NOBAR)) NEWLINE();
             /* commit to repository */
             commithandle(data, &handle[c]);
             done[c] = 1;
          }
+         if (count < _QUEUE && !start[c]) {
+            if (pndman_handle_perform(&handle[c]) != RETURN_OK)
+               handle[c].flags = 0;
+            start[c] = 1;
+         }
          ++c;
       }
+      count = c;
       usleep(1000);
    }
 
