@@ -9,8 +9,8 @@
 #define _PNDMAN_WRN_BAD_USE "Bad usage of function: %s"
 
 /* debug macros, takes verbose level and printf syntax */
-#define DEBUG(l,x)      if (l <= pndman_get_verbose()) { printf(DEBSYN); puts(x); }
-#define DEBUGP(l,x,...) if (l <= pndman_get_verbose()) { printf(DEBSYN); printf(x,##__VA_ARGS__); }
+#define DEBUG(l,x)      { _pndman_debug_hook(__func__,l,x); if (l <= pndman_get_verbose()) { printf(DEBSYN); puts(x); } }
+#define DEBUGP(l,x,...) { _pndman_debug_hookp(__func__,l,x,##__VA_ARGS__); if (l <= pndman_get_verbose()) { printf(DEBSYN); printf(x,##__VA_ARGS__); } }
 
 /* failure functions, pndman_get_error uses these in future */
 #define DEBFAIL(x)      { _pndman_set_error(x); DEBUG(2,x); }
@@ -59,6 +59,9 @@ int _strnupcmp(const char *hay, const char *needle, size_t len);
 int pndman_get_verbose();
 void _pndman_set_error(const char *err);
 void _pndman_set_errorp(const char *err, ...);
+void _pndman_debug_hook(const char *function, int verbose_level, const char *str);
+void _pndman_debug_hookp(const char *function, int verbose_level, const char *fmt, ...);
+
 
 #ifdef __cplusplus
 }

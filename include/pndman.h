@@ -34,6 +34,9 @@
 extern "C" {
 #endif
 
+/* \brief debug hook typedef */
+typedef void (*PNDMAN_DEBUG_HOOK_FUNC)(const char *function, int verbose_level, const char *str);
+
 /* \brief flags for sync request to determite what to do */
 typedef enum pndman_sync_flags
 {
@@ -311,6 +314,9 @@ const char* pndman_get_md5(pndman_package *pnd);
 /* \brief set verbose level of pndman
  * (prints to stdout) */
 void pndman_set_verbose(int level);
+
+/* \brief Set debug hook function */
+void pndman_set_debug_hook(PNDMAN_DEBUG_HOOK_FUNC func);
 
 /* \brief get current verbose level */
 int pndman_get_verbose();

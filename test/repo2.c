@@ -4,12 +4,18 @@
 #include <unistd.h>
 #include "pndman.h"
 
+static void sample_hook(const char *function, int verbose_level, const char *str)
+{
+   printf("[%d] %s :: %s\n", verbose_level, function, str);
+}
+
 int main()
 {
    pndman_repository *repo, *r;
    int c = 0;
 
-   pndman_set_verbose(3);
+   /* pndman_set_verbose(3); */ /* use the hook below instead */
+   pndman_set_debug_hook(sample_hook);
 
    repo = pndman_repository_init();
    pndman_repository_add("http://repo.openpandora.org/includes/get_data.php", repo);

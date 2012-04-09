@@ -9,9 +9,17 @@
 #include "repository.h"
 #include "version.h"
 
+/* \brief debug hook typedef */
+typedef void (*PNDMAN_DEBUG_HOOK_FUNC)(const char *function, int verbose_level, const char *str);
+
 /* \brief internal verbose level */
 static int  _PNDMAN_VERBOSE = 0;
+
+/* \brief internal error string */
 static char _PNDMAN_ERROR[PNDMAN_ERR_LEN] = { 0 };
+
+/* \brief internal debug hook function */
+static PNDMAN_DEBUG_HOOK_FUNC _PNDMAN_DEBUG_HOOK = NULL;
 
 /* strings */
 static const char *TMP_FILE_CREATE = "Created temporary file";
@@ -100,6 +108,37 @@ void _pndman_set_errorp(const char *err, ...)
    va_end(args);
 }
 
+/* \brief handle debug hook for client */
+void _pndman_debug_hook(const char *function, int verbose_level, const char *str)
+{
+   if (!_PNDMAN_DEBUG_HOOK) return;
+
+   /* pass to client */
+   _PNDMAN_DEBUG_HOOK(function, verbose_level, str);
+}
+
+/* \brief handle debug hook for client (printf syntax) */
+void _pndman_debug_hookp(const char *function, int verbose_level, const char *fmt, ...)
+{
+   va_list args;
+   char buffer[LINE_MAX];
+   size_t len;
+
+   if (!_PNDMAN_DEBUG_HOOK) return;
+   memset(buffer, 0, LINE_MAX);
+
+   va_start(args, fmt);
+   vsnprintf(buffer, LINE_MAX, fmt, args);
+   va_end(args);
+
+   /* strip last newline */
+   len = strlen(buffer);
+   if (buffer[len-1] == '\n') buffer[len-1] = 0;
+
+   /* pass to client */
+   _PNDMAN_DEBUG_HOOK(function, verbose_level, buffer);
+}
+
 /* API */
 
 /* \brief Set verbose level of library
@@ -107,6 +146,12 @@ void _pndman_set_errorp(const char *err, ...)
 void pndman_set_verbose(int verbose)
 {
    _PNDMAN_VERBOSE = verbose;
+}
+
+/* \brief Set debug hook function */
+void pndman_set_debug_hook(PNDMAN_DEBUG_HOOK_FUNC func)
+{
+   _PNDMAN_DEBUG_HOOK = func;
 }
 
 /* \brief return current verbose level,
