@@ -148,10 +148,21 @@ static int _file_exist(char *path)
 
    if ((f = fopen(path, "r"))) {
       fclose(f);
-      DEBUGP(1, "CONFLICT: %s\n", path);
       return RETURN_TRUE;
    }
 
+   return RETURN_FALSE;
+}
+
+/* \brief check conflicts */
+static int _conflict(char *id, char *path, pndman_repository *local)
+{
+   pndman_package *pnd;
+   for (pnd = local->pnd; pnd; pnd = pnd->next)
+      if (strcmp(id,pnd->id) && !strcmp(path,pnd->path)) {
+         DEBUGP(3, "CONFLICT: %s - %s\n", pnd->id, pnd->path);
+         return RETURN_TRUE;
+      }
    return RETURN_FALSE;
 }
 
@@ -389,11 +400,11 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    strncat(tmp2, filename, PATH_MAX-1);
 
    /* if there is conflict use pnd id as filename */
-   if ((!oldp || strcmp(oldp->path, tmp2)) && _file_exist(tmp2)) {
+   if ((!oldp || _conflict(handle->pnd->id, tmp2, local)) && _file_exist(tmp2)) {
       strncat(install, "/", PATH_MAX-1);
       strncat(install, handle->pnd->id, PATH_MAX-1);
       snprintf(tmp2, PATH_MAX-1, "%s.pnd", install);
-      while (_file_exist(tmp2)) {
+      while (_file_exist(tmp2) && strcmp(tmp2, oldp?oldp->path:"/dev/null")) {
          uniqueid++;
          snprintf(tmp2, PATH_MAX-1, "%s_%d.pnd", install, uniqueid);
       }
