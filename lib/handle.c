@@ -23,7 +23,6 @@ static const char *MD5_FAIL         = "MD5 check fail for %s\n";
 static const char *MD5_DIFF         = "MD5 differ, but forcing anyways.\n";
 static const char *MV_FAIL          = "Failed to move from %s, to %s\n";
 static const char *RM_FAIL          = "Failed to remove file %s\n";
-static const char *BACKUP_EXT_FAIL  = "Backup failed with wrong PND extension: %s\n";
 static const char *BACKUP_DIR_FAIL  = "Failed to create backup directory to device: %s\n";
 static const char *CURLM_FAIL       = "Failed to init internal CURLM";
 static const char *HANDLE_NO_PND    = "Handle has no PND!";
