@@ -56,7 +56,7 @@ int _strnupcmp(const char *hay, const char *needle, size_t len)
 {
    size_t i;
    for (i = 0; i != len; ++i)
-      if (hay[i] != needle[i]) return RETURN_TRUE;
+      if (toupper(hay[i]) != toupper(needle[i])) return RETURN_TRUE;
    return RETURN_FALSE;
 }
 
