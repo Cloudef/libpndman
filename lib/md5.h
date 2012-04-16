@@ -5,6 +5,9 @@
 extern "C" {
 #endif
 
+/* \brief get md5 from char buffer */
+char* _pndman_md5_buf(char *buffer, size_t size);
+
 /* \brief get md5 of file, remember to free the result */
 char* _pndman_md5(char *file);
 
