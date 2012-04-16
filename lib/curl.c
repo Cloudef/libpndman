@@ -42,17 +42,19 @@ size_t curl_write_request(void *data, size_t size, size_t nmemb, curl_request *r
 int curl_init_request(curl_request *request)
 {
    assert(request);
-   if (request->curl)   curl_easy_reset(request->curl);
-   else request->curl = curl_easy_init();
-   if (!request->curl) return RETURN_FAIL;
 
-   request->result.data = malloc(MAX_REQUEST);
+   request->result.pos = 0;
+   if (!request->result.data)
+      request->result.data = malloc(MAX_REQUEST);
    if (!request->result.data) {
       curl_free_request(request);
       return RETURN_FAIL;
    }
    memset(request->result.data, 0, MAX_REQUEST);
-   request->result.pos = 0;
+
+   if (request->curl)   curl_easy_reset(request->curl);
+   else request->curl = curl_easy_init();
+   if (!request->curl) return RETURN_FAIL;
 
    return RETURN_OK;
 }
@@ -61,8 +63,8 @@ int curl_init_request(curl_request *request)
 void curl_free_request(curl_request *request)
 {
    assert(request);
-   if (request->curl)         curl_easy_cleanup(request->curl);
    if (request->result.data)  free(request->result.data);
+   if (request->curl)         curl_easy_cleanup(request->curl);
    request->curl        = NULL;
    request->result.data = NULL;
    request->result.pos  = 0;
