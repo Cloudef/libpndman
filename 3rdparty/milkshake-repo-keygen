@@ -1,0 +1,57 @@
+#!/bin/bash
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+#  MA 02110-1301, USA.
+
+# File:     milkshake-repo-keygen
+# Author:   zLouD
+# Version:  2012-04-16
+
+function generateKey () {                               # $1 = password
+    if ! [ "$1" ]; then                                 # $2 = username
+        echo -e "No password supplied. Aborting.\n"\
+"Try '$0 --help' for more information.\n" >&2
+        exit 1
+    else
+        local PASSWORD_HASH=$(echo -n "$1" | md5sum - | awk '{print $1}')
+    fi
+
+    if ! [ "$2" ]; then
+        echo -e "No username supplied. Using current user.\n" >&2
+        local USERNAME=$(whoami)
+    else
+        local USERNAME="$2"
+    fi
+
+    local KEY_URL="http://repo.openpandora.org/includes/get_key.php"
+    local HTTP_POST_DATA="pass=${PASSWORD_HASH}&user=${USERNAME}&ak_submit=generate"
+
+    curl -s --data ${HTTP_POST_DATA} ${KEY_URL} >&1
+    echo
+}
+
+case "$1" in
+    -h|--help)
+        echo -e "Usage: $0 <password> [username]\n
+\tpassword\tYour password at repository.
+\tusername\t[OPTIONAL] Your username at repository.
+\t\t\tIf not supplied current user will be used.
+\tA new key will be returned on success. They key is a MD5 hash.
+\tOn failure nothing will be returned."
+        exit 1
+    ;;
+    *)
+        generateKey "$1" "$2"
+    ;;
+esac
