@@ -40,6 +40,25 @@ static size_t _pndman_bytes2hex(const unsigned char *bytes, size_t numBytes,
    return bytes - bytesStart;
 }
 
+/* \brief get md5 from char buffer */
+char* _pndman_md5_buf(char *buffer, size_t size)
+{
+   MD5_CTX c;
+   char *md5;
+   unsigned char digest[MD5_DIGEST_LENGTH];
+
+   MD5_Init(&c);
+   MD5_Update(&c, buffer, size);
+   MD5_Final(digest, &c);
+
+   md5 = malloc(MD5_DIGEST_LENGTH * 2 + 1);
+   if (!md5) return NULL;
+
+   memset(md5, 0, MD5_DIGEST_LENGTH * 2 + 1);
+   _pndman_bytes2hex(digest, MD5_DIGEST_LENGTH, md5, MD5_DIGEST_LENGTH * 2 + 1);
+   return md5;
+}
+
 /* \brief get md5 of file, remember to free the result */
 char* _pndman_md5(char *file)
 {
