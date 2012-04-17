@@ -290,9 +290,8 @@ int _pndman_json_process(pndman_repository *repo, FILE *data)
    /* flush and reset to beginning */
    fflush(data);
    fseek(data, 0L, SEEK_SET);
-   root = json_loadf(data, 0, &error);
-   if (!root) {
-      DEBFAILP(BAD_JSON, repo->url);
+   if (!(root = json_loadf(data, 0, &error))) {
+      DEBFAIL(BAD_JSON, repo->url);
       return RETURN_FAIL;
    }
 
@@ -302,9 +301,9 @@ int _pndman_json_process(pndman_repository *repo, FILE *data)
          packages = json_object_get(root, "packages");
          if (json_is_array(packages))
             _pndman_json_process_packages(packages, repo);
-         else DEBUGP(2, NO_P_ARRAY, repo->url);
+         else DEBUG(2, NO_P_ARRAY, repo->url);
       }
-   } else DEBUGP(2, NO_R_HEADER, repo->url);
+   } else DEBUG(2, NO_R_HEADER, repo->url);
    json_decref(root);
    return RETURN_OK;
 }

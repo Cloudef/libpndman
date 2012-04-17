@@ -46,10 +46,8 @@ int curl_init_request(curl_request *request)
    request->result.pos = 0;
    if (!request->result.data)
       request->result.data = malloc(MAX_REQUEST);
-   if (!request->result.data) {
-      curl_free_request(request);
-      return RETURN_FAIL;
-   }
+   if (!request->result.data)
+      goto fail;
    memset(request->result.data, 0, MAX_REQUEST);
 
    if (request->curl)   curl_easy_reset(request->curl);
@@ -57,6 +55,10 @@ int curl_init_request(curl_request *request)
    if (!request->curl) return RETURN_FAIL;
 
    return RETURN_OK;
+
+fail:
+   curl_free_request(request);
+   return RETURN_FAIL;
 }
 
 /* \brief free internal curl request */

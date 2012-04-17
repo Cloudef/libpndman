@@ -22,14 +22,8 @@ static pndman_repository* _pndman_repository_init()
       return NULL;
    }
 
-   memset(repo->url,       0, REPO_URL);
-   memset(repo->name,      0, REPO_NAME);
-   memset(repo->updates,   0, REPO_URL);
+   memset(repo, 0, sizeof(pndman_repository));
    strcpy(repo->version, "1.0");
-   repo->timestamp = 0;
-   repo->pnd  = NULL;
-   repo->next = NULL;
-   repo->prev = NULL;
    return repo;
 }
 
@@ -94,13 +88,13 @@ pndman_package* _pndman_repository_new_pnd_check(char *id, char *path, pndman_ve
                   if (!(pni = pni->next_installed = _pndman_new_pnd()))
                      return NULL;
                   pni->next = pnd->next; /* assign parent's next to next */
-                  DEBUGP(3, "Older : %s\n", path);
+                  DEBUG(3, "Older : %s\n", path);
                } else {
                   /* new pnd is newer, assign it to first */
                   if (!(pni = _pndman_new_pnd())) return NULL;
                   pr->next = pni; pni->next_installed = pnd; /* assign nexts */
                   pni->next = pnd->next;
-                  DEBUGP(3, "Newer : %s\n", path);
+                  DEBUG(3, "Newer : %s\n", path);
                }
                strncpy(pni->repository, repo->url, PND_STR-1);
                return pni;
@@ -290,7 +284,7 @@ pndman_repository* pndman_repository_init()
 pndman_repository* pndman_repository_add(const char *url, pndman_repository *repo)
 {
    if (!repo) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "repo list pointer is NULL");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "repo list pointer is NULL");
       return NULL;
    }
    return _pndman_repository_add(url, repo);
@@ -300,7 +294,7 @@ pndman_repository* pndman_repository_add(const char *url, pndman_repository *rep
 void pndman_repository_clear(pndman_repository *repo)
 {
    if (!repo) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "repo pointer is NULL");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "repo pointer is NULL");
       return;
    }
    _pndman_repository_free_pnd_all(repo);
@@ -311,7 +305,7 @@ void pndman_repository_clear(pndman_repository *repo)
 int pndman_repository_check_local(pndman_repository *local)
 {
    if (!local) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "local pointer is NULL");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "local pointer is NULL");
       return 0;
    }
    local = _pndman_repository_first(local); /* make fool proof */
@@ -322,7 +316,7 @@ int pndman_repository_check_local(pndman_repository *local)
 pndman_repository* pndman_repository_free(pndman_repository *repo)
 {
    if (!repo) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "repo pointer is NULL");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "repo pointer is NULL");
       return NULL;
    }
    return _pndman_repository_free(repo);
@@ -332,7 +326,7 @@ pndman_repository* pndman_repository_free(pndman_repository *repo)
 int pndman_repository_free_all(pndman_repository *repo)
 {
    if (!repo) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "repo pointer is NULL");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "repo pointer is NULL");
       return RETURN_FAIL;
    }
    return _pndman_repository_free_all(repo);

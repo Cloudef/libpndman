@@ -47,7 +47,7 @@ int _pndman_vercmp(pndman_version *lp, pndman_version *rp)
       ret = RETURN_TRUE;
 
    if (ret == RETURN_TRUE) {
-      DEBUGP(3, "L: %d.%d.%d.%d < R: %d.%d.%d.%d\n",
+      DEBUG(3, "L: %d.%d.%d.%d < R: %d.%d.%d.%d\n",
             major, minor, release, build,
             major2, minor2, release2, build2);
    }
@@ -58,10 +58,7 @@ int _pndman_vercmp(pndman_version *lp, pndman_version *rp)
 /* \brief Init version struct */
 static void _pndman_init_version(pndman_version *ver)
 {
-   memset(ver->major,  0, PND_VER);
-   memset(ver->minor,  0, PND_VER);
-   memset(ver->release,0, PND_VER);
-   memset(ver->build,  0, PND_VER);
+   memset(ver, 0, sizeof(pndman_version));
    strcpy(ver->major,   "0");
    strcpy(ver->minor,   "0");
    strcpy(ver->release, "0");
@@ -87,10 +84,7 @@ static void _pndman_copy_version(pndman_version *dst, pndman_version *src)
 /* \brief Init exec struct */
 static void _pndman_init_exec(pndman_exec *exec)
 {
-   memset(exec->startdir,   0, PND_PATH);
-   memset(exec->command,    0, PND_STR);
-   memset(exec->arguments,  0, PND_STR);
-
+   memset(exec, 0, sizeof(pndman_exec));
    exec->standalone  = 1;
    exec->background  = 0;
    exec->x11         = PND_EXEC_IGNORE;
@@ -114,9 +108,7 @@ static void _pndman_copy_exec(pndman_exec *dst, pndman_exec *src)
 /* \brief Init author struct */
 static void _pndman_init_author(pndman_author *author)
 {
-   memset(author->name,    0, PND_NAME);
-   memset(author->website, 0, PND_STR);
-   memset(author->email,   0, PND_STR);
+   memset(author, 0, sizeof(pndman_author));
 }
 
 /* \brief Copy author struct */
@@ -133,9 +125,7 @@ static void _pndman_copy_author(pndman_author *dst, pndman_author *src)
 /* \brief Init info struct */
 static void _pndman_init_info(pndman_info *info)
 {
-   memset(info->name,   0, PND_NAME);
-   memset(info->type,   0, PND_SHRT_STR);
-   memset(info->src,    0, PND_PATH);
+   memset(info, 0, sizeof(pndman_info));
 }
 
 /* \brief Copy info struct */
@@ -199,10 +189,7 @@ static pndman_license* _pndman_license_new(void)
    }
 
    /* init */
-   memset(l->name,            0, PND_SHRT_STR);
-   memset(l->url,             0, PND_STR);
-   memset(l->sourcecodeurl,   0, PND_STR);
-   l->next = NULL;
+   memset(l, 0, sizeof(pndman_license));
 
    return l;
 }
@@ -239,8 +226,7 @@ static pndman_previewpic* _pndman_previewpic_new(void)
    }
 
    /* init */
-   memset(p->src,   0, PND_PATH);
-   p->next = NULL;
+   memset(p, 0, sizeof(pndman_previewpic));
 
    return p;
 }
@@ -275,10 +261,7 @@ static pndman_association* _pndman_association_new(void)
    }
 
    /* init */
-   memset(a->name,            0, PND_STR);
-   memset(a->filetype,        0, PND_SHRT_STR);
-   memset(a->exec,            0, PND_STR);
-   a->next = NULL;
+   memset(a, 0, sizeof(pndman_association));
 
    return a;
 }
@@ -315,9 +298,7 @@ static pndman_category* _pndman_category_new(void)
    }
 
    /* init */
-   memset(c->main,   0, PND_SHRT_STR);
-   memset(c->sub,    0, PND_SHRT_STR);
-   c->next = NULL;
+   memset(c, 0, sizeof(pndman_category));
 
    return c;
 }
@@ -354,9 +335,7 @@ static pndman_application* _pndman_new_application(void)
    }
 
    /* NULL */
-   memset(app->id,      0, PND_ID);
-   memset(app->appdata, 0, PND_PATH);
-
+   memset(app, 0, sizeof(pndman_application));
    strcpy(app->icon, PND_DEFAULT_ICON);
 
    _pndman_init_author(&app->author);
@@ -364,16 +343,6 @@ static pndman_application* _pndman_new_application(void)
    _pndman_init_version(&app->version);
    _pndman_init_exec(&app->exec);
    _pndman_init_info(&app->info);
-
-   app->title        = NULL;
-   app->description  = NULL;
-   app->category     = NULL;
-   app->previewpic   = NULL;
-   app->license      = NULL;
-   app->association  = NULL;
-   app->frequency    = 0;
-
-   app->next = NULL;
 
    return app;
 }
@@ -427,34 +396,10 @@ pndman_package* _pndman_new_pnd(void)
    }
 
    /* NULL */
-   memset(pnd->path,    0, PND_PATH);
-   memset(pnd->id,      0, PND_ID);
-   memset(pnd->info,    0, PND_INFO);
-   memset(pnd->md5,     0, PND_MD5);
-   memset(pnd->url,     0, PND_STR);
-   memset(pnd->vendor,  0, PND_NAME);
-   memset(pnd->repository, 0, PND_STR);
-   memset(pnd->mount,  0, PND_PATH);
-
-   //memset(pnd->icon, 0, PND_PATH-1);
+   memset(pnd, 0, sizeof(pndman_package));
    strcpy(pnd->icon, PND_DEFAULT_ICON);
-
    _pndman_init_author(&pnd->author);
    _pndman_init_version(&pnd->version);
-
-   pnd->app             = NULL;
-   pnd->title           = NULL;
-   pnd->description     = NULL;
-   pnd->license         = NULL;
-   pnd->previewpic      = NULL;
-   pnd->category        = NULL;
-
-   pnd->size            = 0;
-   pnd->modified_time   = 0;
-   pnd->rating          = 0;
-   pnd->update          = NULL;
-   pnd->next            = NULL;
-   pnd->next_installed  = NULL;
 
    return pnd;
 }
@@ -983,8 +928,8 @@ const char* pndman_get_md5(pndman_package *pnd)
    if (!pnd) return NULL;
 
    /* get md5 */
-   md5 = _pndman_md5(pnd->path);
-   if (!md5) return NULL;
+   if (!(md5 = _pndman_md5(pnd->path)))
+      return NULL;
 
    /* store it in pnd */
    strncpy(pnd->md5, md5, PND_MD5);

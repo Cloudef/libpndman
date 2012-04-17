@@ -73,19 +73,23 @@ static int _pndman_move_file(char* src, char* dst)
    /* remove dst, if exists */
    if ((f = fopen(dst, "r"))) {
       fclose(f);
-      if (unlink(dst) != 0) {
-         DEBFAILP(RM_FAIL, dst);
-         return RETURN_FAIL;
-      }
+      if (unlink(dst) != 0)
+         goto rm_fail;
    }
 
    /* rename */
-   if (rename(src, dst) != 0) {
-      DEBFAILP(MV_FAIL, src, dst);
-      return RETURN_FAIL;
-   }
+   if (rename(src, dst) != 0)
+      goto mv_fail;
 
    return RETURN_OK;
+
+rm_fail:
+   DEBFAIL(RM_FAIL, dst);
+   goto fail;
+mv_fail:
+   DEBFAIL(MV_FAIL, src, dst);
+fail:
+   return RETURN_FAIL;
 }
 
 /* \brief get backup directory */
@@ -118,7 +122,7 @@ static int _pndman_backup(pndman_package *pnd, pndman_device *device)
 
    /* get backup directory */
    if (_get_backup_dir(bckdir, device) != RETURN_OK) {
-      DEBFAILP(BACKUP_DIR_FAIL, device);
+      DEBFAIL(BACKUP_DIR_FAIL, device);
       return RETURN_FAIL;
    }
 
@@ -136,7 +140,7 @@ static int _pndman_backup(pndman_package *pnd, pndman_device *device)
    strncat(tmp, pnd->version.build, PATH_MAX-1);
    strncat(tmp, ".pnd", PATH_MAX-1);
 
-   DEBUGP(3, "backup: %s -> %s\n", pnd->path, tmp);
+   DEBUG(3, "backup: %s -> %s\n", pnd->path, tmp);
    return _pndman_move_file(pnd->path, tmp);
 }
 
@@ -159,7 +163,7 @@ static int _conflict(char *id, char *path, pndman_repository *local)
    pndman_package *pnd;
    for (pnd = local->pnd; pnd; pnd = pnd->next)
       if (strcmp(id,pnd->id) && !strcmp(path,pnd->path)) {
-         DEBUGP(3, "CONFLICT: %s - %s\n", pnd->id, pnd->path);
+         DEBUG(3, "CONFLICT: %s - %s\n", pnd->id, pnd->path);
          return RETURN_TRUE;
       }
    return RETURN_FALSE;
@@ -193,65 +197,45 @@ static int _pndman_handle_download(pndman_handle *handle)
    char *appdata;
    pndman_device *d;
 
-   if (!handle->pnd) {
-      DEBFAIL(HANDLE_NO_PND);
-      return RETURN_FAIL;
-   }
-   if (!strlen(handle->pnd->url)) {
-      DEBFAIL(HANDLE_PND_URL);
-      return RETURN_FAIL;
-   }
-   if (!handle->device) {
-      if (!handle->pnd->update) {
-         DEBFAIL(HANDLE_NO_DEV);
-      } else {
-         DEBFAIL(HANDLE_NO_DEV_UP);
-      }
-      return RETURN_FAIL;
-   }
+   if (!handle->pnd)
+      goto handle_no_pnd;
+
+   if (!strlen(handle->pnd->url))
+      goto handle_pnd_url;
+
+   if (!handle->device)
+      goto handle_no_dev;
 
    if (!handle->pnd->update                             &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_MENU)    &&
-       !(handle->flags & PNDMAN_HANDLE_INSTALL_APPS)) {
-      DEBFAIL(HANDLE_NO_DST);
-      return RETURN_FAIL;
-   }
+       !(handle->flags & PNDMAN_HANDLE_INSTALL_APPS))
+      goto handle_no_dst;
 
    if (handle->pnd->update &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_MENU)    &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_APPS)) {
-      if (!handle->pnd->update || !strlen(handle->pnd->update->path)) {
-         DEBFAIL(HANDLE_WTF);
-         return RETURN_FAIL; /* should not happen really */
-      }
+      if (!handle->pnd->update || !strlen(handle->pnd->update->path))
+         goto handle_wtf;
       for (d = _pndman_device_first(handle->device); d && strcmp(d->mount, handle->pnd->update->mount); d = d->next);
-      if (!d) return RETURN_FAIL; /* can't find installed device */
+      if (!d) goto fail; /* can't find installed device */
       handle->device = d; /* assign device, old pnd is installed on */
    }
 
    /* reset curl */
-   if (curl_init_request(&handle->request) != RETURN_OK) {
-      DEBFAIL(CURL_REQ_FAIL);
-      return RETURN_FAIL;
-   }
+   if (curl_init_request(&handle->request) != RETURN_OK)
+      goto curl_req_fail;
 
    /* check appdata */
    appdata = _pndman_device_get_appdata(handle->device);
-   if (!appdata || !strlen(appdata)) {
-      curl_free_request(&handle->request);
-      return RETURN_FAIL;
-   }
+   if (!appdata || !strlen(appdata))
+      goto fail;
 
    /* open file to write */
    snprintf(tmp_path, PATH_MAX-1, "%s/%p.tmp", appdata, handle);
-   handle->file = fopen(tmp_path, "wb");
-   if (!handle->file) {
-      curl_free_request(&handle->request);
-      DEBFAILP(WRITE_FAIL, tmp_path);
-      return RETURN_FAIL;
-   }
+   if (!(handle->file = fopen(tmp_path, "wb")))
+      goto write_fail;
 
    /* set download URL */
    curl_easy_setopt(handle->request.curl, CURLOPT_URL,     handle->pnd->url);
@@ -269,6 +253,34 @@ static int _pndman_handle_download(pndman_handle *handle)
    curl_multi_add_handle(_pndman_curlm, handle->request.curl);
 
    return RETURN_OK;
+
+handle_no_pnd:
+   DEBFAIL(HANDLE_NO_PND);
+   goto fail;
+handle_pnd_url:
+   DEBFAIL(HANDLE_PND_URL);
+   goto fail;
+handle_no_dev:
+   if (!handle->pnd->update) {
+      DEBFAIL(HANDLE_NO_DEV);
+   } else {
+      DEBFAIL(HANDLE_NO_DEV_UP);
+   }
+   goto fail;
+handle_no_dst:
+   DEBFAIL(HANDLE_NO_DST);
+   goto fail;
+handle_wtf:
+   DEBFAIL(HANDLE_WTF);
+   goto fail;
+curl_req_fail:
+   DEBFAIL(CURL_REQ_FAIL);
+   goto fail;
+write_fail:
+   DEBFAIL(WRITE_FAIL, tmp_path);
+fail:
+   curl_free_request(&handle->request);
+   return RETURN_FAIL;
 }
 
 /* \brief parse filename from HTTP header */
@@ -311,18 +323,15 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    char install[PATH_MAX];
    char filename[PATH_MAX];
    char tmp[PATH_MAX], tmp2[PATH_MAX];
-   char *appdata, *md5;
+   char *appdata, *md5 = NULL;
    int uniqueid = 0;
    pndman_package *pnd, *oldp;
 
-   if (!handle->device) {
-      DEBFAIL(HANDLE_NO_DEV);
-      return RETURN_FAIL;
-   }
-   if (!handle->pnd) {
-      DEBFAIL(HANDLE_NO_PND);
-      return RETURN_FAIL;
-   }
+   if (!handle->device)
+      goto handle_no_dev;
+   if (!handle->pnd)
+      goto handle_no_pnd;
+
    if (!handle->pnd->update                             &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
        !(handle->flags & PNDMAN_HANDLE_INSTALL_MENU)    &&
@@ -345,17 +354,14 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    /* check MD5 */
    md5 = _pndman_md5(tmp);
    if (!md5 && !(handle->flags & PNDMAN_HANDLE_FORCE))
-      return RETURN_FAIL;
+      goto fail;
 
-   DEBUGP(3, "R: %s L: %s\n", handle->pnd->md5, md5);
+   DEBUG(3, "R: %s L: %s\n", handle->pnd->md5, md5);
 
    /* do check against remote */
    if (md5 && strcmp(md5, handle->pnd->md5)) {
-      if (!(handle->flags & PNDMAN_HANDLE_FORCE)) {
-         DEBFAILP(MD5_FAIL, handle->pnd->id);
-         free(md5);
-         return RETURN_FAIL;
-      }
+      if (!(handle->flags & PNDMAN_HANDLE_FORCE))
+         goto md5_fail;
       else DEBUG(2, MD5_DIFF);
    } free(md5);
 
@@ -430,19 +436,32 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
    /* Copy the pnd object to local database
     * path should be always "" when installing from remote repository */
    pnd = _pndman_repository_new_pnd_check(handle->pnd->id, install, &handle->pnd->version, local);
-   if (!pnd) return RETURN_FAIL;
+   if (!pnd) goto fail;
    _pndman_copy_pnd(pnd, handle->pnd);
 
-   DEBUGP(3, "install: %s\n", install);
-   DEBUGP(3, "from: %s\n", tmp);
+   DEBUG(3, "install: %s\n", install);
+   DEBUG(3, "from: %s\n", tmp);
    if (_pndman_move_file(tmp, install) != RETURN_OK)
-      return RETURN_FAIL;
+      goto fail;
 
    /* mark installed */
    DEBUG(3, "install mark");
    strcpy(pnd->path, install);
    strcpy(pnd->mount, handle->device->mount);
    return RETURN_OK;
+
+handle_no_dev:
+   DEBFAIL(HANDLE_NO_DEV);
+   goto fail;
+handle_no_pnd:
+   DEBFAIL(HANDLE_NO_PND);
+   goto fail;
+md5_fail:
+   DEBFAIL(MD5_FAIL, handle->pnd->id);
+fail:
+   if (handle->file) fclose(handle->file);
+   IFREE(md5);
+   return RETURN_FAIL;
 }
 
 /* \brief post routine when handle has removal flag */
@@ -451,15 +470,13 @@ static int _pndman_handle_remove(pndman_handle *handle, pndman_repository *local
    FILE *f;
 
    /* sanity checks */
-   if (!(f = fopen(handle->pnd->path, "r"))) {
-      DEBFAILP(READ_FAIL, handle->pnd->path);
-      return RETURN_FAIL;
-   }
+   if (!(f = fopen(handle->pnd->path, "r")))
+      goto read_fail;
    fclose(f);
 
    /* remove */
-   DEBUGP(3, "remove: %s\n", handle->pnd->path);
-   if (unlink(handle->pnd->path) != 0) return RETURN_FAIL;
+   DEBUG(3, "remove: %s\n", handle->pnd->path);
+   if (unlink(handle->pnd->path) != 0) goto fail;
 
    /* this can't be updated anymore */
    if (handle->pnd->update)
@@ -468,6 +485,11 @@ static int _pndman_handle_remove(pndman_handle *handle, pndman_repository *local
 
    /* remove from local repo */
    return _pndman_repository_free_pnd(handle->pnd, local);
+
+read_fail:
+   DEBFAIL(READ_FAIL, handle->pnd->path);
+fail:
+   return RETURN_FAIL;
 }
 
 /* API */
@@ -476,19 +498,14 @@ static int _pndman_handle_remove(pndman_handle *handle, pndman_repository *local
 int pndman_handle_init(const char *name, pndman_handle *handle)
 {
    if (!handle) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "You should pass reference to pndman_handle");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "You should pass reference to pndman_handle");
       return RETURN_FAIL;
    }
 
-   handle->request.result.data = NULL;
-   handle->request.curl = NULL;
-   handle->device       = NULL;
-   handle->pnd          = NULL;
-   handle->file         = NULL;
-   memset(handle->name, 0, HANDLE_NAME);
+   memset(handle, 0, sizeof(pndman_handle));
+   memset(&handle->request, 0, sizeof(curl_request));
+   memset(&handle->request.result, 0, sizeof(curl_write_result));
    strncpy(handle->name, name, HANDLE_NAME-1);
-   memset(handle->error, 0, LINE_MAX);
-   handle->flags = 0;
    curl_init_progress(&handle->progress);
 
    if (_pndman_curl_init() != RETURN_OK)
@@ -504,7 +521,7 @@ int pndman_handle_free(pndman_handle *handle)
    char *appdata;
 
    if (!handle) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "handle pointer is NULL");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "handle pointer is NULL");
       return RETURN_FAIL;
    }
 
@@ -536,15 +553,15 @@ int pndman_handle_free(pndman_handle *handle)
 int pndman_handle_perform(pndman_handle *handle)
 {
    if (!handle) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "handle pointer is NULL");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "handle pointer is NULL");
       return RETURN_FAIL;
    }
    if (!handle->pnd) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "handle has no PND");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "handle has no PND");
       return RETURN_FAIL;
    }
    if (!handle->flags) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "handle has no flags");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "handle has no flags");
       return RETURN_FAIL;
    }
 
@@ -632,19 +649,19 @@ int pndman_download()
 int pndman_handle_commit(pndman_handle *handle, pndman_repository *local)
 {
    if (!handle) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "handle pointer is NULL");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "handle pointer is NULL");
       return RETURN_FAIL;
    }
    if (!handle->flags) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "handle has no flags");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "handle has no flags");
       return RETURN_FAIL;
    }
    if (!handle->pnd) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "handle has no pnd");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "handle has no pnd");
       return RETURN_FAIL;
    }
    if (!local) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "local pointer is NULL");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "local pointer is NULL");
       return RETURN_FAIL;
    }
 

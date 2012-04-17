@@ -187,11 +187,8 @@ static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
    size_t   pos, len, ret, read, stag, etag;
 
    /* open PND */
-   pnd = fopen(pnd_file, "rb");
-   if (!pnd) {
-      DEBFAILP(FILE_READ_FAIL, pnd_file);
-      return RETURN_FAIL;
-   }
+   if (!(pnd = fopen(pnd_file, "rb")))
+      goto read_fail;
 
    /* seek to end, and see if we should seek back */
    memset(s,  0, PXML_WINDOW);
@@ -229,11 +226,8 @@ static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
    }
 
    /* failure? */
-   if (!ret) {
-      fclose(pnd);
-      DEBFAILP("%s: %s\n", pnd_file, START_TAG_FAIL);
-      return RETURN_FAIL;
-   }
+   if (!ret)
+      goto fail_start;
 
    /* Yatta! PXML start found ^_^ */
    /* PXML does not define standard XML, so add those to not confuse expat */
@@ -252,11 +246,8 @@ static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
    } else etag += strlen(PXML_START_TAG);
 
    /* read fail */
-   if (!ret) {
-      fclose(pnd);
-      DEBFAILP("%s: %s\n", pnd_file, END_TAG_FAIL);
-      return RETURN_FAIL;
-   }
+   if (!ret)
+      goto fail_end;
 
    /* finish */
    XMLCOPY(pos, match, etag+strlen(PXML_END_TAG));
@@ -267,6 +258,18 @@ static int _fetch_pxml_from_pnd(char *pnd_file, char *PXML, size_t *size)
    /* close the file */
    fclose(pnd);
    return RETURN_OK;
+
+read_fail:
+   DEBFAIL(FILE_READ_FAIL, pnd_file);
+   goto fail;
+fail_start:
+   DEBFAIL("%s: %s\n", pnd_file, START_TAG_FAIL);
+   goto fail;
+fail_end:
+   DEBFAIL("%s: %s\n", pnd_file, END_TAG_FAIL);
+fail:
+   if (pnd) fclose(pnd);
+   return RETURN_FAIL;
 }
 
 /* \brief fills pndman_package's struct */
@@ -515,7 +518,7 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
    pndman_category    *category;
    pndman_association *association;
 
-   //DEBUGP(3, "Found start : %s [%s, %s]\n", tag, attrs[0], attrs[1]);
+   //DEBUG(3, "Found start : %s [%s, %s]\n", tag, attrs[0], attrs[1]);
 
    /* check parse state, so we don't parse wrong stuff */
    switch (*parse_state) {
@@ -774,7 +777,7 @@ static void _pxml_pnd_data(void *data, char *text, int len)
 /* \brief End element tag */
 static void _pxml_pnd_end_tag(void *data, char *tag)
 {
-   // DEBUGP(3, "Found end : %s\n", tag);
+   // DEBUG(3, "Found end : %s\n", tag);
 
    unsigned int          *parse_state  = &((pxml_parse*)data)->state;
    // pndman_package     *pnd          = ((pxml_parse*)data)->pnd;
@@ -875,7 +878,7 @@ static int _pxml_pnd_parse(pxml_parse *data, char *PXML, size_t size)
       ret = RETURN_FAIL;
 
    if (ret == RETURN_FAIL)
-      DEBUGP(1, INVALID_XML, XML_ErrorString(XML_GetErrorCode(xml)));
+      DEBUG(1, INVALID_XML, XML_ErrorString(XML_GetErrorCode(xml)));
 
    /* free the parser */
    XML_ParserFree(xml);
@@ -1158,7 +1161,7 @@ static int _pndman_crawl_to_pnd_list(pndman_device *device, pndman_package *list
 
    /* can't access */
    if (access(tmp, F_OK) != 0) {
-      DEBFAILP(ACCESS_FAIL, tmp);
+      DEBFAIL(ACCESS_FAIL, tmp);
       return RETURN_FAIL;
    }
 
@@ -1226,7 +1229,7 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
 int pndman_crawl(int full_crawl, pndman_device *device, pndman_repository *local)
 {
    if (!device || !local) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "local or device pointer is NULL");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "local or device pointer is NULL");
       return RETURN_FAIL;
    }
    local = _pndman_repository_first(local);
@@ -1239,7 +1242,7 @@ int pndman_crawl_pnd(int full_crawl, pndman_package *pnd)
    pxml_parse data;
 
    if (!pnd) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "pnd pointer is NULL");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "pnd pointer is NULL");
       return RETURN_FAIL;
    }
 
@@ -1297,8 +1300,8 @@ int pnd_do_something(char *pnd_file)
    if (test->version.type == PND_VERSION_BETA)        type = PND_TYPE_BETA;
    else if (test->version.type == PND_VERSION_ALPHA)  type = PND_TYPE_ALPHA;
 
-   DEBUG(0, "");
-   DEBUGP(0, "ID:       %s\n", test->id);
+   DEBUG(0, " ");
+   DEBUG(0, "ID:       %s\n", test->id);
    if (!strlen(test->id)) {
       DEBUG(0, "Your code sucks, fix it!");
       while ((test = _pndman_free_pnd(test)));
@@ -1309,18 +1312,18 @@ int pnd_do_something(char *pnd_file)
    DEBUG(0, "TITLE(S):");
    t = test->title;
    for (; t; t = t->next)
-      DEBUGP(0, "  %s:    %s\n", t->lang, t->string);
+      DEBUG(0, "  %s:    %s\n", t->lang, t->string);
 
    /* descriptions */
    DEBUG(0, "DESCRIPTION(S):");
    t = test->description;
    for (; t; t = t->next)
-      DEBUGP(0, "  %s:    %s\n", t->lang, t->string);
+      DEBUG(0, "  %s:    %s\n", t->lang, t->string);
 
-   DEBUGP(0, "ICON:     %s\n", test->icon);
-   DEBUGP(0, "AUTHOR:   %s\n", test->author.name);
-   DEBUGP(0, "WEBSITE:  %s\n", test->author.website);
-   DEBUGP(0, "VERSION:  %s.%s.%s.%s %s\n", test->version.major, test->version.minor,
+   DEBUG(0, "ICON:     %s\n", test->icon);
+   DEBUG(0, "AUTHOR:   %s\n", test->author.name);
+   DEBUG(0, "WEBSITE:  %s\n", test->author.website);
+   DEBUG(0, "VERSION:  %s.%s.%s.%s %s\n", test->version.major, test->version.minor,
          test->version.release, test->version.build, type);
 
    app = test->app;
@@ -1333,62 +1336,62 @@ int pnd_do_something(char *pnd_file)
       else if (app->version.type == PND_VERSION_BETA)   type = PND_TYPE_BETA;
       else if (app->version.type == PND_VERSION_ALPHA)  type = PND_TYPE_ALPHA;
 
-      DEBUG(0, "");
-      DEBUGP(0, "ID:       %s\n", app->id);
+      DEBUG(0, " ");
+      DEBUG(0, "ID:       %s\n", app->id);
 
       /* titles */
       DEBUG(0, "TITLE(S):");
       t = app->title;
       for (; t; t = t->next)
-         DEBUGP(0, "  %s:    %s\n", t->lang, t->string);
+         DEBUG(0, "  %s:    %s\n", t->lang, t->string);
 
       /* descriptions */
       DEBUG(0, "DESCRIPTION(S):");
       t = app->description;
       for (; t; t = t->next)
-         DEBUGP(0, "  %s:    %s\n", t->lang, t->string);
+         DEBUG(0, "  %s:    %s\n", t->lang, t->string);
 
-      DEBUGP(0, "ICON:     %s\n", app->icon);
-      DEBUGP(0, "AUTHOR:   %s\n", app->author.name);
-      DEBUGP(0, "WEBSITE:  %s\n", app->author.website);
-      DEBUGP(0, "VERSION:  %s.%s.%s.%s %s\n", app->version.major, app->version.minor,
+      DEBUG(0, "ICON:     %s\n", app->icon);
+      DEBUG(0, "AUTHOR:   %s\n", app->author.name);
+      DEBUG(0, "WEBSITE:  %s\n", app->author.website);
+      DEBUG(0, "VERSION:  %s.%s.%s.%s %s\n", app->version.major, app->version.minor,
             app->version.release, app->version.build, type);
-      DEBUGP(0, "OSVER:    %s.%s.%s.%s\n", app->osversion.major, app->osversion.minor,
+      DEBUG(0, "OSVER:    %s.%s.%s.%s\n", app->osversion.major, app->osversion.minor,
             app->osversion.release, app->osversion.build);
 
-      DEBUGP(0, "BKGRND:   %s\n", app->exec.background ? PND_TRUE : PND_FALSE);
-      DEBUGP(0, "STARTDIR: %s\n", app->exec.startdir);
-      DEBUGP(0, "STNDLONE: %s\n", app->exec.standalone ? PND_TRUE : PND_FALSE);
-      DEBUGP(0, "COMMAND:  %s\n", app->exec.command);
-      DEBUGP(0, "ARGS:     %s\n", app->exec.arguments);
-      DEBUGP(0, "X11:      %s\n", x11);
-      DEBUGP(0, "FREQ:     %d\n", app->frequency);
+      DEBUG(0, "BKGRND:   %s\n", app->exec.background ? PND_TRUE : PND_FALSE);
+      DEBUG(0, "STARTDIR: %s\n", app->exec.startdir);
+      DEBUG(0, "STNDLONE: %s\n", app->exec.standalone ? PND_TRUE : PND_FALSE);
+      DEBUG(0, "COMMAND:  %s\n", app->exec.command);
+      DEBUG(0, "ARGS:     %s\n", app->exec.arguments);
+      DEBUG(0, "X11:      %s\n", x11);
+      DEBUG(0, "FREQ:     %d\n", app->frequency);
 
       /* previewpics */
       DEBUG(0, "LICENSE(S):");
       l = app->license;
       for (; l; l = l->next)
-         DEBUGP(0, "  %s, %s, %s\n", l->name, l->url, l->sourcecodeurl);
+         DEBUG(0, "  %s, %s, %s\n", l->name, l->url, l->sourcecodeurl);
 
       /* previewpics */
       DEBUG(0, "ASSOCIATION(S):");
       a = app->association;
       for (; a; a = a->next)
-         DEBUGP(0, "  %s, %s, %s\n", a->name, a->filetype, a->exec);
+         DEBUG(0, "  %s, %s, %s\n", a->name, a->filetype, a->exec);
 
       /* categories */
       DEBUG(0, "CATEGORIE(S):");
       c = app->category;
       for (; c; c = c->next)
-         DEBUGP(0, "  %s, %s\n", c->main, c->sub);
+         DEBUG(0, "  %s, %s\n", c->main, c->sub);
 
       /* previewpics */
       DEBUG(0, "PREVIEWPIC(S):");
       p = app->previewpic;
       for (; p; p = p->next)
-         DEBUGP(0, "  %s\n", p->src);
+         DEBUG(0, "  %s\n", p->src);
    }
-   DEBUG(0, "");
+   DEBUG(0, " ");
    while ((test = _pndman_free_pnd(test)));
 
    return RETURN_OK;

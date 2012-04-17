@@ -6,8 +6,10 @@
 #include "md5.h"
 #include "curl.h"
 
+static const char *CURL_FAIL           = "Curl perform failed";
+static const char *HASH_FAIL           = "Hashing failed";
 static const char *COULD_NOT_GEN_NONCE = "Could not generate nonce data";
-static const char *HANDSHAKE_FAIL = "Handshaking failed";
+static const char *HANDSHAKE_FAIL      = "Handshaking failed";
 
 #define NONCE_LEN 33
 
@@ -55,14 +57,14 @@ int _pndman_handshake(const char *login_url, const char *api_key, const char *us
    curl_easy_setopt(request.curl, CURLOPT_POSTFIELDS, "stage=1");
 
    if (curl_easy_perform(request.curl) != CURLE_OK)
-      goto fail;
+      goto curl_fail;
 
    if (_pndman_gen_nonce(cnonce) != RETURN_OK)
       goto fail;
 
-   sprintf(buffer, "%s%s%s", request.result.data, cnonce, api_key);
+   sprintf(buffer, "%s%s%s", (char*)request.result.data, cnonce, api_key);
    if (!(hash = _pndman_md5_buf(buffer, strlen(buffer))))
-      goto fail;
+      goto hash_fail;
 
    sprintf(buffer, "stage=2&cnonce=%s&user=%s&hash=%s", cnonce, user, hash);
    free(hash);
@@ -71,17 +73,30 @@ int _pndman_handshake(const char *login_url, const char *api_key, const char *us
       goto fail;
 
    curl_easy_setopt(request.curl, CURLOPT_URL, login_url);
+   curl_easy_setopt(request.curl, CURLOPT_WRITEDATA, &request);
+   curl_easy_setopt(request.curl, CURLOPT_WRITEFUNCTION, curl_write_request);
    curl_easy_setopt(request.curl, CURLOPT_COOKIEFILE, "");
    curl_easy_setopt(request.curl, CURLOPT_POSTFIELDS, buffer);
    if (curl_easy_perform(request.curl) != CURLE_OK)
-      goto fail;
+      goto curl_fail;
 
+   if (strcmp((char*)request.result.data, "SUCCESS!"))
+      goto handshake_fail;
+
+   DEBUG(3, "Handshake success!\n");
    curl_free_request(&request);
    return RETURN_OK;
 
+hash_fail:
+   DEBFAIL(HASH_FAIL);
+   goto fail;
+curl_fail:
+   DEBFAIL(CURL_FAIL);
+   goto fail;
+handshake_fail:
+   DEBFAIL(HANDSHAKE_FAIL);
 fail:
    curl_free_request(&request);
    if (hash) free(hash);
-   DEBFAIL(HANDSHAKE_FAIL);
    return RETURN_FAIL;
 }

@@ -23,6 +23,7 @@ static PNDMAN_DEBUG_HOOK_FUNC _PNDMAN_DEBUG_HOOK = NULL;
 
 /* strings */
 static const char *TMP_FILE_CREATE = "Created temporary file";
+static const char *TMP_FILE_FAIL   = "Failed to get temporary file.";
 
 /* \brief strstr strings in uppercase */
 char* _strupstr(const char *hay, const char *needle)
@@ -67,19 +68,24 @@ FILE* _pndman_get_tmp_file()
 
 #ifndef __WIN32__ /* why won't this work on windows 7 correctly :/ */
    if (!(tmp = tmpfile()))
-      return NULL;
+      goto fail;
 #else
    char* name;
    if (!(name = _tempnam( NULL, NULL )))
-      return NULL;
-   if (!(tmp = fopen(name, "wb+TD"))) {
-      free(name);
-      return NULL;
-   }
+      goto fail;
+   if (!(tmp = fopen(name, "wb+TD")))
+      goto fail;
    free(name);
 #endif
    DEBUG(3, TMP_FILE_CREATE);
    return tmp;
+
+fail:
+   DEBFAIL(TMP_FILE_FAIL);
+#ifdef __WIN32__
+   IFREE(name);
+#endif
+   return NULL;
 }
 
 /* \brief strip trailing slash from string */
@@ -90,15 +96,8 @@ void _strip_slash(char *path)
       path[strlen(path)-1] = 0;
 }
 
-/* \brief store internal pndman error */
-void _pndman_set_error(const char *err)
-{
-   memset(_PNDMAN_ERROR, 0, PNDMAN_ERR_LEN);
-   strncpy(_PNDMAN_ERROR, err, PNDMAN_ERR_LEN-1);
-}
-
 /* \brief store internal pndman error (printf syntax) */
-void _pndman_set_errorp(const char *err, ...)
+void _pndman_set_error(const char *err, ...)
 {
    va_list args;
    memset(_PNDMAN_ERROR, 0, PNDMAN_ERR_LEN);
@@ -108,17 +107,8 @@ void _pndman_set_errorp(const char *err, ...)
    va_end(args);
 }
 
-/* \brief handle debug hook for client */
-void _pndman_debug_hook(const char *function, int verbose_level, const char *str)
-{
-   if (!_PNDMAN_DEBUG_HOOK) return;
-
-   /* pass to client */
-   _PNDMAN_DEBUG_HOOK(function, verbose_level, str);
-}
-
 /* \brief handle debug hook for client (printf syntax) */
-void _pndman_debug_hookp(const char *function, int verbose_level, const char *fmt, ...)
+void _pndman_debug_hook(const char *function, int verbose_level, const char *fmt, ...)
 {
    va_list args;
    char buffer[LINE_MAX];

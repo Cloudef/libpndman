@@ -31,21 +31,17 @@ static pndman_device* _pndman_device_init()
 {
    pndman_device *device;
 
-   device = malloc(sizeof(pndman_device));
-   if (!device) {
-      DEBFAIL(DEVICE_INIT_FAIL);
-      return NULL;
-   }
+   if (!(device = malloc(sizeof(pndman_device))))
+      goto fail;
 
-   memset(device->device, 0, PATH_MAX);
-   memset(device->mount,  0, PATH_MAX);
-   memset(device->appdata,0, PATH_MAX);
-   device->size      = 0;
-   device->free      = 0;
-   device->available = 0;
-   device->next = NULL;
-   device->prev = NULL;
+   memset(device, 0, sizeof(pndman_device));
+
+   /* return */
    return device;
+
+fail:
+   DEBFAIL(DEVICE_INIT_FAIL);
+   return NULL;
 }
 
 /* \brief Find first device */
@@ -205,7 +201,7 @@ static pndman_device* _pndman_device_new_if_exist(pndman_device **device, const 
 #else
          if (!strcmp(d->mount, check_existing)) {
 #endif
-            DEBFAILP(DEVICE_EXISTS, d->mount);
+            DEBFAIL(DEVICE_EXISTS, d->mount);
             return NULL;
          }
    }
@@ -266,19 +262,19 @@ static pndman_device* _pndman_device_add_absolute(const char *path, pndman_devic
 
    if (stat(path, &st) != 0) return NULL;
    if (!S_ISDIR(st.st_mode)) {
-      DEBFAILP(IS_NOT_DIR, path);
+      DEBFAIL(IS_NOT_DIR, path);
       return NULL;
    }
 
    /* check for permissions */
    if (access(path, R_OK | W_OK) != 0) {
-      DEBFAILP(ACCESS_FAIL, path);
+      DEBFAIL(ACCESS_FAIL, path);
       return NULL;
    }
 
    /* get root device */
    if (statvfs(path, &fs) != 0) {
-      DEBFAILP(ROOT_FAIL, path);
+      DEBFAIL(ROOT_FAIL, path);
       return NULL;
    }
 
@@ -330,12 +326,12 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
 
    /* check for read && write permissions */
    if (access(mnt.mnt_dir, R_OK | W_OK) != 0) {
-      DEBFAILP(ACCESS_FAIL, mnt.mnt_dir);
+      DEBFAIL(ACCESS_FAIL, mnt.mnt_dir);
       return NULL;
    }
 
    if (statfs(mnt.mnt_dir, &fs) != 0) {
-      DEBFAILP(ACCESS_FAIL, mnt.mnt_dir);
+      DEBFAIL(ACCESS_FAIL, mnt.mnt_dir);
       return NULL;
    }
 
@@ -359,13 +355,13 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
 
    memset(szName, 0, PATH_MAX);
    if (!QueryDosDevice(szDrive, szName, PATH_MAX-1)) {
-      DEBFAILP(ROOT_FAIL, szName);
+      DEBFAIL(ROOT_FAIL, szName);
       return NULL;
    }
 
    /* check for read && write perms */
    if (access(path, R_OK | W_OK) == -1) {
-      DEBFAILP(ACCESS_FAIL, path);
+      DEBFAIL(ACCESS_FAIL, path);
       return NULL;
    }
 
@@ -431,7 +427,7 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
             if (!_pndman_device_new_if_exist(&device, mnt.mnt_dir))
                break;
 
-            DEBUGP(3, "DETECT: %s\n", mnt.mnt_dir);
+            DEBUG(3, "DETECT: %s\n", mnt.mnt_dir);
             strncpy(device->mount,  mnt.mnt_dir,    PATH_MAX-1);
             strncpy(device->device, mnt.mnt_fsname, PATH_MAX-1);
             device->free      = fs.f_bfree  * fs.f_bsize;
@@ -477,7 +473,7 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
          if (!_pndman_device_new_if_exist(&device, szDrive))
             break;
 
-         DEBUGP(3, "DETECT: %s : %s\n", szDrive, szName);
+         DEBUG(3, "DETECT: %s : %s\n", szDrive, szName);
 
          strncpy(device->mount,  szDrive, PATH_MAX-1);
          strncpy(device->device, szName,  PATH_MAX-1);
@@ -560,7 +556,7 @@ pndman_device* pndman_device_add(const char *path, pndman_device *device)
 pndman_device* pndman_device_free(pndman_device *device)
 {
    if (!device) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "device pointer is NULL");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "device pointer is NULL");
       return NULL;
    }
    return _pndman_device_free(device);
@@ -570,7 +566,7 @@ pndman_device* pndman_device_free(pndman_device *device)
 int pndman_device_free_all(pndman_device *device)
 {
    if (!device) {
-      DEBUGP(1, _PNDMAN_WRN_BAD_USE, "device pointer is NULL");
+      DEBUG(1, _PNDMAN_WRN_BAD_USE, "device pointer is NULL");
       return RETURN_FAIL;
    }
    return _pndman_device_free_all(device);
