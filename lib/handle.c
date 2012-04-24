@@ -227,6 +227,9 @@ static int _pndman_handle_download(pndman_handle *handle)
    if (curl_init_request(&handle->request) != RETURN_OK)
       goto curl_req_fail;
 
+   if (handle->pnd->commercial)
+      _pndman_handshake(&handle->request, "http://repo.openpandora.org/includes/client_access.php", _MY_PRIVATE_API_KEY, "Cloudef");
+
    /* check appdata */
    appdata = _pndman_device_get_appdata(handle->device);
    if (!appdata || !strlen(appdata))
@@ -248,6 +251,7 @@ static int _pndman_handle_download(pndman_handle *handle)
    curl_easy_setopt(handle->request.curl, CURLOPT_PROGRESSDATA, &handle->progress);
    curl_easy_setopt(handle->request.curl, CURLOPT_WRITEHEADER, &handle->request);
    curl_easy_setopt(handle->request.curl, CURLOPT_WRITEDATA, handle->file);
+   curl_easy_setopt(handle->request.curl, CURLOPT_COOKIEFILE, "");
 
    /* add to multi interface */
    curl_multi_add_handle(_pndman_curlm, handle->request.curl);
@@ -363,7 +367,7 @@ static int _pndman_handle_install(pndman_handle *handle, pndman_repository *loca
       if (!(handle->flags & PNDMAN_HANDLE_FORCE))
          goto md5_fail;
       else DEBUG(2, MD5_DIFF);
-   } free(md5);
+   } free(md5); md5 = NULL;
 
    if (handle->pnd->update &&
       !(handle->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&

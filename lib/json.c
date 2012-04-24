@@ -274,6 +274,7 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       _json_set_licenses(pnd,             json_object_get(package,"licenses"));
       _json_set_sources(pnd,              json_object_get(package,"source"));
       _json_set_categories(pnd,           json_object_get(package,"categories"));
+      _json_set_number(&pnd->commercial,  json_object_get(package,"commercial"), int);
    }
    return RETURN_OK;
 }

@@ -181,6 +181,8 @@ typedef struct pndman_package
    struct pndman_package *update;
    struct pndman_package *next_installed;
    struct pndman_package *next;
+
+   int commercial;
 } pndman_package;
 
 /* INTERNAL */
