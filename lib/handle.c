@@ -227,8 +227,10 @@ static int _pndman_handle_download(pndman_handle *handle)
    if (curl_init_request(&handle->request) != RETURN_OK)
       goto curl_req_fail;
 
-   if (handle->pnd->commercial)
-      _pndman_handshake(&handle->request, "http://repo.openpandora.org/includes/client_access.php", _MY_PRIVATE_API_KEY, "Cloudef");
+   /* TODO: add optional repository element to handle and handle this then */
+   if (handle->pnd->commercial) {
+     // _pndman_handshake(&handle->request, "http://repo.openpandora.org/includes/client_access.php", _MY_PRIVATE_API_KEY, "Cloudef");
+   }
 
    /* check appdata */
    appdata = _pndman_device_get_appdata(handle->device);

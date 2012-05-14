@@ -214,6 +214,7 @@ static int _pndman_json_repo_header(json_t *repo_header, pndman_repository *repo
 
    _json_set_string(repo->name,    json_object_get(repo_header, "name"), REPO_NAME);
    _json_set_string(repo->updates, json_object_get(repo_header, "updates"), REPO_URL);
+   _json_set_string(repo->client_api, json_object_get(repo_header, "client_api"), REPO_URL);
    if ((element = json_object_get(repo_header, "version")))
       if (json_is_string(element))
          strncpy(repo->version, json_string_value(element), REPO_VERSION);

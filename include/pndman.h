@@ -219,6 +219,7 @@ typedef struct pndman_package
 typedef struct pndman_repository
 {
    const char url[REPO_URL];
+   const char client_api[REPO_URL];
    const char name[REPO_NAME];
    const char updates[REPO_URL];
    const char version[REPO_VERSION];
