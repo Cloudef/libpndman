@@ -107,6 +107,8 @@ void _pndman_set_error(const char *err, ...)
    va_end(args);
 }
 
+#define DEBSYN "in function :: %s\n\t%s\n"
+
 /* \brief handle debug hook for client (printf syntax) */
 void _pndman_debug_hook(const char *function, int verbose_level, const char *fmt, ...)
 {
@@ -114,7 +116,6 @@ void _pndman_debug_hook(const char *function, int verbose_level, const char *fmt
    char buffer[LINE_MAX];
    size_t len;
 
-   if (!_PNDMAN_DEBUG_HOOK) return;
    memset(buffer, 0, LINE_MAX);
 
    va_start(args, fmt);
@@ -124,6 +125,12 @@ void _pndman_debug_hook(const char *function, int verbose_level, const char *fmt
    /* strip last newline */
    len = strlen(buffer);
    if (buffer[len-1] == '\n') buffer[len-1] = 0;
+
+   /* no hook, handle it internally */
+   if (!_PNDMAN_DEBUG_HOOK) {
+      printf(DEBSYN, function, buffer);
+      return;
+   }
 
    /* pass to client */
    _PNDMAN_DEBUG_HOOK(function, verbose_level, buffer);

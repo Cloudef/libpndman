@@ -5,17 +5,16 @@
 #define PNDMAN_ERR_LEN 256
 
 /* some predefined warns, errors */
-#define DEBSYN "in function :: %s\n  ", __func__
 #define _PNDMAN_WRN_BAD_USE "Bad usage of function: %s"
 
 /* if blocked free */
 #define IFREE(x) if (x) free(x);
 
 /* debug macros, takes verbose level and printf syntax */
-#define DEBUG(l,x,...) { _pndman_debug_hook(__func__,l,x,##__VA_ARGS__); if (l <= pndman_get_verbose()) { printf(DEBSYN); printf(x,##__VA_ARGS__); } }
+#define DEBUG(l,x,...) _pndman_debug_hook(__func__,l,x,##__VA_ARGS__);
 
 /* failure functions, pndman_get_error uses these in future */
-#define DEBFAIL(x,...) { _pndman_set_error(x, ##__VA_ARGS__); DEBUG(2,x,##__VA_ARGS__); }
+#define DEBFAIL(x,...) _pndman_set_error(x, ##__VA_ARGS__);
 
 /* \brief appdata directory to store, temporary downland and database data */
 #define PNDMAN_APPDATA "libpndman"
