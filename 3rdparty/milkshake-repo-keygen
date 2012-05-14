@@ -34,7 +34,7 @@ function generateKey () {                               # $1 = password
         local USERNAME="$2"
     fi
 
-    local KEY_URL="http://repo.openpandora.org/includes/get_key.php"
+    local KEY_URL="http://repo.openpandora.org/client/keyrequest"
     local HTTP_POST_DATA="pass=${PASSWORD_HASH}&user=${USERNAME}&ak_submit=generate"
 
     curl -s --data ${HTTP_POST_DATA} ${KEY_URL} >&1
