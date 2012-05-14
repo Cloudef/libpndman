@@ -18,9 +18,9 @@ extern "C" {
 typedef struct pndman_repository
 {
    char url[REPO_URL];
-   char client_api[REPO_URL];
    char name[REPO_NAME];
    char updates[REPO_URL];
+   char client_api[REPO_URL];
    char version[REPO_VERSION];
    time_t timestamp;
 
