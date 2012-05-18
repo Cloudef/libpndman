@@ -8,6 +8,7 @@
 #include "repository.h"
 #include "md5.h"
 #include "curl.h"
+#include "json.h"
 
 #define REPO_API_HANDSHAKE    "handshake"
 #define REPO_API_RATE_URL     "rate"
@@ -17,9 +18,7 @@
 static const char *CURL_FAIL           = "Curl perform failed";
 static const char *HASH_FAIL           = "Hashing failed";
 static const char *COULD_NOT_GEN_NONCE = "Could not generate nonce data";
-static const char *HANDSHAKE_FAIL      = "Handshaking failed";
-static const char *RATE_FAIL           = "Rating failed";
-static const char *COMMENT_FAIL        = "Commenting failed";
+static const char *API_FAIL      = "%d: %s";
 static const char *PND_NOT_IN_REPO     = "Pnd was not found in repository list";
 
 /* \brief generate nonce */
@@ -62,9 +61,12 @@ int _pndman_handshake(curl_request *request, pndman_repository *r, const char *a
    char cnonce[NONCE_LEN];
    char buffer[1024], *hash = NULL;
    char url[REPO_URL];
+   char nonce[1024];
+   client_api_return status;
 
    /* url to api */
    snprintf(url, REPO_URL-1, "%s/%s", r->client_api, REPO_API_HANDSHAKE);
+   DEBUG(3, url);
 
    _curl_set(request, url, "stage=1");
    if (curl_easy_perform(request->curl) != CURLE_OK)
@@ -73,7 +75,12 @@ int _pndman_handshake(curl_request *request, pndman_repository *r, const char *a
    if (_pndman_gen_nonce(cnonce) != RETURN_OK)
       goto fail;
 
-   sprintf(buffer, "%s%s%s", (char*)request->result.data, cnonce, api_key);
+   if (_pndman_json_get_value("nonce", nonce, sizeof(nonce),
+         request->result.data) != RETURN_OK)
+      goto fail;
+
+   DEBUG(3, "%s", nonce);
+   sprintf(buffer, "%s%s%s", nonce, cnonce, api_key);
    if (!(hash = _pndman_md5_buf(buffer, strlen(buffer))))
       goto hash_fail;
 
@@ -88,8 +95,10 @@ int _pndman_handshake(curl_request *request, pndman_repository *r, const char *a
    if (curl_easy_perform(request->curl) != CURLE_OK)
       goto curl_fail;
 
-   if (strncmp((char*)request->result.data, "SUCCESS!", strlen("SUCCESS!")))
-      goto handshake_fail;
+   DEBUG(3, "%s", request->result.data);
+   if (_pndman_json_client_api_return(request->result.data,
+               &status) != RETURN_OK)
+      goto api_fail;
 
    DEBUG(3, "Handshake success!\n");
    return RETURN_OK;
@@ -100,8 +109,8 @@ hash_fail:
 curl_fail:
    DEBFAIL(CURL_FAIL);
    goto fail;
-handshake_fail:
-   DEBFAIL(HANDSHAKE_FAIL);
+api_fail:
+   DEBFAIL(API_FAIL, status.number, status.text);
 fail:
    if (hash) free(hash);
    return RETURN_FAIL;
@@ -115,14 +124,17 @@ int _pndman_rate_pnd(pndman_package *pnd, pndman_repository *list, int rate)
    curl_request request;
    char buffer[1024];
    char url[REPO_URL];
+   client_api_return status;
    assert(pnd);
+
+   memset(&request, 0, sizeof(curl_request));
+   curl_init_request(&request);
 
    p = NULL;
    for (r = list; r && p != pnd; r = r->next)
       for (p = r->pnd; p && p != pnd; p = p->next);
    if (!r || p != pnd) goto not_in_repo;
 
-   curl_init_request(&request);
    if (_pndman_handshake(&request, r, _MY_PRIVATE_API_KEY, "Cloudef") != RETURN_OK)
       goto fail;
 
@@ -132,9 +144,6 @@ int _pndman_rate_pnd(pndman_package *pnd, pndman_repository *list, int rate)
 
    if (curl_easy_perform(request.curl) != CURLE_OK)
       goto curl_fail;
-
-   if (strncmp((char*)request.result.data, "SUCCESS!", strlen("SUCCESS!")))
-      goto rate_fail;
 
    curl_free_request(&request);
    DEBUG(3, "Rating success!\n");
@@ -146,8 +155,6 @@ int _pndman_rate_pnd(pndman_package *pnd, pndman_repository *list, int rate)
 curl_fail:
    DEBFAIL(CURL_FAIL);
    goto fail;
-rate_fail:
-   DEBFAIL(RATE_FAIL);
 fail:
    curl_free_request(&request);
    return RETURN_FAIL;
@@ -163,27 +170,31 @@ int _pndman_comment_pnd(pndman_package *pnd, pndman_repository *list, const char
    char url[REPO_URL];
    assert(pnd);
 
+   memset(&request, 0, sizeof(curl_request));
+   curl_init_request(&request);
+
+   /*
    p = NULL;
    for (r = list; r && p != pnd; r = r->next)
       for (p = r->pnd; p && p != pnd; p = p->next);
    if (!r || p != pnd) goto not_in_repo;
+   */
+   r = list;
+   assert(r);
 
-   curl_init_request(&request);
    if (_pndman_handshake(&request, r, _MY_PRIVATE_API_KEY, "Cloudef") != RETURN_OK)
       goto fail;
 
    snprintf(url, REPO_URL-1, "%s/%s", r->client_api, REPO_API_COMMENT_URL);
+   DEBUG(3, url);
    snprintf(buffer, 1023, "id=%s&c=%s", pnd->id, comment);
    _curl_set(&request, url, buffer);
 
    if (curl_easy_perform(request.curl) != CURLE_OK)
       goto curl_fail;
 
-   if (strncmp((char*)request.result.data, "SUCCESS!", strlen("SUCCESS!")))
-      goto rate_fail;
-
    curl_free_request(&request);
-   DEBUG(3, "Rating success!\n");
+   DEBUG(3, "Comment success!\n");
    return RETURN_OK;
 
 not_in_repo:
@@ -192,8 +203,6 @@ not_in_repo:
 curl_fail:
    DEBFAIL(CURL_FAIL);
    goto fail;
-rate_fail:
-   DEBFAIL(COMMENT_FAIL);
 fail:
    curl_free_request(&request);
    return RETURN_FAIL;
