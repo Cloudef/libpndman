@@ -14,7 +14,7 @@
 #define DEBUG(l,x,...) _pndman_debug_hook(__func__,l,x,##__VA_ARGS__);
 
 /* failure functions, pndman_get_error uses these in future */
-#define DEBFAIL(x,...) _pndman_set_error(x, ##__VA_ARGS__);
+#define DEBFAIL(x,...) { _pndman_set_error(x, ##__VA_ARGS__); DEBUG(3,x,##__VA_ARGS__); }
 
 /* \brief appdata directory to store, temporary downland and database data */
 #define PNDMAN_APPDATA "libpndman"

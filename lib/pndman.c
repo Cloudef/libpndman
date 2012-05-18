@@ -96,6 +96,8 @@ void _strip_slash(char *path)
       path[strlen(path)-1] = 0;
 }
 
+#define DEBSYN "in function :: %s\n\t%s\n"
+
 /* \brief store internal pndman error (printf syntax) */
 void _pndman_set_error(const char *err, ...)
 {
@@ -106,8 +108,6 @@ void _pndman_set_error(const char *err, ...)
    vsnprintf(_PNDMAN_ERROR, PNDMAN_ERR_LEN, err, args);
    va_end(args);
 }
-
-#define DEBSYN "in function :: %s\n\t%s\n"
 
 /* \brief handle debug hook for client (printf syntax) */
 void _pndman_debug_hook(const char *function, int verbose_level, const char *fmt, ...)
