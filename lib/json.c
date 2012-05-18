@@ -6,6 +6,7 @@
 #include "pndman.h"
 #include "package.h"
 #include "repository.h"
+#include "json.h"
 
 /* strings */
 static const char *BAD_JSON      = "Bad json data, won't process sync for: %s\n";
@@ -282,20 +283,72 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
 
 /* INTERNAL */
 
+/* \brief get return value from client api */
+int _pndman_json_client_api_return(const char *buffer, client_api_return *status)
+{
+   json_t *root = NULL, *object;
+   json_error_t error;
+   assert(buffer && status);
+
+   memset(status, 0, sizeof(client_api_return));
+   if (!(root = json_loads(buffer, 0, &error)))
+      goto bad_json;
+
+   status->status = API_ERROR;
+   if (!(object = json_object_get(root, "error"))) {
+      object = json_object_get(root, "success");
+      if (!object) goto fail;
+      status->status = API_SUCCESS;
+   }
+
+   _json_set_number(&status->number, json_object_get(object, "number"), int);
+   _json_set_string(status->text, json_object_get(object,"text"), API_TEXT);
+
+   json_decref(root);
+   return status->status==API_SUCCESS?
+          RETURN_OK:RETURN_FAIL;
+
+bad_json:
+   DEBFAIL(BAD_JSON, "client api");
+fail:
+   if (root) json_decref(root);
+   return RETURN_FAIL;
+}
+
+/* \brief get value from single json object */
+int _pndman_json_get_value(const char *key, char *value,
+      size_t size, const char *buffer)
+{
+   json_t *root = NULL;
+   json_error_t error;
+   assert(key && value && buffer);
+   memset(value, 0, size);
+
+   if (!(root = json_loads(buffer, 0, &error)))
+      goto bad_json;
+
+   _json_set_string(value, json_object_get(root, key), size);
+   json_decref(root);
+   return RETURN_OK;
+
+bad_json:
+   DEBFAIL(BAD_JSON, "client api");
+   if (root) json_decref(root);
+   return RETURN_FAIL;
+}
+
 /* \brief process retivied json data */
 int _pndman_json_process(pndman_repository *repo, FILE *data)
 {
-   json_t *root, *repo_header, *packages;
+   json_t *root = NULL, *repo_header, *packages;
    json_error_t error;
    assert(repo && data);
 
    /* flush and reset to beginning */
    fflush(data);
    fseek(data, 0L, SEEK_SET);
-   if (!(root = json_loadf(data, 0, &error))) {
-      DEBFAIL(BAD_JSON, repo->url);
-      return RETURN_FAIL;
-   }
+   if (!(root = json_loadf(data, 0, &error)))
+      goto bad_json;
 
    repo_header = json_object_get(root, "repository");
    if (json_is_object(repo_header)) {
@@ -306,8 +359,14 @@ int _pndman_json_process(pndman_repository *repo, FILE *data)
          else DEBUG(2, NO_P_ARRAY, repo->url);
       }
    } else DEBUG(2, NO_R_HEADER, repo->url);
+
    json_decref(root);
    return RETURN_OK;
+
+bad_json:
+   DEBFAIL(BAD_JSON, repo->url);
+   if (root) json_decref(root);
+   return RETURN_FAIL;
 }
 
 /* \brief print to file with escapes */
