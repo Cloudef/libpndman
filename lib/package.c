@@ -1,19 +1,9 @@
+#include "pndman.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
-#include "pndman.h"
-#include "package.h"
-#include "md5.h"
-
-static const char *TRANS_ALLOC_FAIL = "Failed to allocate pndman_translated, shit might break now.";
-static const char *LIC_ALLOC_FAIL   = "Failed to allocate pndman_license, shit might break now.";
-static const char *PIC_ALLOC_FAIL   = "Failed to allocate pndman_previewpic, shit might break now.";
-static const char *CAT_ALLOC_FAIL   = "Failed to allocate pndman_category, shit might break now.";
-static const char *ASSOC_ALLOC_FAIL = "Failed to allocate pndman_association, shit might break now.";
-static const char *APP_ALLOC_FAIL   = "Failed to allocate pndman_application, shit might break now.";
-static const char *PND_ALLOC_FAIL   = "Failed to allocate pndman_package, shit might break now.";
 
 /* \brief compare package versions, return 1 on newer, 0 otherwise
  * NOTE: lp == package to use as base, rp == package to compare against

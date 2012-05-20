@@ -1,15 +1,9 @@
+#include "internal.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
 #include <assert.h>
-#include "pndman.h"
-#include "package.h"
-#include "device.h"
-#include "repository.h"
-
-/* strings */
-static const char *REPO_INIT_FAIL   = "Failed to allocate pndman_repository, shit might break.";
 
 /* \brief initialize repository struct */
 static pndman_repository* _pndman_repository_init()

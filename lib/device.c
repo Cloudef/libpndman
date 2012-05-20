@@ -1,3 +1,4 @@
+#include "internal.h"
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
@@ -13,18 +14,6 @@
 #  include <sys/statvfs.h>
 #  define LINUX_MTAB "/etc/mtab"
 #endif
-
-#include "pndman.h"
-#include "package.h"
-#include "repository.h"
-#include "device.h"
-
-/* strings */
-static const char *IS_NOT_DIR       = "%s, is not a directory.\n";
-static const char *ACCESS_FAIL      = "%s, should have write and read permissions.\n";
-static const char *ROOT_FAIL        = "Could not get root device of %s absolute directory.\n";
-static const char *DEVICE_INIT_FAIL = "Failed to allocate pndman_device, shit might break now.\n";
-static const char *DEVICE_EXISTS    = "Device with mount %s, already exists.";
 
 /* \brief creates new device */
 static pndman_device* _pndman_device_init()

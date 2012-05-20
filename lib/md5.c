@@ -1,8 +1,8 @@
+#include "internal.h"
 #include <stdio.h>
 #include <malloc.h>
 #include <string.h>
 #include <openssl/md5.h>
-#include "pndman.h"
 
 static int _pndman_md5file(FILE *file, unsigned char *digest)
 {

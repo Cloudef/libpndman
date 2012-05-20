@@ -1,10 +1,8 @@
+#include "internal.h"
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
-#include <curl/curl.h>
-#include "pndman.h"
-#include "curl.h"
 
 /* INTERNAL API */
 
@@ -27,32 +25,51 @@ int curl_progress_func(curl_progress *ptr, double total_to_download, double down
 /* \brief write request */
 size_t curl_write_request(void *data, size_t size, size_t nmemb, curl_request *request)
 {
+   void *new;
    assert(request);
-   if (request->result.pos + size * nmemb >= MAX_REQUEST - 1)
-      return 0;
 
+   /* if we have more data than we can hold */
+   if (request->result.pos + size * nmemb >= request->result.size - 1) {
+      if (!(new = realloc(request->result.data,
+                  request->result.size + CURL_CHUNK))) {
+         if (!(new = malloc(request->result.size + CURL_CHUNK)))
+            return 0;
+         memcpy(new, request->result.data, request->result.size);
+      }
+      request->result.data  = new;
+      request->result.size += CURL_CHUNK;
+   }
+
+   /* memcpy new data */
    memcpy(request->result.data + request->result.pos, data, size * nmemb);
    request->result.pos += size * nmemb;
-
    return size * nmemb;
 }
 
-/* \brief init internal curl request
- * NOTE: you must manually set curl pointer to NULL */
-int curl_init_request(curl_request *request)
+/* \brief init internal curl request */
+void curl_init_request(curl_request *request)
+{
+   assert(request);
+   memset(request, 0, sizeof(curl_request));
+   curl_reset_request(request);
+}
+
+/* \brief reset internal curl request */
+int curl_reset_request(curl_request *request)
 {
    assert(request);
 
    request->result.pos = 0;
-   if (!request->result.data)
-      request->result.data = malloc(MAX_REQUEST);
-   if (!request->result.data)
-      goto fail;
-   memset(request->result.data, 0, MAX_REQUEST);
+   if (!request->result.data) {
+      request->result.data = malloc(CURL_CHUNK);
+      request->result.size = CURL_CHUNK;
+   }
+   if (!request->result.data) goto fail;
+   memset(request->result.data, 0, request->result.size);
 
    if (request->curl)   curl_easy_reset(request->curl);
    else request->curl = curl_easy_init();
-   if (!request->curl) return RETURN_FAIL;
+   if (!request->curl) goto fail;
 
    return RETURN_OK;
 
@@ -67,18 +84,14 @@ void curl_free_request(curl_request *request)
    assert(request);
    if (request->result.data)  free(request->result.data);
    if (request->curl)         curl_easy_cleanup(request->curl);
-   request->curl        = NULL;
-   request->result.data = NULL;
-   request->result.pos  = 0;
+   memset(request, 0, sizeof(curl_request));
 }
 
 /* \brief initialize the progress struct */
 void curl_init_progress(curl_progress *progress)
 {
    assert(progress);
-   progress->download = 0;
-   progress->total_to_download = 0;
-   progress->done = 0;
+   memset(progress, 0, sizeof(curl_progress));
 }
 
 /* vim: set ts=8 sw=3 tw=0 :*/

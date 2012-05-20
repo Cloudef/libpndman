@@ -1,28 +1,15 @@
+#include "internal.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <expat.h>
 #include <assert.h>
 #include <ctype.h>
-#include "pndman.h"
-#include "package.h"
-#include "repository.h"
-#include "device.h"
 
 #ifndef __WIN32__
 #  include <sys/stat.h>
 #  include <dirent.h>
 #endif
-
-/* strings */
-static const char *XML_CPY_FAIL     = "PXML is too big for pndman :(";
-static const char *FILE_READ_FAIL   = "Could not open %s, for reading.\n";
-static const char *START_TAG_FAIL   = "PXML parse failed: could not find start tag before EOF.";
-static const char *END_TAG_FAIL     = "PXML parse failed: could not find end tag before EOF.";
-static const char *EXPAT_FAIL       = "Failed to allocate expat XML parser";
-static const char *INVALID_XML      = "Invalid XML!\n-----\n%s\n";
-static const char *ACCESS_FAIL      = "Can't access: %s\n";
-
 
 #define PXML_START_TAG     "<PXML"
 #define PXML_END_TAG       "</PXML>"

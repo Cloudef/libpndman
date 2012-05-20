@@ -1,3 +1,4 @@
+#include "internal.h"
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -14,49 +15,9 @@
 #  define BLOCK_FD   int
 #  define BLOCK_INIT 0
 #else
-#  define BLOCK_FD   file *
+#  define BLOCK_FD   file*
 #  define BLOCK_INIT NULL
 #endif
-
-#include <curl/curl.h>
-#include "pndman.h"
-#include "package.h"
-#include "repository.h"
-#include "device.h"
-#include "curl.h"
-#include "json.h"
-
-/* strings */
-static const char *URL_CPY_FAIL     = "Failed to copy url from repository.";
-static const char *BAD_URL          = "Repository has empty url, or it is a local repository.";
-static const char *WRITE_FAIL       = "Failed to open %s, for writing.\n";
-static const char *READ_FAIL        = "Failed to open %s, for reading.\n";
-static const char *CURLM_FAIL       = "Internal CURLM initialization failed.";
-static const char *CURL_HANDLE_FAIL = "Failed to allocate CURL handle.";
-static const char *LOCK_BLOCK_TIMEOUT = "%s blocking for IO operation timed out.";
-
-/* \brief flags for sync request to determite what to do */
-typedef enum pndman_sync_flags
-{
-   PNDMAN_SYNC_FULL = 0x001,
-} pndman_sync_flags;
-
-/* \brief sync handle struct */
-typedef struct pndman_sync_handle
-{
-   char                 error[LINE_MAX];
-   pndman_repository    *repository;
-
-   /* get set on function */
-   unsigned int         flags;
-
-   /* progress */
-   curl_progress        progress;
-
-   /* internal */
-   FILE                 *file;
-   CURL                 *curl;
-} pndman_sync_handle;
 
 /* \brief curl multi handle for json.c */
 static CURLM *_pndman_curlm = NULL;
@@ -115,7 +76,7 @@ static int blockfile(char *path)
    return RETURN_OK;
 
 fail:
-   DEBFAIL(LOCK_BLOCK_TIMEOUT, path);
+   DEBFAIL(DATABASE_LOCK_TIMEOUT, path);
    return RETURN_FAIL;
 }
 

@@ -1,17 +1,9 @@
+#include "internal.h"
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
 #include <time.h>
 #include <jansson.h>
-#include "pndman.h"
-#include "package.h"
-#include "repository.h"
-#include "json.h"
-
-/* strings */
-static const char *BAD_JSON      = "Bad json data, won't process sync for: %s\n";
-static const char *NO_P_ARRAY    = "No packages array for: %s\n";
-static const char *NO_R_HEADER   = "No repo header for: %s\n";
 
 /* \brief helpfer string setter */
 static int _json_set_string(char *string, json_t *object, size_t max)

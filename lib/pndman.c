@@ -1,29 +1,16 @@
+#include "internal.h"
+#include "version.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdarg.h>
-#include "pndman.h"
-#include "device.h"
-#include "package.h"
-#include "repository.h"
-#include "version.h"
-
-/* \brief debug hook typedef */
-typedef void (*PNDMAN_DEBUG_HOOK_FUNC)(const char *function, int verbose_level, const char *str);
 
 /* \brief internal verbose level */
 static int  _PNDMAN_VERBOSE = 0;
 
-/* \brief internal error string */
-static char _PNDMAN_ERROR[PNDMAN_ERR_LEN] = { 0 };
-
 /* \brief internal debug hook function */
 static PNDMAN_DEBUG_HOOK_FUNC _PNDMAN_DEBUG_HOOK = NULL;
-
-/* strings */
-static const char *TMP_FILE_CREATE = "Created temporary file";
-static const char *TMP_FILE_FAIL   = "Failed to get temporary file.";
 
 /* \brief strstr strings in uppercase */
 char* _strupstr(const char *hay, const char *needle)
@@ -66,7 +53,8 @@ FILE* _pndman_get_tmp_file()
 {
    FILE *tmp;
 
-#ifndef __WIN32__ /* why won't this work on windows 7 correctly :/ */
+#ifndef __WIN32__
+   /* why won't this work on windows 7 correctly :/ */
    if (!(tmp = tmpfile()))
       goto fail;
 #else
@@ -77,11 +65,11 @@ FILE* _pndman_get_tmp_file()
       goto fail;
    free(name);
 #endif
-   DEBUG(3, TMP_FILE_CREATE);
+   DEBUG(PNDMAN_LEVEL_CRAP, "Created temporary file.");
    return tmp;
 
 fail:
-   DEBFAIL(TMP_FILE_FAIL);
+   DEBFAIL(PNDMAN_TMP_FILE_FAIL);
 #ifdef __WIN32__
    IFREE(name);
 #endif
@@ -96,82 +84,62 @@ void _strip_slash(char *path)
       path[strlen(path)-1] = 0;
 }
 
-#define DEBSYN "in function :: %s\n\t%s\n"
-
-/* \brief store internal pndman error (printf syntax) */
-void _pndman_set_error(const char *err, ...)
-{
-   va_list args;
-   memset(_PNDMAN_ERROR, 0, PNDMAN_ERR_LEN);
-
-   va_start(args, err);
-   vsnprintf(_PNDMAN_ERROR, PNDMAN_ERR_LEN, err, args);
-   va_end(args);
-}
-
-/* \brief handle debug hook for client (printf syntax) */
-void _pndman_debug_hook(const char *function, int verbose_level, const char *fmt, ...)
+/* \brief handle debug hook for client
+ * (printf syntax) */
+void _pndman_debug_hook(const char *file, int line,
+      const char *function, int verbose_level,
+      const char *fmt, ...)
 {
    va_list args;
    char buffer[LINE_MAX];
-   size_t len;
 
    memset(buffer, 0, LINE_MAX);
-
    va_start(args, fmt);
    vsnprintf(buffer, LINE_MAX, fmt, args);
    va_end(args);
 
-   /* strip last newline */
-   len = strlen(buffer);
-   if (buffer[len-1] == '\n') buffer[len-1] = 0;
-
    /* no hook, handle it internally */
    if (!_PNDMAN_DEBUG_HOOK) {
-      printf(DEBSYN, function, buffer);
+      printf(DBG_FMT, file, line, function, buffer);
       return;
    }
 
    /* pass to client */
-   _PNDMAN_DEBUG_HOOK(function, verbose_level, buffer);
+   _PNDMAN_DEBUG_HOOK(file, line, function,
+         verbose_level, buffer);
 }
 
 /* API */
 
-/* \brief Set verbose level of library
+/* \brief set verbose level of library
  * (prints debug output to stdout) */
-void pndman_set_verbose(int verbose)
+PNDMANAPI void pndman_set_verbose(int verbose)
 {
    _PNDMAN_VERBOSE = verbose;
 }
 
-/* \brief Set debug hook function */
-void pndman_set_debug_hook(PNDMAN_DEBUG_HOOK_FUNC func)
+/* \brief set debug hook function */
+PNDMANAPI void pndman_set_debug_hook(
+      PNDMAN_DEBUG_HOOK_FUNC func)
 {
    _PNDMAN_DEBUG_HOOK = func;
 }
 
 /* \brief return current verbose level,
  * used internally by library as well. */
-int pndman_get_verbose()
+PNDMANAPI int pndman_get_verbose(void)
 {
    return _PNDMAN_VERBOSE;
 }
 
-/* \brief get error string from pndman */
-const char* pndman_get_error()
-{
-   return _PNDMAN_ERROR;
-}
-
-/* \brief Get library version (git head) */
-const char* pndman_git_head()
+/* \brief get library version (git head) */
+PNDMANAPI const char* pndman_git_head(void)
 {
    return VERSION;
 }
 
-/* \brief Get library commit (git) */
-const char* pndman_git_commit()
+/* \brief get library commit (git) */
+PNDMANAPI const char* pndman_git_commit(void)
 {
    return COMMIT;
 }

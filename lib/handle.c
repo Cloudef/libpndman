@@ -1,67 +1,14 @@
+#include "internal.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <libgen.h>
-#include <curl/curl.h>
-#include "pndman.h"
-#include "package.h"
-#include "repository.h"
-#include "device.h"
-#include "curl.h"
-#include "md5.h"
 
 #ifdef __linux__
 #  include <sys/stat.h>
 #endif
-
-#define HANDLE_NAME PND_ID
-
-/* strings */
-static const char *MD5_FAIL         = "MD5 check fail for %s\n";
-static const char *MD5_DIFF         = "MD5 differ, but forcing anyways.\n";
-static const char *MV_FAIL          = "Failed to move from %s, to %s\n";
-static const char *RM_FAIL          = "Failed to remove file %s\n";
-static const char *BACKUP_DIR_FAIL  = "Failed to create backup directory to device: %s\n";
-static const char *CURLM_FAIL       = "Failed to init internal CURLM";
-static const char *HANDLE_NO_PND    = "Handle has no PND!";
-static const char *HANDLE_PND_URL   = "PND assigned to handle has invalid url.";
-static const char *HANDLE_NO_DEV    = "Handle has no device! (install)";
-static const char *HANDLE_NO_DEV_UP = "Handle has no device list! (update)";
-static const char *HANDLE_NO_DST    = "Handle has no destination, nor the PND has upgrade.";
-static const char *HANDLE_WTF       = "WTF. Something that should never happen, just happened!";
-static const char *CURL_REQ_FAIL    = "Failed to init curl request.";
-static const char *WRITE_FAIL       = "Failed to open %s for writing.\n";
-static const char *READ_FAIL        = "Failed to open %s for reading.\n";
-static const char *HEADER_FAIL      = "Failed to parse filename from HTTP header.";
-
-/* \brief flags for handle to determite what to do */
-typedef enum pndman_handle_flags
-{
-   PNDMAN_HANDLE_INSTALL         = 0x001,
-   PNDMAN_HANDLE_REMOVE          = 0x002,
-   PNDMAN_HANDLE_FORCE           = 0x004,
-   PNDMAN_HANDLE_INSTALL_DESKTOP = 0x008,
-   PNDMAN_HANDLE_INSTALL_MENU    = 0x010,
-   PNDMAN_HANDLE_INSTALL_APPS    = 0x020,
-   PNDMAN_HANDLE_BACKUP          = 0x040,
-} pndman_handle_flags;
-
-/* \brief pndman_handle struct */
-typedef struct pndman_handle
-{
-   char           name[HANDLE_NAME];
-   char           error[LINE_MAX];
-   pndman_package *pnd;
-   pndman_device  *device;
-   unsigned int   flags;
-   curl_progress  progress;
-
-   /* internal */
-   curl_request   request;
-   FILE           *file;
-} pndman_handle;
 
 static CURLM *_pndman_curlm;
 
