@@ -50,6 +50,12 @@
 extern "C" {
 #endif
 
+typedef enum pndman_debug_level {
+   PNDMAN_LEVEL_ERROR,
+   PNDMAN_LEVEL_WARN,
+   PNDMAN_LEVEL_CRAP
+} pndman_debug_level;
+
 /* \brief debug hook typedef */
 typedef void (*PNDMAN_DEBUG_HOOK_FUNC)(
       const char *file, int line, const char *function,
