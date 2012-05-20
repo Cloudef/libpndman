@@ -101,12 +101,14 @@ static void init_usrdata(_USR_DATA *data)
  */
 
 /* all strings expect HELP and VERSION strings are listed here
- * (* strings that are not considered in final product, aren't here either)
- * maybe in future: custom printf function that handles color escapes
- *                  and resets the colors at the end automatically.
- *                  with this we could get rid of all those _R(); _N();
- *                  etc.. color functions. Plus it would allow colors to
- *                  be customized more easily! */
+ * (* strings that are not considered in final product,
+ * aren't here either)
+ * maybe in future: custom printf function that handles color
+ *                  escapes and resets the colors at the end
+ *                  automatically. with this we could get rid of
+ *                  all those _R(); _N(); etc.. color functions.
+ *                  Plus it would allow colors to be customized
+ *                  more easily! */
 #define _DEVICE_CLEANED          "Cleaned libpndman database from %s!\n"
 #define _PNDS_CRAWLED            "%d PND's were succesfully crawled.\n"
 #define _REPO_WONT_DO_ANYTHING   "There is only local repository available, %s operations won't do anything.\n"
