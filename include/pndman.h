@@ -25,7 +25,7 @@
 #  include <limits.h> /* for LINE_MAX, PATH_MAX */
 #endif
 
-/*ccurrently only mingw */
+/* currently only mingw */
 #ifdef __WIN32__
 #  include <windows.h> /* for malware */
 #  include <limits.h> /* for PATH_MAX */
