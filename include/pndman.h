@@ -98,93 +98,93 @@ typedef enum pndman_exec_x11
 /* \brief struct holding version information */
 typedef struct pndman_version
 {
-   const char major[PNDMAN_VERSION];
-   const char minor[PNDMAN_VERSION];
-   const char release[PNDMAN_VERSION];
-   const char build[PNDMAN_VERSION];
-   const pndman_version_type type;
+   char major[PNDMAN_VERSION];
+   char minor[PNDMAN_VERSION];
+   char release[PNDMAN_VERSION];
+   char build[PNDMAN_VERSION];
+   pndman_version_type type;
 } pndman_version;
 
 /* \brief struct holding execution information */
 typedef struct pndman_exec
 {
-   const int   background;
-   const char  startdir[PNDMAN_PATH];
-   const int   standalone;
-   const char  command[PNDMAN_PATH];
-   const char  arguments[PNDMAN_STR];
-   const pndman_exec_x11 x11;
+   int   background;
+   char  startdir[PNDMAN_PATH];
+   int   standalone;
+   char  command[PNDMAN_PATH];
+   char  arguments[PNDMAN_STR];
+   pndman_exec_x11 x11;
 } pndman_exec;
 
 /* \brief struct holding author information */
 typedef struct pndman_author
 {
-   const char name[PNDMAN_NAME];
-   const char website[PNDMAN_STR];
-   const char email[PNDMAN_STR];
+   char name[PNDMAN_NAME];
+   char website[PNDMAN_STR];
+   char email[PNDMAN_STR];
 } pndman_author;
 
 /* \brief struct holding documentation information */
 typedef struct pndman_info
 {
-   const char name[PNDMAN_NAME];
-   const char type[PNDMAN_SHRT_STR];
-   const char src[PNDMAN_PATH];
+   char name[PNDMAN_NAME];
+   char type[PNDMAN_SHRT_STR];
+   char src[PNDMAN_PATH];
 } pndman_info;
 
 /* \brief struct holding translated strings */
 typedef struct pndman_translated
 {
-   const char lang[PNDMAN_SHRT_STR];
-   const char string[PNDMAN_STR];
+   char lang[PNDMAN_SHRT_STR];
+   char string[PNDMAN_STR];
    struct pndman_translated *next;
 } pndman_translated;
 
 /* \brief struct holding license information */
 typedef struct pndman_license
 {
-   const char name[PNDMAN_STR];
-   const char url[PNDMAN_STR];
-   const char sourcecodeurl[PNDMAN_STR];
+   char name[PNDMAN_STR];
+   char url[PNDMAN_STR];
+   char sourcecodeurl[PNDMAN_STR];
    struct pndman_license *next;
 } pndman_license;
 
 /* \brief struct holding previewpic information */
 typedef struct pndman_previewpic
 {
-   const char src[PNDMAN_PATH];
+   char src[PNDMAN_PATH];
    struct pndman_previewpic *next;
 } pndman_previewpic;
 
 /* \brief struct holding association information */
 typedef struct pndman_association
 {
-   const char name[PNDMAN_STR];
-   const char filetype[PNDMAN_SHRT_STR];
-   const char exec[PNDMAN_PATH];
+   char name[PNDMAN_STR];
+   char filetype[PNDMAN_SHRT_STR];
+   char exec[PNDMAN_PATH];
    struct pndman_association *next;
 } pndman_association;
 
 /* \brief struct holding category information */
 typedef struct pndman_category
 {
-   const char main[PNDMAN_SHRT_STR];
-   const char sub[PNDMAN_SHRT_STR];
+   char main[PNDMAN_SHRT_STR];
+   char sub[PNDMAN_SHRT_STR];
    struct pndman_category *next;
 } pndman_category;
 
 /* \brief struct that represents PND application */
 typedef struct pndman_application
 {
-   const char id[PNDMAN_ID];
-   const char appdata[PNDMAN_PATH];
-   const char icon[PNDMAN_PATH];
-   const int  frequency;
-   const pndman_author  author;
-   const pndman_version osversion;
-   const pndman_version version;
-   const pndman_exec    exec;
-   const pndman_info    info;
+   char id[PNDMAN_ID];
+   char appdata[PNDMAN_PATH];
+   char icon[PNDMAN_PATH];
+   int  frequency;
+   pndman_author  author;
+   pndman_version osversion;
+   pndman_version version;
+   pndman_exec    exec;
+   pndman_info    info;
    pndman_translated    *title;
    pndman_translated    *description;
    pndman_license       *license;
@@ -197,26 +197,26 @@ typedef struct pndman_application
 /* \brief struct that represents PND */
 typedef struct pndman_package
 {
-   const char path[PNDMAN_PATH];
-   const char id[PNDMAN_ID];
-   const char icon[PNDMAN_PATH];
-   const char info[PNDMAN_STR];
-   const char md5[PNDMAN_MD5];
-   const char url[PNDMAN_STR];
-   const char vendor[PNDMAN_NAME];
-   const size_t size;
-   const time_t modified_time;
-   const int rating;
-   const pndman_author     author;
-   const pndman_version    version;
+   char path[PNDMAN_PATH];
+   char id[PNDMAN_ID];
+   char icon[PNDMAN_PATH];
+   char info[PNDMAN_STR];
+   char md5[PNDMAN_MD5];
+   char url[PNDMAN_STR];
+   char vendor[PNDMAN_NAME];
+   size_t size;
+   time_t modified_time;
+   int rating;
+   pndman_author     author;
+   pndman_version    version;
    pndman_application *app;
    pndman_translated *title;
    pndman_translated *description;
    pndman_license    *license;
    pndman_previewpic *previewpic;
    pndman_category   *category;
-   const char repository[PNDMAN_STR];
-   const char mount[PNDMAN_PATH];
+   char repository[PNDMAN_STR];
+   char mount[PNDMAN_PATH];
    struct pndman_package *update;
    struct pndman_package *next_installed;
    struct pndman_package *next;
@@ -226,19 +226,19 @@ typedef struct pndman_package
 /*! \brief struct representing client api access */
 typedef struct pndman_repository_api
 {
-   const char root[PNDMAN_URL];
-   const char username[PNDMAN_SHRT_STR];
-   const char key[PNDMAN_STR];
+   char root[PNDMAN_URL];
+   char username[PNDMAN_SHRT_STR];
+   char key[PNDMAN_STR];
 } pndman_repository_api;
 
 /*! \brief struct representing repository */
 typedef struct pndman_repository
 {
-   const char url[PNDMAN_URL];
-   const char name[PNDMAN_NAME];
-   const char updates[PNDMAN_URL];
-   const char version[PNDMAN_VERSION];
-   const time_t timestamp;
+   char url[PNDMAN_URL];
+   char name[PNDMAN_NAME];
+   char updates[PNDMAN_URL];
+   char version[PNDMAN_VERSION];
+   time_t timestamp;
    pndman_package *pnd;
    pndman_repository_api api;
    struct pndman_repository *next, *prev;
@@ -247,9 +247,9 @@ typedef struct pndman_repository
 /*! \brief struct representing device */
 typedef struct pndman_device
 {
-   const char mount[PNDMAN_PATH];
-   const char device[PNDMAN_PATH];
-   const size_t size, free, available;
+   char mount[PNDMAN_PATH];
+   char device[PNDMAN_PATH];
+   size_t size, free, available;
    char appdata[PNDMAN_PATH];
    struct pndman_device *next, *prev;
 } pndman_device;
@@ -257,31 +257,33 @@ typedef struct pndman_device
 
 /* \brief struct for holding progression data of
  * curl handle */
-typedef struct curl_progress
+typedef struct pndman_curl_progress
 {
-   const double download;
-   const double total_to_download;
-   const char done;
-} curl_progress;
+   double download;
+   double total_to_download;
+   char done;
+} pndman_curl_progress;
 
 /*! \brief Struct for PND transaction */
 typedef struct pndman_handle
 {
-   const char     name[PNDMAN_NAME];
-   const char     error[PNDMAN_STR];
+   char name[PNDMAN_NAME];
+   char error[PNDMAN_STR];
    pndman_package *pnd;
    pndman_device  *device;
-   unsigned int   flags;
-   const curl_progress  progress;
+   unsigned int flags;
+   pndman_curl_progress progress;
+   const void *data;
 } pndman_handle;
 
 /* \brief struct for repository synchorization */
 typedef struct pndman_sync_handle
 {
-   const char           error[PNDMAN_STR];
-   pndman_repository    *repository;
-   const unsigned int   flags;
-   const curl_progress  progress;
+   char error[PNDMAN_STR];
+   pndman_repository *repository;
+   unsigned int flags;
+   pndman_curl_progress progress;
+   const void *data;
 } pndman_sync_handle;
 
 /* \brief get git head */
@@ -324,8 +326,10 @@ PNDMANAPI void pndman_repository_clear(
 
 /* \brief check local repository for invalid PND's,
  * such PND's are ones that don't exist anymore
- * on the filesystem. */
-PNDMANAPI void pndman_repository_check_local(
+ * on the filesystem.
+ *
+ * returns the number of packages removed */
+PNDMANAPI int pndman_repository_check_local(
       pndman_repository *local);
 
 /* \brief free a repository (and remove from list)
@@ -334,9 +338,8 @@ PNDMANAPI pndman_repository* pndman_repository_free(
       pndman_repository *repo);
 
 /* \brief free all repositories
- * the list will be invalid after this
- * return 0 on success -1 on failure */
-PNDMANAPI int pndman_repository_free_all(
+ * the list will be invalid after this */
+PNDMANAPI void pndman_repository_free_all(
       pndman_repository *repo);
 
 /* \brief add new device or initalize new device list
@@ -361,9 +364,8 @@ PNDMANAPI int pndman_read_from_device(
       pndman_repository *repo, pndman_device *device);
 
 /* \brief free all devices
- * the list will be invalid after this
- * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_device_free_all(
+ * the list will be invalid after this */
+PNDMANAPI void pndman_device_free_all(
       pndman_device *device);
 
 /* \brief initialize new pndman handle
@@ -381,19 +383,20 @@ PNDMANAPI int pndman_handle_perform(
 PNDMANAPI int pndman_handle_commit(pndman_handle *handle,
       pndman_repository *local);
 
-/* \brief free handle after it's used ,
- * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_handle_free(pndman_handle *handle);
+/* \brief free/cancel handle */
+PNDMANAPI void pndman_handle_free(pndman_handle *handle);
 
 /* \brief create new synchorization request
  * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_sync_request(
-      pndman_sync_handle *handle, unsigned int flags,
-      pndman_repository *repo);
+PNDMANAPI int pndman_sync_request(pndman_sync_handle *handle);
 
-/* \brief free synchorization request after it's used
- * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_sync_request_free(
+/* \brief perform synchorization
+ * return 0 on success, -1 on failure */
+PNDMANAPI int pndman_sync_perform(
+      pndman_sync_handle *handle);
+
+/* \brief free/cancel synchorization */
+PNDMANAPI void pndman_sync_request_free(
       pndman_sync_handle *handle);
 
 /* \brief commit all repositories to specific device */
@@ -419,9 +422,11 @@ PNDMANAPI int pndman_crawl_pnd(int full_crawl,
 PNDMANAPI int pndman_check_updates(
       pndman_repository *list);
 
-/* these might be removed */
-int pndman_sync();
-int pndman_download();
+/* \brief perform curl operation
+ * returns number of curl operations pending
+ *
+ * NOTE: this replaces pndman_sync(); pndman_download(); */
+PNDMANAPI int pndman_curl_process(void);
 
 /* eh, let it be :) */
 int pnd_do_something(const char *file);

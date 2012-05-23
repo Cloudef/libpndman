@@ -22,14 +22,13 @@ static pndman_device* _pndman_device_init()
 
    if (!(device = malloc(sizeof(pndman_device))))
       goto fail;
-
    memset(device, 0, sizeof(pndman_device));
 
    /* return */
    return device;
 
 fail:
-   DEBFAIL(DEVICE_INIT_FAIL);
+   DEBFAIL(PNDMAN_ALLOC_FAIL, "pndman_device");
    return NULL;
 }
 
@@ -224,7 +223,7 @@ static pndman_device* _pndman_device_free(pndman_device *device)
 }
 
 /* \brief Free all devices */
-static int _pndman_device_free_all(pndman_device *device)
+static void _pndman_device_free_all(pndman_device *device)
 {
    pndman_device *next;
    assert(device);
@@ -238,8 +237,6 @@ static int _pndman_device_free_all(pndman_device *device)
       _pndman_remove_tmp_files(device);
       free(device);
    }
-
-   return RETURN_OK;
 }
 
 /* \brief Stat absolute path, and fill the device struct according to that. */
@@ -251,7 +248,7 @@ static pndman_device* _pndman_device_add_absolute(const char *path, pndman_devic
 
    if (stat(path, &st) != 0) return NULL;
    if (!S_ISDIR(st.st_mode)) {
-      DEBFAIL(IS_NOT_DIR, path);
+      DEBFAIL(DEVICE_IS_NOT_DIR, path);
       return NULL;
    }
 
@@ -263,7 +260,7 @@ static pndman_device* _pndman_device_add_absolute(const char *path, pndman_devic
 
    /* get root device */
    if (statvfs(path, &fs) != 0) {
-      DEBFAIL(ROOT_FAIL, path);
+      DEBFAIL(DEVICE_ROOT_FAIL, path);
       return NULL;
    }
 
@@ -416,7 +413,7 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
             if (!_pndman_device_new_if_exist(&device, mnt.mnt_dir))
                break;
 
-            DEBUG(3, "DETECT: %s\n", mnt.mnt_dir);
+            DEBUG(PNDMAN_LEVEL_CRAP, "DETECT: %s\n", mnt.mnt_dir);
             strncpy(device->mount,  mnt.mnt_dir,    PATH_MAX-1);
             strncpy(device->device, mnt.mnt_fsname, PATH_MAX-1);
             device->free      = fs.f_bfree  * fs.f_bsize;
@@ -462,7 +459,7 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
          if (!_pndman_device_new_if_exist(&device, szDrive))
             break;
 
-         DEBUG(3, "DETECT: %s : %s\n", szDrive, szName);
+         DEBUG(PNDMAN_LEVEL_CRAP, "DETECT: %s : %s\n", szDrive, szName);
 
          strncpy(device->mount,  szDrive, PATH_MAX-1);
          strncpy(device->device, szName,  PATH_MAX-1);
@@ -518,8 +515,8 @@ void _pndman_device_get_appdata_no_create(char *appdata, pndman_device *device)
 
 /* API */
 
-/* \brief Add all found devices */
-pndman_device* pndman_device_detect(pndman_device *device)
+/* \brief add all found devices */
+PNDMANAPI pndman_device* pndman_device_detect(pndman_device *device)
 {
    pndman_device *d, *d2;
    if ((d = _pndman_device_detect(device)))
@@ -530,8 +527,8 @@ pndman_device* pndman_device_detect(pndman_device *device)
    return d;
 }
 
-/* \brief Add new device */
-pndman_device* pndman_device_add(const char *path, pndman_device *device)
+/* \brief add new device */
+PNDMANAPI pndman_device* pndman_device_add(const char *path, pndman_device *device)
 {
    pndman_device *d;
    if ((d = _pndman_device_add(path, device))) {
@@ -541,24 +538,24 @@ pndman_device* pndman_device_add(const char *path, pndman_device *device)
    return d;
 }
 
-/* \brief Free one device */
-pndman_device* pndman_device_free(pndman_device *device)
+/* \brief free one device */
+PNDMANAPI pndman_device* pndman_device_free(pndman_device *device)
 {
    if (!device) {
-      DEBUG(1, _PNDMAN_WRN_BAD_USE, "device pointer is NULL");
+      BADUSE("device pointer is NULL");
       return NULL;
    }
    return _pndman_device_free(device);
 }
 
-/* \brief Free all devices */
-int pndman_device_free_all(pndman_device *device)
+/* \brief free all devices */
+PNDMANAPI void pndman_device_free_all(pndman_device *device)
 {
    if (!device) {
-      DEBUG(1, _PNDMAN_WRN_BAD_USE, "device pointer is NULL");
-      return RETURN_FAIL;
+      BADUSE("device pointer is NULL");
+      return;
    }
-   return _pndman_device_free_all(device);
+   _pndman_device_free_all(device);
 }
 
 /* vim: set ts=8 sw=3 tw=0 :*/

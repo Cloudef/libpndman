@@ -309,14 +309,14 @@ fail:
 
 /* \brief get value from single json object */
 int _pndman_json_get_value(const char *key, char *value,
-      size_t size, const char *buffer)
+      size_t size, FILE *file)
 {
    json_t *root = NULL;
    json_error_t error;
-   assert(key && value && buffer);
+   assert(key && value && file);
    memset(value, 0, size);
 
-   if (!(root = json_loads(buffer, 0, &error)))
+   if (!(root = json_loadf(file, 0, &error)))
       goto bad_json;
 
    _json_set_string(value, json_object_get(root, key), size);
@@ -324,8 +324,8 @@ int _pndman_json_get_value(const char *key, char *value,
    return RETURN_OK;
 
 bad_json:
-   DEBFAIL(BAD_JSON, "client api");
-   if (root) json_decref(root);
+   DEBFAIL(JSON_BAD_JSON, "client api");
+   IFDO(json_decref, root);
    return RETURN_FAIL;
 }
 

@@ -60,27 +60,29 @@ char* _pndman_md5_buf(char *buffer, size_t size)
 }
 
 /* \brief get md5 of file, remember to free the result */
-char* _pndman_md5(char *file)
+char* _pndman_md5(const char *file)
 {
    FILE *f;
    char *md5;
    unsigned char digest[MD5_DIGEST_LENGTH];
 
-   f = fopen(file, "rb");
-   if (!f) return NULL;
+   if (!(f = fopen(file, "rb")))
+      goto fail;
 
-   if (_pndman_md5file(f, digest) != 0) {
-      fclose(f);
-      return NULL;
-   }
+   if (_pndman_md5file(f, digest) != 0)
+      goto fail;
    fclose(f);
 
-   md5 = malloc(MD5_DIGEST_LENGTH * 2 + 1);
-   if (!md5) return NULL;
+   if (!(md5 = malloc(MD5_DIGEST_LENGTH * 2 + 1)))
+      goto fail;
 
    memset(md5, 0, MD5_DIGEST_LENGTH * 2 + 1);
    _pndman_bytes2hex(digest, MD5_DIGEST_LENGTH, md5, MD5_DIGEST_LENGTH * 2 + 1);
    return md5;
+
+fail:
+   IFDO(fclose, f);
+   return NULL;
 }
 
 /* vim: set ts=8 sw=3 tw=0 :*/

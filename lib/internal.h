@@ -7,8 +7,7 @@
 #include <curl/curl.h>  /* for CURL */
 
 /* internal sizes */
-#define PNDMAN_ERR_LEN     256
-#define PNDMAN_API_COMMENT 300
+#define PNDMAN_API_COMMENT_LEN 300
 
 /* constants */
 #define PNDMAN_APPDATA        "libpndman"
@@ -16,24 +15,25 @@
 #define PNDMAN_DEFAULT_ICON   "icon.png"
 #define PNDMAN_TRUE           "true"
 #define PNDMAN_FALSE          "false"
-#define PNDMAN_TYPE_RELEASE   "release"
-#define PNDMAN_TYPE_BETA      "beta"
-#define PNDMAN_TYPE_ALPHA     "alpha"
-#define PNDMAN_X11_REQ        "req"
-#define PNDMAN_X11_STOP       "stop"
-#define PNDMAN_X11_IGNORE     "ignore"
-#define PNDMAN_WRN_BAD_USE    "bad usage of function: %s"
+#define PND_TYPE_RELEASE      "release"
+#define PND_TYPE_BETA         "beta"
+#define PND_TYPE_ALPHA        "alpha"
+#define PND_X11_REQ           "req"
+#define PND_X11_STOP          "stop"
+#define PND_X11_IGNORE        "ignore"
 
 /* helper macros */
-#define IFDO(f, x) if (x) f(x); x = NULL;
-#define THIS_FILE ((strrchr(__FILE__, '/') ?: __FILE__ - 1) + 1)
-#define DBG_FMT "\2@FILE \5%-20s \2@LINE \5%-4d \5>> \3%s"
+#define IFDO(f, x)            if (x) f(x); x = NULL;
+#define THIS_FILE             ((strrchr(__FILE__, '/') ?: __FILE__ - 1) + 1)
+#define DBG_FMT               "\2@FILE \5%-20s \2@LINE \5%-4d \5>> \3%s"
+#define DBG_WRN_BAD_USE       "bad usage of function: %s"
+#define BADUSE(fmt,...)       DEBUG(PNDMAN_LEVEL_WARN, DBG_WRN_BAD_USE, ##__VA_ARGS__)
 #define DEBUG(level,fmt,...)  _pndman_debug_hook(THIS_FILE, __LINE__, __func__, level, fmt, ##__VA_ARGS__)
 #define DEBFAIL(fmt,...)      _pndman_debug_hook(THIS_FILE, __LINE__, __func__, PNDMAN_LEVEL_ERROR, fmt, ##__VA_ARGS__)
 
 /* etc.. */
-#define CURL_CHUNK   1024
-#define CURL_TIMEOUT 15L
+#define PNDMAN_CURL_TIMEOUT 15L
+#define PNDMAN_CURL_CHUNK   1024
 
 /* strings */
 #define DATABASE_URL_COPY_FAIL   "Failed to copy url from repository."
@@ -41,13 +41,13 @@
 #define DATABASE_LOCK_TIMEOUT    "%s blocking for IO operation timed out."
 #define WRITE_FAIL               "Failed to open %s, for writing."
 #define READ_FAIL                "Failed to open %s, for reading."
+#define ACCESS_FAIL              "Can't access: %s"
 #define CURL_CURLM_FAIL          "Internal CURLM initialization failed."
 #define CURL_HANDLE_FAIL         "Failed to allocate CURL handle."
 #define CURL_REQUEST_FAIL        "Failed to init curl request."
 #define DEVICE_IS_NOT_DIR        "%s, is not a directory."
 #define DEVICE_ACCESS_FAIL       "%s, should have write and read permissions."
 #define DEVICE_ROOT_FAIL         "Could not get root device of %s absolute directory."
-#define DEVICE_INIT_FAIL         "Failed to allocate pndman_device, shit might break now."
 #define DEVICE_EXISTS            "Device with mount %s, already exists."
 #define HANDLE_MD5_FAIL          "MD5 check fail for %s"
 #define HANDLE_MD5_DIFF          "MD5 differ, but forcing anyways."
@@ -68,10 +68,13 @@
 #define PXML_START_TAG_FAIL      "PXML parse failed: could not find start tag before EOF."
 #define PXML_END_TAG_FAIL        "PXML parse failed: could not find end tag before EOF."
 #define PXML_EXPAT_FAIL          "Failed to allocate expat XML parser"
-#define PXML_INVALID_XML         "Invalid XML!\n-----\n%s\n-----\n"
-#define PXML_ACCESS_FAIL         "Can't access: %s"
+#define PXML_INVALID_XML         "PXML: %s\n-----\n%s\n-----\n"
 #define PNDMAN_ALLOC_FAIL        "Failed to allocate %s, shit might break now."
 #define PNDMAN_TMP_FILE_FAIL     "Failed to get temporary file."
+#define API_HASH_FAIL            "Hashing failed."
+#define API_NONCE_FAIL           "Could not generate nonce data."
+#define API_FAIL                 "%d: %s"
+#define API_PND_NOT_IN_REPO      "PND %s, was not found in repository list."
 
 /*! \brief
  * Default return values.
@@ -85,29 +88,35 @@ typedef enum PNDMAN_RETURN
    RETURN_FALSE =  !RETURN_TRUE
 } PNDMAN_RETURN;
 
-/* \brief curl_write_result struct for
- * storing curl result to memory */
-typedef struct curl_write_result
+/* \brief curl callback return code */
+typedef enum pndman_curl_code
+{
+   PNDMAN_CURL_DONE,
+   PNDMAN_CURL_FAIL,
+   PNDMAN_CURL_FREE
+} pndman_curl_code;
+
+/* \brief callback function definition to curl handle */
+typedef void (*pndman_curl_callback)(pndman_curl_code code, void *data, const char *info);
+
+/* \brief curl header presention */
+typedef struct pndman_curl_header
 {
    void *data;
    size_t pos, size;
-} curl_write_result;
+} pndman_curl_header;
 
-/* \brief struct for holding progression
- * data of curl handle */
-typedef struct curl_progress
+/* \brief internal curl handle */
+typedef struct pndman_curl_handle
 {
-   double download;
-   double total_to_download;
-   char done;
-} curl_progress;
-
-/* \brief struct for holding internal request data */
-typedef struct curl_request
-{
-   curl_write_result result;
-   CURL              *curl;
-} curl_request;
+   void *data;
+   pndman_curl_callback callback;
+   pndman_curl_progress *progress;
+   CURL *curl;
+   FILE *file;
+   pndman_curl_header header;
+   char path[PNDMAN_PATH];
+} pndman_curl_handle;
 
 /* \brief client api return error code */
 typedef enum pndman_api_code {
@@ -146,16 +155,13 @@ void _pndman_set_error(const char *file, int line,
 void _pndman_debug_hook(const char *file, int line,
       const char *function, int verbose_level, const char *fmt, ...);
 
-/* curl callbacks && helpers */
-size_t   curl_write_file(void *data, size_t size, size_t nmemb, FILE *file);
-int      curl_progress_func(curl_progress *ptr, double total_to_download,
-      double download, double total_to_upload, double upload);
-size_t   curl_write_request(void *data, size_t size,
-      size_t nmemb, curl_request *request);
-void     curl_init_request(curl_request *request);
-int      curl_reset_request(curl_request *request);
-void     curl_free_request(curl_request *request);
-void     curl_init_progress(curl_progress *progress);
+/* curl */
+pndman_curl_handle* _pndman_curl_handle_new(void *data,
+      pndman_curl_progress *progress, pndman_curl_callback callback,
+      const char *path);
+void _pndman_curl_handle_free(pndman_curl_handle *handle);
+int  _pndman_curl_handle_perform(pndman_curl_handle *handle);
+void _pndman_curl_init_progress(pndman_curl_progress *progress);
 
 /* json */
 int _pndman_json_api_value(const char *key, char *value, size_t size,
@@ -166,7 +172,7 @@ int _pndman_json_process(pndman_repository *repo, FILE *f);
 
 /* md5 functions (remember free result) */
 char* _pndman_md5_buf(char *buffer, size_t size);
-char* _pndman_md5(char *file);
+char* _pndman_md5(const char *file);
 
 /* devices */
 pndman_device* _pndman_device_first(pndman_device *device);
@@ -218,8 +224,6 @@ void _pndman_application_free_descriptions(pndman_application *app);
 
 /* \brief internal free of pndman_package, return next_installed, null if no any */
 pndman_package* _pndman_free_pnd(pndman_package *pnd);
-
-
 
 #endif /* _internal_h_ */
 
