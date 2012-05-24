@@ -13,6 +13,7 @@
 /* \brief api request type enum */
 typedef enum pndman_api_request_type
 {
+   PNDMAN_API_NONCE,
    PNDMAN_API_HANDSHAKE,
    PNDMAN_API_RATE,
    PNDMAN_API_COMMENT
@@ -84,12 +85,29 @@ fail:
    return RETURN_OK;
 }
 
+/* \brief check if handshake was success */
+static void _pndman_handshake_check(pndman_api_request *request)
+{
+   pndman_api_status status;
+   pndman_curl_handle *handle = request->handle;
+
+   /* check return value */
+   if (_pndman_json_client_api_return(handle->file,
+               &status) != RETURN_OK)
+      goto fail;
+
+   DEBUG(PNDMAN_LEVEL_CRAP, "Handshake success!");
+   return;
+
+fail:
+   DEBFAIL(API_FAIL, status.number, status.text);
+}
+
 /* \brief handshake perform */
 static void _pndman_handshake_perform(pndman_api_request *request)
 {
    char cnonce[NONCE_LEN];
    char buffer[1024], *hash = NULL;
-   char url[PNDMAN_URL];
    char nonce[1024];
 
    pndman_handshake_packet *packet;
@@ -103,15 +121,18 @@ static void _pndman_handshake_perform(pndman_api_request *request)
             request->handle->file) != RETURN_OK)
       goto fail;
 
-   DEBUG(3, "%s", nonce);
+   DEBUG(PNDMAN_LEVEL_CRAP, "%s", nonce);
    sprintf(buffer, "%s%s%s", nonce, cnonce, packet->key);
    if (!(hash = _pndman_md5_buf(buffer, strlen(buffer))))
       goto hash_fail;
 
+   request->type = PNDMAN_API_HANDSHAKE;
    snprintf(buffer, sizeof(buffer)-1,
          "stage=2&cnonce=%s&user=%s&hash=%s",cnonce, packet->username, hash);
    curl_easy_setopt(handle->curl, CURLOPT_POSTFIELDS, buffer);
+
    _pndman_curl_handle_perform(handle);
+   return;
 
 hash_fail:
    DEBFAIL(API_HASH_FAIL);
@@ -125,8 +146,10 @@ static void _pndman_handshake_cb(pndman_curl_code code,
 {
    pndman_api_request *handle = (pndman_api_request*)data;
    if (code == PNDMAN_CURL_DONE) {
-      if (handle->type == PNDMAN_API_HANDSHAKE)
+      if (handle->type == PNDMAN_API_NONCE)
          _pndman_handshake_perform(handle);
+      else if (handle->type == PNDMAN_API_HANDSHAKE)
+         _pndman_handshake_check(handle);
 #if 0
       else if (handle->type == PNDMAN_API_RATE)
          _pndman_rate_perform(handle);
@@ -163,14 +186,15 @@ int _pndman_handshake(pndman_curl_handle *handle,
    pndman_api_request *request;
 
    snprintf(url, PNDMAN_URL-1, "%s/%s", repo->api.root, API_HANDSHAKE);
-   DEBUG(3, url);
+   DEBUG(PNDMAN_LEVEL_CRAP, url);
 
-   if (!(request = _pndman_api_request_new(PNDMAN_API_HANDSHAKE, handle)))
+   if (!(request = _pndman_api_request_new(PNDMAN_API_NONCE, handle)))
       goto fail;
 
    if (!(request->packet = _pndman_handshake_packet(key, username)))
       goto fail;
 
+   handle->callback = _pndman_handshake_cb;
    curl_easy_setopt(handle->curl, CURLOPT_POSTFIELDS, "stage=1");
    if (_pndman_curl_handle_perform(handle) != RETURN_OK)
       goto fail;
@@ -180,23 +204,6 @@ int _pndman_handshake(pndman_curl_handle *handle,
 fail:
    IFDO(_pndman_api_request_free, request);
    return RETURN_FAIL;
-
-#if 0
-   DEBUG(3, "%s", request->result.data);
-   if (_pndman_json_client_api_return(request->result.data,
-               &status) != RETURN_OK)
-      goto api_fail;
-
-   DEBUG(3, "Handshake success!\n");
-   return RETURN_OK;
-
-
-api_fail:
-   DEBFAIL(API_FAIL, status.number, status.text);
-fail:
-   if (hash) free(hash);
-   return RETURN_FAIL;
-#endif
 }
 
 #if 0
@@ -230,7 +237,7 @@ int _pndman_rate_pnd(pndman_package *pnd, pndman_repository *list, int rate)
       goto curl_fail;
 
    curl_free_request(&request);
-   DEBUG(3, "Rating success!\n");
+   DEBUG(PNDMAN_LEVEL_CRAP, "Rating success!");
    return RETURN_OK;
 
  not_in_repo:
@@ -271,7 +278,7 @@ int _pndman_comment_pnd(pndman_package *pnd, pndman_repository *list, const char
       goto fail;
 
    snprintf(url, REPO_URL-1, "%s/%s", r->client_api, REPO_API_COMMENT_URL);
-   DEBUG(3, url);
+   DEBUG(PNDMAN_LEVEL_CRAP, url);
    snprintf(buffer, sizeof(buffer)-1, "id=%s&c=%s", pnd->id, comment);
    _curl_set(&request, url, buffer);
 
@@ -279,7 +286,7 @@ int _pndman_comment_pnd(pndman_package *pnd, pndman_repository *list, const char
       goto curl_fail;
 
    curl_free_request(&request);
-   DEBUG(3, "Comment success!\n");
+   DEBUG(PNDMAN_LEVEL_CRAP, "Comment success!");
    return RETURN_OK;
 
 not_in_repo:
@@ -320,16 +327,16 @@ int _pndman_comment_pnd_get(pndman_package *pnd, pndman_repository *list)
       goto fail;
 
    snprintf(url, REPO_URL-1, "%s/%s", r->client_api, REPO_API_COMMENT_URL);
-   DEBUG(3, url);
+   DEBUG(PNDMAN_LEVEL_CRAP, url);
    snprintf(buffer, sizeof(buffer)-1, "id=%s&pull=true", pnd->id);
    _curl_set(&request, url, buffer);
 
    if (curl_easy_perform(request.curl) != CURLE_OK)
       goto curl_fail;
 
-   DEBUG(3, request.result.data);
+   DEBUG(PNDMAN_LEVEL_CRAP, request.result.data);
    curl_free_request(&request);
-   DEBUG(3, "Comments got!\n");
+   DEBUG(PNDMAN_LEVEL_CRAP, "Comments got!");
    return RETURN_OK;
 
 not_in_repo:

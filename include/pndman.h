@@ -50,18 +50,26 @@
 extern "C" {
 #endif
 
+/* \brief debug level enum */
 typedef enum pndman_debug_level {
    PNDMAN_LEVEL_ERROR,
    PNDMAN_LEVEL_WARN,
    PNDMAN_LEVEL_CRAP
 } pndman_debug_level;
 
+/* \brief curl callback return code */
+typedef enum pndman_curl_code
+{
+   PNDMAN_CURL_DONE,
+   PNDMAN_CURL_FAIL,
+} pndman_curl_code;
+
 /* \brief debug hook typedef */
 typedef void (*PNDMAN_DEBUG_HOOK_FUNC)(
       const char *file, int line, const char *function,
       int verbose_level, const char *str);
 
-/* \brief flags for sync requests */
+/* \brief flags for sync handle */
 typedef enum pndman_sync_flags
 {
    PNDMAN_SYNC_FULL = 0x001,
@@ -254,7 +262,6 @@ typedef struct pndman_device
    struct pndman_device *next, *prev;
 } pndman_device;
 
-
 /* \brief struct for holding progression data of
  * curl handle */
 typedef struct pndman_curl_progress
@@ -264,6 +271,9 @@ typedef struct pndman_curl_progress
    char done;
 } pndman_curl_progress;
 
+/* \brief callback function definition to handle */
+typedef void (*pndman_callback)(pndman_curl_code code, void *data);
+
 /*! \brief Struct for PND transaction */
 typedef struct pndman_handle
 {
@@ -271,8 +281,12 @@ typedef struct pndman_handle
    char error[PNDMAN_STR];
    pndman_package *pnd;
    pndman_device  *device;
+   pndman_repository *repository;
    unsigned int flags;
    pndman_curl_progress progress;
+   pndman_callback callback;
+
+   /* don't touch */
    const void *data;
 } pndman_handle;
 
@@ -283,6 +297,9 @@ typedef struct pndman_sync_handle
    pndman_repository *repository;
    unsigned int flags;
    pndman_curl_progress progress;
+   pndman_callback callback;
+
+   /* don't touch */
    const void *data;
 } pndman_sync_handle;
 
@@ -307,6 +324,17 @@ PNDMANAPI void pndman_set_debug_hook(
 
 /* \brief get current verbose level */
 PNDMANAPI int pndman_get_verbose(void);
+
+/* \brief colored put function
+ * this is manily provided public to milkyhelper,
+ * to avoid some code duplication.
+ *
+ * Plus pndman uses it internally, if no debug hooks set :)
+ * Feel free to use it as well if you want. */
+PNDMANAPI void pndman_puts(const char *buffer);
+
+/* \brief use this to disable internal color output */
+PNDMANAPI void pndman_set_color(int use_color);
 
 /* \brief initialize repository list
  * on success: returns list object containing
@@ -386,17 +414,17 @@ PNDMANAPI int pndman_handle_commit(pndman_handle *handle,
 /* \brief free/cancel handle */
 PNDMANAPI void pndman_handle_free(pndman_handle *handle);
 
-/* \brief create new synchorization request
+/* \brief create new synchorization handle
  * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_sync_request(pndman_sync_handle *handle);
+PNDMANAPI int pndman_sync_handle_init(pndman_sync_handle *handle);
 
 /* \brief perform synchorization
  * return 0 on success, -1 on failure */
-PNDMANAPI int pndman_sync_perform(
+PNDMANAPI int pndman_sync_handle_perform(
       pndman_sync_handle *handle);
 
 /* \brief free/cancel synchorization */
-PNDMANAPI void pndman_sync_request_free(
+PNDMANAPI void pndman_sync_handle_free(
       pndman_sync_handle *handle);
 
 /* \brief commit all repositories to specific device */

@@ -1,38 +1,13 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
 #include "pndman.h"
+#include "common.h"
 
 #define REPO_URL "http://repo.openpandora.org/includes/get_data.php"
 
-static void err(char *str)
+static void sync_done_cb(pndman_curl_code code, void *data)
 {
-   puts(str);
-   exit(EXIT_FAILURE);
-}
-
-#ifdef __WIN32__
-#  define getcwd _getcwd
-#elif __linux__
-#  include <sys/stat.h>
-#endif
-static char* test_device()
-{
-   char *cwd = malloc(PATH_MAX);
-   if (!cwd) return NULL;
-   getcwd(cwd, PATH_MAX);
-   strncat(cwd, "/SD", PATH_MAX-1);
-   if (access(cwd, F_OK) != 0)
-#ifdef __WIN32__
-      if (mkdir(cwd) == -1) {
-#else
-      if (mkdir(cwd, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1) {
-#endif
-         free(cwd);
-         return NULL;
-      }
-   return cwd;
+   pndman_sync_handle *handle = (pndman_sync_handle*)data;
+   printf("%s : DONE!\n", handle->repository->name);
+   pndman_sync_handle_free(handle);
 }
 
 int main()
@@ -44,16 +19,18 @@ int main()
    unsigned int x;
    char *cwd;
 
-   pndman_set_verbose(3);
-
-   cwd = test_device();
-   if (!cwd) err("failed to get virtual device path");
-
    puts("This test, tests various repository operations within libpndman.");
    puts("We'll first try to add "REPO_URL" two times, but since it already exists, second add should fail.");
    puts("");
    puts("Additionally it does some free trickery, so there should be no memory leaks or segmentation faults either.");
    puts("");
+
+   /* set verbose level to max */
+   pndman_set_verbose(PNDMAN_LEVEL_CRAP);
+
+   /* get test device */
+   if (!(cwd = test_device()))
+      err("failed to get virtual device path");
 
    /* add device */
    if (!(device = pndman_device_add(cwd, NULL)))
@@ -64,44 +41,22 @@ int main()
    if (!repository)
       err("failed to allocate repository list");
 
+   /* test duplicates */
    if (!pndman_repository_add(REPO_URL, repository))
       err("failed to add "REPO_URL", :/");
    if (pndman_repository_add(REPO_URL, repository))
       err("second repo add should fail!");
 
-   r = repository; x = 0;
-   for (; r; r = r->next) {
-      d = device;
-      for (; d; d = d->next) pndman_read_from_device(r, d);
+   /* read all repositories locally */
+   repo_auto_read(repository, device);
 
-      /* skip the local repository */
-      if (x) {
-         if (pndman_sync_request(&handle[x-1], 0, r) != 0)
-            err("pndman_sync_request failed");
-      }
-      ++x;
-   }
+   /* create and perform sync handles */
+   sync_auto_create(handle, 1, repository, sync_done_cb);
 
-   /* sync repositories
-    * in real use should check error (-1) */
-   puts("");
-   while (pndman_sync() > 0) {
-      for (x = 0; x != 1; ++x) {
-         printf("%s [%.2f/%.2f]%s", handle[x].repository->url,
-                handle[x].progress.download/1048576, handle[x].progress.total_to_download/1048576,
-                handle[x].progress.done?"\n":"\r"); fflush(stdout);
-         if (handle[x].progress.done) {
-            printf("%s : DONE!\n", handle[x].repository->name);
-            pndman_sync_request_free(&handle[x]);
-         }
-      }
-   }
-   puts("");
+   /* wait for repositories to sync */
+   curl_loop();
 
-   /* make sure all sync handles are freed */
-   for (x = 0; x != 1; ++x)
-      pndman_sync_request_free(&handle[x]);
-
+   /* output information about repositories */
    puts("");
    r = repository;
    for (; r; r = r->next)
@@ -110,6 +65,7 @@ int main()
       printf("   UPD: %s\n", r->updates);
       printf("   URL: %s\n", r->url);
       printf("   VER: %s\n", r->version);
+      printf("   API: %s\n", r->api.root);
       printf("   TIM: %lu\n", r->timestamp);
       puts("");
 
@@ -128,15 +84,13 @@ int main()
    puts("");
 
    /* commit all repositories to every device */
-   d = device;
-   for (; d; d = d->next)
-      pndman_commit_all(repository, d);
+   repo_auto_commit(repository, device);
 
-   /* free everything */
+   /* cleanup */
    pndman_repository_free_all(repository);
    pndman_device_free_all(device);
-
    free(cwd);
+
    return EXIT_SUCCESS;
 }
 

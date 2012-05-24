@@ -25,11 +25,14 @@
 /* helper macros */
 #define IFDO(f, x)            if (x) f(x); x = NULL;
 #define THIS_FILE             ((strrchr(__FILE__, '/') ?: __FILE__ - 1) + 1)
-#define DBG_FMT               "\2@FILE \5%-20s \2@LINE \5%-4d \5>> \3%s"
-#define DBG_WRN_BAD_USE       "bad usage of function: %s"
-#define BADUSE(fmt,...)       DEBUG(PNDMAN_LEVEL_WARN, DBG_WRN_BAD_USE, ##__VA_ARGS__)
-#define DEBUG(level,fmt,...)  _pndman_debug_hook(THIS_FILE, __LINE__, __func__, level, fmt, ##__VA_ARGS__)
-#define DEBFAIL(fmt,...)      _pndman_debug_hook(THIS_FILE, __LINE__, __func__, PNDMAN_LEVEL_ERROR, fmt, ##__VA_ARGS__)
+#define DBG_FMT               "\2@FILE \5%-20s \2@LINE \5%-4d \5>> \4%s\n\5%s"
+#define DBG_WRN_BAD_USE       "\2-!- Bad usage of function:\5 "
+#define BADUSE(fmt,...)       _pndman_debug_hook(THIS_FILE, __LINE__, __func__, \
+                                       PNDMAN_LEVEL_WARN, DBG_WRN_BAD_USE""fmt, ##__VA_ARGS__)
+#define DEBUG(level,fmt,...)  _pndman_debug_hook(THIS_FILE, __LINE__, __func__, \
+                                       level, fmt, ##__VA_ARGS__)
+#define DEBFAIL(fmt,...)      _pndman_debug_hook(THIS_FILE, __LINE__, __func__, \
+                                       PNDMAN_LEVEL_ERROR, fmt, ##__VA_ARGS__)
 
 /* etc.. */
 #define PNDMAN_CURL_TIMEOUT 15L
@@ -88,14 +91,6 @@ typedef enum PNDMAN_RETURN
    RETURN_FALSE =  !RETURN_TRUE
 } PNDMAN_RETURN;
 
-/* \brief curl callback return code */
-typedef enum pndman_curl_code
-{
-   PNDMAN_CURL_DONE,
-   PNDMAN_CURL_FAIL,
-   PNDMAN_CURL_FREE
-} pndman_curl_code;
-
 /* \brief callback function definition to curl handle */
 typedef void (*pndman_curl_callback)(pndman_curl_code code, void *data, const char *info);
 
@@ -136,7 +131,7 @@ typedef struct pndman_api_status {
 typedef struct pndman_api_comment {
    time_t   date;
    char     user[PNDMAN_SHRT_STR];
-   char     comment[PNDMAN_API_COMMENT];
+   char     comment[PNDMAN_API_COMMENT_LEN];
    struct   pndman_api_comment *next;
 }pndmann_api_comment;
 
@@ -161,7 +156,6 @@ pndman_curl_handle* _pndman_curl_handle_new(void *data,
       const char *path);
 void _pndman_curl_handle_free(pndman_curl_handle *handle);
 int  _pndman_curl_handle_perform(pndman_curl_handle *handle);
-void _pndman_curl_init_progress(pndman_curl_progress *progress);
 
 /* json */
 int _pndman_json_api_value(const char *key, char *value, size_t size,
@@ -169,6 +163,9 @@ int _pndman_json_api_value(const char *key, char *value, size_t size,
 int _pndman_json_api_status(const char *buffer, pndman_api_status *status);
 int _pndman_json_commit(pndman_repository *repo, FILE *f);
 int _pndman_json_process(pndman_repository *repo, FILE *f);
+int _pndman_json_client_api_return(FILE *file, pndman_api_status *status);
+int _pndman_json_get_value(const char *key, char *value,
+      size_t size, FILE *file);
 
 /* md5 functions (remember free result) */
 char* _pndman_md5_buf(char *buffer, size_t size);

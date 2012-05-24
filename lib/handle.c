@@ -85,7 +85,7 @@ static int _pndman_backup(pndman_package *pnd, pndman_device *device)
    strncat(tmp, pnd->version.build, PATH_MAX-1);
    strncat(tmp, ".pnd", PATH_MAX-1);
 
-   DEBUG(PNDMAN_LEVEL_CRAP, "backup: %s -> %s\n", pnd->path, tmp);
+   DEBUG(PNDMAN_LEVEL_CRAP, "backup: %s -> %s", pnd->path, tmp);
    return _pndman_move_file(pnd->path, tmp);
 }
 
@@ -108,7 +108,7 @@ static int _conflict(char *id, char *path, pndman_repository *local)
    pndman_package *pnd;
    for (pnd = local->pnd; pnd; pnd = pnd->next)
       if (strcmp(id,pnd->id) && !strcmp(path,pnd->path)) {
-         DEBUG(PNDMAN_LEVEL_CRAP, "CONFLICT: %s - %s\n", pnd->id, pnd->path);
+         DEBUG(PNDMAN_LEVEL_CRAP, "CONFLICT: %s - %s", pnd->id, pnd->path);
          return RETURN_TRUE;
       }
    return RETURN_FALSE;
@@ -122,6 +122,10 @@ void _pndman_handle_done(pndman_curl_code code, void *data, const char *info)
    if (code == PNDMAN_CURL_FAIL) {
       strncpy(handle->error, info, PNDMAN_STR);
    }
+
+   /* callback to this handle */
+   if (handle->callback)
+      handle->callback(code, handle);
 }
 
 /* \brief pre routine when object has install flag */
@@ -198,9 +202,6 @@ object_no_dst:
    goto fail;
 object_wtf:
    DEBFAIL(HANDLE_WTF);
-   goto fail;
-write_fail:
-   DEBFAIL(WRITE_FAIL, tmp_path);
 fail:
    return RETURN_FAIL;
 }
@@ -231,12 +232,14 @@ static int _parse_filename_from_header(const char *filename, const char *haystac
    /* zero terminate parsed filename */
    file[pos] = '\0';
 
-   if (!found) {
-      DEBUG(PNDMAN_LEVEL_WARN, HANDLE_HEADER_FAIL);
-      return RETURN_FAIL;
-   }
+   if (!found)
+      goto fail;
 
    return RETURN_OK;
+
+fail:
+   DEBUG(PNDMAN_LEVEL_WARN, HANDLE_HEADER_FAIL);
+   return RETURN_FAIL;
 }
 
 /* \brief post routine when handle has install flag */
@@ -259,10 +262,8 @@ static int _pndman_handle_install(pndman_handle *object, pndman_repository *loca
    if (!object->pnd->update                             &&
        !(object->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
        !(object->flags & PNDMAN_HANDLE_INSTALL_MENU)    &&
-       !(object->flags & PNDMAN_HANDLE_INSTALL_APPS)) {
-      DEBFAIL(HANDLE_NO_DST);
-      return RETURN_FAIL;
-   }
+       !(object->flags & PNDMAN_HANDLE_INSTALL_APPS))
+      goto handle_no_dst;
 
    /* check appdata */
    appdata = _pndman_device_get_appdata(object->device);
@@ -273,7 +274,7 @@ static int _pndman_handle_install(pndman_handle *object, pndman_repository *loca
    if (!md5 && !(object->flags & PNDMAN_HANDLE_FORCE))
       goto fail;
 
-   DEBUG(PNDMAN_LEVEL_CRAP, "R: %s L: %s\n", object->pnd->md5, md5);
+   DEBUG(PNDMAN_LEVEL_CRAP, "R: %s L: %s", object->pnd->md5, md5);
 
    /* do check against remote */
    if (md5 && strcmp(md5, object->pnd->md5)) {
@@ -356,8 +357,8 @@ static int _pndman_handle_install(pndman_handle *object, pndman_repository *loca
    if (!pnd) goto fail;
    _pndman_copy_pnd(pnd, object->pnd);
 
-   DEBUG(PNDMAN_LEVEL_CRAP, "install: %s\n", install);
-   DEBUG(PNDMAN_LEVEL_CRAP, "from: %s\n", handle->path);
+   DEBUG(PNDMAN_LEVEL_CRAP, "install: %s", install);
+   DEBUG(PNDMAN_LEVEL_CRAP, "from: %s", handle->path);
    if (_pndman_move_file(handle->path, install) != RETURN_OK)
       goto fail;
 
@@ -372,6 +373,9 @@ handle_no_dev:
    goto fail;
 handle_no_pnd:
    DEBFAIL(HANDLE_NO_PND);
+   goto fail;
+handle_no_dst:
+   DEBFAIL(HANDLE_NO_DST);
    goto fail;
 md5_fail:
    DEBFAIL(HANDLE_MD5_FAIL, object->pnd->id);
@@ -391,7 +395,7 @@ static int _pndman_handle_remove(pndman_handle *object, pndman_repository *local
    fclose(f);
 
    /* remove */
-   DEBUG(PNDMAN_LEVEL_CRAP, "remove: %s\n", object->pnd->path);
+   DEBUG(PNDMAN_LEVEL_CRAP, "remove: %s", object->pnd->path);
    if (unlink(object->pnd->path) != 0) goto fail;
 
    /* this can't be updated anymore */
@@ -411,7 +415,7 @@ fail:
 /* API */
 
 /* \brief Allocate new pndman_handle for transfer */
-PNDMANAPI int pndman_object_init(const char *name, pndman_handle *object)
+PNDMANAPI int pndman_handle_init(const char *name, pndman_handle *object)
 {
    if (!object) {
       BADUSE("You should pass reference to pndman_handle");
@@ -420,7 +424,6 @@ PNDMANAPI int pndman_object_init(const char *name, pndman_handle *object)
 
    memset(object, 0, sizeof(pndman_handle));
    strncpy(object->name, name, PNDMAN_NAME-1);
-   _pndman_curl_init_progress(&object->progress);
 
    return RETURN_OK;
 }
@@ -435,7 +438,9 @@ PNDMANAPI void pndman_handle_free(pndman_handle *object)
 
    pndman_curl_handle *handle;
    handle = (pndman_curl_handle*)object->data;
-   _pndman_curl_handle_free(handle);
+   IFDO(_pndman_curl_handle_free, handle);
+   object->data      = NULL;
+   object->callback  = NULL;
 }
 
 /* \brief Perform handle, currently only needed for INSTALL handles */

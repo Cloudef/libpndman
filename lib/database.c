@@ -51,9 +51,14 @@ static int blockfile(char *path)
       sleep(1);
 
       /* timeout */
-      if (--timeout==0)
+      if (--timeout==0) {
+         fl->l_type = F_UNLCK;
+         fcntl(fd, F_SETLK, fl);
          goto fail;
+      }
    }
+   fl->l_type = F_UNLCK;
+   fcntl(fd, F_SETLK, fl);
 #else
    FILE *f;
    /* block until lock doesn't exist */
@@ -89,7 +94,7 @@ static int readblock(char *path)
    fl.l_start  = 0;
    fl.l_len    = 0;
    fl.l_pid    = getpid();
-   if ((fd = open(path, O_WRONLY)) == -1)
+   if ((fd = open(path, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR)) == -1)
       return RETURN_FAIL;
    if (blockfile(fd, path, &fl) != RETURN_OK) {
       close(fd);
@@ -124,7 +129,7 @@ static FILE* lockfile(char *path)
    fl.l_start  = 0;
    fl.l_len    = 0;
    fl.l_pid    = getpid();
-   if ((fd = open(path, O_WRONLY)) == -1)
+   if ((fd = open(path, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR)) == -1)
       return -1;
 
    /* block until ready */
@@ -180,7 +185,8 @@ static void unlockfile(FILE *f, char *path)
 /* \brief Store local database seperately */
 static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *device)
 {
-   FILE *f;
+   FILE *f = NULL;
+   BLOCK_FD fd = BLOCK_INIT;
    char db_path[PATH_MAX], *appdata;
    assert(device);
 
@@ -190,15 +196,13 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
 
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/local.db", PATH_MAX-1);
-   DEBUG(PNDMAN_LEVEL_CRAP, "-!- writing to %s\n", db_path);
+   DEBUG(PNDMAN_LEVEL_CRAP, "-!- writing to %s", db_path);
 
    /* lock the file */
 #ifdef __POSIX__
-   int fd;
    if ((fd = lockfile(db_path)) == -1)
       goto fail;
 #else
-   FILE *fd;
    if (!(fd = lockfile(db_path)))
       goto fail;
 #endif
@@ -222,11 +226,11 @@ write_fail:
    DEBFAIL(WRITE_FAIL, db_path);
 fail:
 #ifdef __POSIX__
-   if (fd) close(fd);
+   if (fd != -1) close(fd);
 #else
-   if (fd) fclose(fd);
+   IFDO(fclose, fd);
 #endif
-   if (f)  fclose(f);
+   IFDO(fclose, f);
    return RETURN_FAIL;
 }
 
@@ -250,7 +254,7 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
 
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/repo.db", PATH_MAX-1);
-   DEBUG(PNDMAN_LEVEL_CRAP, "-!- writing to %s\n", db_path);
+   DEBUG(PNDMAN_LEVEL_CRAP, "-!- writing to %s", db_path);
 
    /* lock the file */
 #ifdef __POSIX__
@@ -285,11 +289,11 @@ write_fail:
    DEBFAIL(WRITE_FAIL, db_path);
 fail:
 #ifdef __POSIX__
-   if (fd) close(fd);
+   if (fd != -1) close(fd);
 #else
-   if (fd) fclose(fd);
+   IFDO(fclose, fd);
 #endif
-   if (f)  fclose(f);
+   IFDO(fclose, f);
    return RETURN_FAIL;
 }
 
@@ -308,7 +312,7 @@ static int _pndman_db_get_local(pndman_repository *repo, pndman_device *device)
    /* begin to read local database */
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/local.db", PATH_MAX-1);
-   DEBUG(PNDMAN_LEVEL_CRAP, "-!- local from %s\n", db_path);
+   DEBUG(PNDMAN_LEVEL_CRAP, "-!- local from %s", db_path);
 
    /* block until ready for read */
    if (readblock(db_path) != RETURN_OK)
@@ -326,7 +330,7 @@ static int _pndman_db_get_local(pndman_repository *repo, pndman_device *device)
 read_fail:
    DEBFAIL(READ_FAIL, db_path);
 fail:
-   if (f) fclose(f);
+   IFDO(fclose, f);
    return RETURN_FAIL;
 }
 
@@ -357,11 +361,11 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
    /* begin to read other repositories */
    strncpy(db_path, appdata, PATH_MAX-1);
    strncat(db_path, "/repo.db", PATH_MAX-1);
-   DEBUG(PNDMAN_LEVEL_CRAP, "-!- reading from %s\n", db_path);
+   DEBUG(PNDMAN_LEVEL_CRAP, "-!- reading from %s", db_path);
 
    /* block until ready for read */
    if (readblock(db_path) != RETURN_OK)
-      return RETURN_FAIL;
+      goto fail;
 
    if (!(f = fopen(db_path, "r")))
       goto read_fail;
@@ -390,8 +394,8 @@ bad_url:
 read_fail:
    DEBFAIL(READ_FAIL, db_path);
 fail:
-   if (f2) fclose(f2);
-   if (f)  fclose(f);
+   IFDO(fclose, f2);
+   IFDO(fclose, f);
    return RETURN_FAIL;
 }
 
@@ -409,32 +413,37 @@ static void _pndman_sync_done(pndman_curl_code code, void *data, const char *inf
          handle->repository->timestamp = time(0);
       }
    }
+
+   /* callback to this handle */
+   if (handle->callback)
+      handle->callback(code, handle);
 }
 
 /* \brief free internal sync request */
 static void _pndman_sync_handle_free(pndman_sync_handle *object)
 {
-    pndman_curl_handle *handle;
+   pndman_curl_handle *handle;
    handle = (pndman_curl_handle*)object->data;
-   _pndman_curl_handle_free(handle);
+   IFDO(_pndman_curl_handle_free, handle);
+   object->data      = NULL;
+   object->callback  = NULL;
 }
 
 /* \brief allocate internal sync request */
-static int _pndman_new_sync_handle(pndman_sync_handle *object)
+static int _pndman_new_sync_handle_init(pndman_sync_handle *object)
 {
    /* init */
    memset(object, 0, sizeof(pndman_sync_handle));
-   _pndman_curl_init_progress(&object->progress);
    return RETURN_OK;
 }
 
 /* \brief perform sync request */
-static int _pndman_sync_request_perform(pndman_sync_handle *object)
+static int _pndman_sync_handle_perform(pndman_sync_handle *object)
 {
    char *url = NULL;
    char timestamp[PNDMAN_TIMESTAMP];
    pndman_curl_handle *handle;
-   assert(object && object->repository && object->data);
+   assert(object && object->repository);
    handle = (pndman_curl_handle*)object->data;
 
    /* check wether, to do merging or full sync */
@@ -553,17 +562,17 @@ PNDMANAPI int pndman_check_updates(pndman_repository *list)
 }
 
 /* \brief create new synchorization request object */
-PNDMANAPI int pndman_sync_request(pndman_sync_handle *handle)
+PNDMANAPI int pndman_sync_handle_init(pndman_sync_handle *handle)
 {
    if (!handle) {
       BADUSE("handle pointer is NULL");
       return RETURN_FAIL;
    }
-   return _pndman_new_sync_handle(handle);
+   return _pndman_new_sync_handle_init(handle);
 }
 
 /* \brief perform the synchorization */
-PNDMANAPI int pndman_sync_request_perform(pndman_sync_handle *handle)
+PNDMANAPI int pndman_sync_handle_perform(pndman_sync_handle *handle)
 {
    if (!handle) {
       BADUSE("handle pointer is NULL");
@@ -574,11 +583,11 @@ PNDMANAPI int pndman_sync_request_perform(pndman_sync_handle *handle)
       return RETURN_FAIL;
    }
 
-   return _pndman_sync_request_perform(handle);
+   return _pndman_sync_handle_perform(handle);
 }
 
 /* \brief free sync request */
-PNDMANAPI void pndman_sync_request_free(pndman_sync_handle *handle)
+PNDMANAPI void pndman_sync_handle_free(pndman_sync_handle *handle)
 {
    if (!handle) {
       BADUSE("handle pointer is NULL");

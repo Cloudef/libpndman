@@ -37,7 +37,8 @@ int _pndman_vercmp(pndman_version *lp, pndman_version *rp)
       ret = RETURN_TRUE;
 
    if (ret == RETURN_TRUE) {
-      DEBUG(3, "L: %d.%d.%d.%d < R: %d.%d.%d.%d\n",
+      DEBUG(PNDMAN_LEVEL_CRAP,
+            "L: %d.%d.%d.%d < R: %d.%d.%d.%d",
             major, minor, release, build,
             major2, minor2, release2, build2);
    }

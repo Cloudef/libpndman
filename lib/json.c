@@ -20,14 +20,14 @@ static int _json_set_string(char *string, json_t *object, size_t max)
 /* \brief helper version setter */
 static int _json_set_version(pndman_version *ver, json_t *object)
 {
-   char type[PND_VER];
+   char type[PNDMAN_VERSION];
    if (!object) return RETURN_FAIL;
-   memset(type, 0, PND_VER);
-   _json_set_string(ver->major,     json_object_get(object,"major"),    PND_VER);
-   _json_set_string(ver->minor,     json_object_get(object,"minor"),    PND_VER);
-   _json_set_string(ver->release,   json_object_get(object,"release"),  PND_VER);
-   _json_set_string(ver->build,     json_object_get(object,"build"),    PND_VER);
-   _json_set_string(type,           json_object_get(object,"type"),     PND_VER);
+   memset(type, 0, PNDMAN_VERSION);
+   _json_set_string(ver->major,     json_object_get(object,"major"),    PNDMAN_VERSION);
+   _json_set_string(ver->minor,     json_object_get(object,"minor"),    PNDMAN_VERSION);
+   _json_set_string(ver->release,   json_object_get(object,"release"),  PNDMAN_VERSION);
+   _json_set_string(ver->build,     json_object_get(object,"build"),    PNDMAN_VERSION);
+   _json_set_string(type,           json_object_get(object,"type"),     PNDMAN_VERSION);
    ver->type = !_strupcmp(type,PND_TYPE_BETA)  ? PND_VERSION_BETA  :
                !_strupcmp(type,PND_TYPE_ALPHA) ? PND_VERSION_ALPHA : PND_VERSION_RELEASE;
    return RETURN_OK;
@@ -37,9 +37,9 @@ static int _json_set_version(pndman_version *ver, json_t *object)
 static int _json_set_author(pndman_author *author, json_t *object)
 {
    if (!object) return RETURN_FAIL;
-   _json_set_string(author->name,      json_object_get(object,"name"),     PND_NAME);
-   _json_set_string(author->website,   json_object_get(object,"website"),  PND_STR);
-   _json_set_string(author->email,     json_object_get(object,"email"),    PND_STR);
+   _json_set_string(author->name,      json_object_get(object,"name"),     PNDMAN_NAME);
+   _json_set_string(author->website,   json_object_get(object,"website"),  PNDMAN_STR);
+   _json_set_string(author->email,     json_object_get(object,"email"),    PNDMAN_STR);
    return RETURN_OK;
 }
 
@@ -49,22 +49,22 @@ static int _json_set_previewpics(pndman_package *pnd, json_t *object)
    pndman_previewpic *c;
    json_t *element;
    unsigned int p;
-   char src[PND_PATH];
+   char src[PNDMAN_PATH];
 
    if (!object)                  return RETURN_FAIL;
    if (!json_is_array(object))   return RETURN_FAIL;
 
-   memset(src, 0, PND_PATH);
+   memset(src, 0, PNDMAN_PATH);
    for (p = 0; p != json_array_size(object); ++p) {
       element = json_array_get(object, p);
 
       /* check fail */
-      if (_json_set_string(src, element, PND_PATH) != RETURN_OK)
+      if (_json_set_string(src, element, PNDMAN_PATH) != RETURN_OK)
          continue;
 
       /* copy */
       if ((c = _pndman_package_new_previewpic(pnd)))
-         memcpy(c->src, src, PND_PATH);
+         memcpy(c->src, src, PNDMAN_PATH);
    }
 
    return RETURN_OK;
@@ -76,22 +76,22 @@ static int _json_set_licenses(pndman_package *pnd, json_t *object)
    pndman_license *l;
    json_t *element;
    unsigned int p;
-   char name[PND_SHRT_STR];
+   char name[PNDMAN_SHRT_STR];
 
    if (!object)                  return RETURN_FAIL;
    if (!json_is_array(object))   return RETURN_FAIL;
 
-   memset(name, 0, PND_SHRT_STR);
+   memset(name, 0, PNDMAN_SHRT_STR);
    for (p = 0; p != json_array_size(object); ++p) {
       element = json_array_get(object, p);
 
       /* check fail */
-      if (_json_set_string(name, element, PND_SHRT_STR) != RETURN_OK)
+      if (_json_set_string(name, element, PNDMAN_SHRT_STR) != RETURN_OK)
          continue;
 
       /* copy */
       if ((l = _pndman_package_new_license(pnd)))
-         memcpy(l->name, name, PND_SHRT_STR);
+         memcpy(l->name, name, PNDMAN_SHRT_STR);
    }
 
    return RETURN_OK;
@@ -103,24 +103,24 @@ static int _json_set_sources(pndman_package *pnd, json_t *object)
    pndman_license *l;
    json_t *element;
    unsigned int p;
-   char url[PND_STR];
+   char url[PNDMAN_STR];
 
    if (!object)                  return RETURN_FAIL;
    if (!json_is_array(object))   return RETURN_FAIL;
    if (!(l = pnd->license))      return RETURN_FAIL;
 
-   memset(url, 0, PND_STR);
+   memset(url, 0, PNDMAN_STR);
    for (p = 0; l && p != json_array_size(object); ++p) {
       element = json_array_get(object, p);
 
       /* check fail */
-      if (_json_set_string(url, element, PND_STR) != RETURN_OK) {
+      if (_json_set_string(url, element, PNDMAN_STR) != RETURN_OK) {
          l = l->next;
          continue;
       }
 
       /* copy */
-      memcpy(l->sourcecodeurl, url, PND_STR);
+      memcpy(l->sourcecodeurl, url, PNDMAN_STR);
       l = l->next;
    }
 
@@ -133,26 +133,26 @@ static int _json_set_categories(pndman_package *pnd, json_t *object)
    pndman_category *c = NULL;
    json_t *element;
    unsigned int p;
-   char cat[PND_SHRT_STR];
+   char cat[PNDMAN_SHRT_STR];
 
    if (!object)                  return RETURN_FAIL;
    if (!json_is_array(object))   return RETURN_FAIL;
 
-   memset(cat, 0, PND_SHRT_STR);
+   memset(cat, 0, PNDMAN_SHRT_STR);
    for (p = 0; p != json_array_size(object); ++p) {
       element = json_array_get(object, p);
 
       /* check fail */
-      if (_json_set_string(cat, element, PND_SHRT_STR) != RETURN_OK)
+      if (_json_set_string(cat, element, PNDMAN_SHRT_STR) != RETURN_OK)
          continue;
 
       /* copy either main or sub */
       if (!c) {
          if ((c = _pndman_package_new_category(pnd))) {
-            memcpy(c->main, cat, PND_SHRT_STR);
+            memcpy(c->main, cat, PNDMAN_SHRT_STR);
          } else break;
       } else {
-         memcpy(c->sub, cat, PND_SHRT_STR);
+         memcpy(c->sub, cat, PNDMAN_SHRT_STR);
          c = NULL;
       }
    }
@@ -182,14 +182,14 @@ static int _json_set_localization(pndman_package *pnd, json_t *object)
 
       /* add title */
       if ((t = _pndman_package_new_title(pnd))) {
-            strncpy(t->lang, key, PND_SHRT_STR);
-            _json_set_string(t->string, json_object_get(element, "title"), PND_STR);
+            strncpy(t->lang, key, PNDMAN_SHRT_STR);
+            _json_set_string(t->string, json_object_get(element, "title"), PNDMAN_STR);
       }
 
       /* add description */
       if ((t = _pndman_package_new_description(pnd))) {
-            strncpy(t->lang, key, PND_SHRT_STR);
-            _json_set_string(t->string, json_object_get(element, "description"), PND_STR);
+            strncpy(t->lang, key, PNDMAN_SHRT_STR);
+            _json_set_string(t->string, json_object_get(element, "description"), PNDMAN_STR);
       }
 
       /* next */
@@ -205,14 +205,16 @@ static int _pndman_json_repo_header(json_t *repo_header, pndman_repository *repo
    json_t *element;
    assert(repo_header && repo);
 
-   _json_set_string(repo->name,    json_object_get(repo_header, "name"), REPO_NAME);
-   _json_set_string(repo->updates, json_object_get(repo_header, "updates"), REPO_URL);
-   _json_set_string(repo->client_api, json_object_get(repo_header, "client_api"), REPO_URL);
+   _json_set_string(repo->name,    json_object_get(repo_header, "name"), PNDMAN_NAME);
+   _json_set_string(repo->updates, json_object_get(repo_header, "updates"), PNDMAN_URL);
+   _json_set_string(repo->api.root, json_object_get(repo_header, "client_api"), PNDMAN_URL);
+   _json_set_string(repo->api.username, json_object_get(repo_header, "username"), PNDMAN_SHRT_STR);
+   _json_set_string(repo->api.key, json_object_get(repo_header, "api_key"), PNDMAN_STR);
    if ((element = json_object_get(repo_header, "version")))
       if (json_is_string(element))
-         strncpy(repo->version, json_string_value(element), REPO_VERSION);
+         strncpy(repo->version, json_string_value(element), PNDMAN_VERSION);
       else
-         snprintf(repo->version, REPO_VERSION-1, "%.2f", json_number_value(element));
+         snprintf(repo->version, PNDMAN_VERSION-1, "%.2f", json_number_value(element));
    _json_set_number(&repo->timestamp, json_object_get(repo_header, "timestamp"), time_t);
 
    return RETURN_OK;
@@ -224,12 +226,12 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
    json_t         *package;
    pndman_package *pnd;
    unsigned int p;
-   char id[PND_ID];
-   char path[PND_PATH];
+   char id[PNDMAN_ID];
+   char path[PNDMAN_PATH];
    assert(packages && repo);
 
-   memset(id,   0, PND_ID);
-   memset(path, 0, PND_PATH);
+   memset(id,   0, PNDMAN_ID);
+   memset(path, 0, PNDMAN_PATH);
 
    p = 0;
    for (; p != json_array_size(packages); ++p) {
@@ -237,8 +239,8 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       if (!json_is_object(package)) continue;
 
       /* these are needed for checking duplicate pnd's */
-      _json_set_string(id,   json_object_get(package,"id"),    PND_ID);
-      _json_set_string(path, json_object_get(package, "path"), PND_PATH);
+      _json_set_string(id,   json_object_get(package,"id"),    PNDMAN_ID);
+      _json_set_string(path, json_object_get(package, "path"), PNDMAN_PATH);
       pnd = _pndman_repository_new_pnd_check(id, path, NULL, repo);
       if (!pnd) return RETURN_FAIL;
 
@@ -249,21 +251,21 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       _pndman_package_free_licenses(pnd);
       _pndman_package_free_categories(pnd);
 
-      memcpy(pnd->id,     id,  PND_ID);
-      memcpy(pnd->path, path,  PND_PATH);
-      _json_set_string(pnd->repository,   json_object_get(package,"repository"), PND_STR);
-      _json_set_string(pnd->mount ,       json_object_get(package,"mount"),   PND_PATH);
-      _json_set_string(pnd->md5,          json_object_get(package,"md5"),     PND_MD5);
-      _json_set_string(pnd->url,          json_object_get(package,"uri"),     PND_STR);
+      memcpy(pnd->id,     id,  PNDMAN_ID);
+      memcpy(pnd->path, path,  PNDMAN_PATH);
+      _json_set_string(pnd->repository,   json_object_get(package,"repository"), PNDMAN_STR);
+      _json_set_string(pnd->mount ,       json_object_get(package,"mount"),   PNDMAN_PATH);
+      _json_set_string(pnd->md5,          json_object_get(package,"md5"),     PNDMAN_MD5);
+      _json_set_string(pnd->url,          json_object_get(package,"uri"),     PNDMAN_STR);
       _json_set_version(&pnd->version,    json_object_get(package,"version"));
       _json_set_localization(pnd,         json_object_get(package,"localizations"));
-      _json_set_string(pnd->info,         json_object_get(package,"info"),    PND_INFO);
+      _json_set_string(pnd->info,         json_object_get(package,"info"),    PNDMAN_STR);
       _json_set_number(&pnd->size,        json_object_get(package, "size"),            size_t);
       _json_set_number(&pnd->modified_time, json_object_get(package, "modified-time"), time_t);
       _json_set_number(&pnd->rating,      json_object_get(package, "rating"),          int);
       _json_set_author(&pnd->author,      json_object_get(package,"author"));
-      _json_set_string(pnd->vendor,       json_object_get(package,"vendor"),  PND_NAME);
-      _json_set_string(pnd->icon,         json_object_get(package,"icon"),    PND_PATH);
+      _json_set_string(pnd->vendor,       json_object_get(package,"vendor"),  PNDMAN_NAME);
+      _json_set_string(pnd->icon,         json_object_get(package,"icon"),    PNDMAN_PATH);
       _json_set_previewpics(pnd,          json_object_get(package,"previewpics"));
       _json_set_licenses(pnd,             json_object_get(package,"licenses"));
       _json_set_sources(pnd,              json_object_get(package,"source"));
@@ -276,14 +278,14 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
 /* INTERNAL */
 
 /* \brief get return value from client api */
-int _pndman_json_client_api_return(const char *buffer, client_api_return *status)
+int _pndman_json_client_api_return(FILE *file, pndman_api_status *status)
 {
    json_t *root = NULL, *object;
    json_error_t error;
-   assert(buffer && status);
+   assert(file && status);
 
-   memset(status, 0, sizeof(client_api_return));
-   if (!(root = json_loads(buffer, 0, &error)))
+   memset(status, 0, sizeof(pndman_api_status));
+   if (!(root = json_loadf(file, 0, &error)))
       goto bad_json;
 
    status->status = API_ERROR;
@@ -294,16 +296,16 @@ int _pndman_json_client_api_return(const char *buffer, client_api_return *status
    }
 
    _json_set_number(&status->number, json_object_get(object, "number"), int);
-   _json_set_string(status->text, json_object_get(object,"text"), API_TEXT);
+   _json_set_string(status->text, json_object_get(object,"text"), PNDMAN_SHRT_STR);
 
    json_decref(root);
    return status->status==API_SUCCESS?
           RETURN_OK:RETURN_FAIL;
 
 bad_json:
-   DEBFAIL(BAD_JSON, "client api");
+   DEBFAIL(JSON_BAD_JSON, "client api");
 fail:
-   if (root) json_decref(root);
+   IFDO(json_decref, root);
    return RETURN_FAIL;
 }
 
@@ -348,16 +350,16 @@ int _pndman_json_process(pndman_repository *repo, FILE *data)
          packages = json_object_get(root, "packages");
          if (json_is_array(packages))
             _pndman_json_process_packages(packages, repo);
-         else DEBUG(2, NO_P_ARRAY, repo->url);
+         else DEBUG(PNDMAN_LEVEL_WARN, JSON_NO_P_ARRAY, repo->url);
       }
-   } else DEBUG(2, NO_R_HEADER, repo->url);
+   } else DEBUG(PNDMAN_LEVEL_WARN, JSON_NO_R_HEADER, repo->url);
 
    json_decref(root);
    return RETURN_OK;
 
 bad_json:
-   DEBFAIL(BAD_JSON, repo->url);
-   if (root) json_decref(root);
+   DEBFAIL(JSON_BAD_JSON, repo->url);
+   IFDO(json_decref, root);
    return RETURN_FAIL;
 }
 

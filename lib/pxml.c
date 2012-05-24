@@ -258,7 +258,7 @@ fail_end:
 xml_too_big:
    DEBFAIL("%s: %s", pnd_file, PXML_XML_CPY_FAIL);
 fail:
-   if (pnd) fclose(pnd);
+   IFDO(fclose, pnd);
    return RETURN_FAIL;
 }
 
@@ -508,7 +508,7 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
    pndman_category    *category;
    pndman_association *association;
 
-   //DEBUG(PNDMAN_LEVEL_CRAP, "Found start : %s [%s, %s]\n", tag, attrs[0], attrs[1]);
+   //DEBUG(PNDMAN_LEVEL_CRAP, "Found start : %s [%s, %s]", tag, attrs[0], attrs[1]);
 
    /* check parse state, so we don't parse wrong stuff */
    switch (*parse_state) {
@@ -767,7 +767,7 @@ static void _pxml_pnd_data(void *data, char *text, int len)
 /* \brief End element tag */
 static void _pxml_pnd_end_tag(void *data, char *tag)
 {
-   // DEBUG(PNDMAN_LEVEL_CRAP, "Found end : %s\n", tag);
+   // DEBUG(PNDMAN_LEVEL_CRAP, "Found end : %s", tag);
 
    unsigned int          *parse_state  = &((pxml_parse*)data)->state;
    // pndman_package     *pnd          = ((pxml_parse*)data)->pnd;
@@ -1291,8 +1291,8 @@ PNDMANAPI int pnd_do_something(const char *pnd_file)
    if (test->version.type == PND_VERSION_BETA)        type = PND_TYPE_BETA;
    else if (test->version.type == PND_VERSION_ALPHA)  type = PND_TYPE_ALPHA;
 
-   DEBUG(0, " ");
-   DEBUG(0, "ID:       %s\n", test->id);
+   printf(" ");
+   printf("ID:       %s\n", test->id);
    if (!strlen(test->id)) {
       DEBFAIL("Your code sucks, fix it!");
       while ((test = _pndman_free_pnd(test)));
@@ -1300,21 +1300,21 @@ PNDMANAPI int pnd_do_something(const char *pnd_file)
    }
 
    /* titles */
-   DEBUG(0, "TITLE(S):");
+   printf("TITLE(S):");
    t = test->title;
    for (; t; t = t->next)
-      DEBUG(0, "  %s:    %s\n", t->lang, t->string);
+      printf("  %s:    %s\n", t->lang, t->string);
 
    /* descriptions */
-   DEBUG(0, "DESCRIPTION(S):");
+   printf("DESCRIPTION(S):");
    t = test->description;
    for (; t; t = t->next)
-      DEBUG(0, "  %s:    %s\n", t->lang, t->string);
+      printf("  %s:    %s\n", t->lang, t->string);
 
-   DEBUG(0, "ICON:     %s\n", test->icon);
-   DEBUG(0, "AUTHOR:   %s\n", test->author.name);
-   DEBUG(0, "WEBSITE:  %s\n", test->author.website);
-   DEBUG(0, "VERSION:  %s.%s.%s.%s %s\n", test->version.major, test->version.minor,
+   printf("ICON:     %s\n", test->icon);
+   printf("AUTHOR:   %s\n", test->author.name);
+   printf("WEBSITE:  %s\n", test->author.website);
+   printf("VERSION:  %s.%s.%s.%s %s\n", test->version.major, test->version.minor,
          test->version.release, test->version.build, type);
 
    app = test->app;
@@ -1327,62 +1327,62 @@ PNDMANAPI int pnd_do_something(const char *pnd_file)
       else if (app->version.type == PND_VERSION_BETA)   type = PND_TYPE_BETA;
       else if (app->version.type == PND_VERSION_ALPHA)  type = PND_TYPE_ALPHA;
 
-      DEBUG(0, " ");
-      DEBUG(0, "ID:       %s\n", app->id);
+      printf(" ");
+      printf("ID:       %s\n", app->id);
 
       /* titles */
-      DEBUG(0, "TITLE(S):");
+      printf("TITLE(S):");
       t = app->title;
       for (; t; t = t->next)
-         DEBUG(0, "  %s:    %s\n", t->lang, t->string);
+         printf("  %s:    %s\n", t->lang, t->string);
 
       /* descriptions */
-      DEBUG(0, "DESCRIPTION(S):");
+      printf("DESCRIPTION(S):");
       t = app->description;
       for (; t; t = t->next)
-         DEBUG(0, "  %s:    %s\n", t->lang, t->string);
+         printf("  %s:    %s\n", t->lang, t->string);
 
-      DEBUG(0, "ICON:     %s\n", app->icon);
-      DEBUG(0, "AUTHOR:   %s\n", app->author.name);
-      DEBUG(0, "WEBSITE:  %s\n", app->author.website);
-      DEBUG(0, "VERSION:  %s.%s.%s.%s %s\n", app->version.major, app->version.minor,
+      printf("ICON:     %s\n", app->icon);
+      printf("AUTHOR:   %s\n", app->author.name);
+      printf("WEBSITE:  %s\n", app->author.website);
+      printf("VERSION:  %s.%s.%s.%s %s\n", app->version.major, app->version.minor,
             app->version.release, app->version.build, type);
-      DEBUG(0, "OSVER:    %s.%s.%s.%s\n", app->osversion.major, app->osversion.minor,
+      printf("OSVER:    %s.%s.%s.%s\n", app->osversion.major, app->osversion.minor,
             app->osversion.release, app->osversion.build);
 
-      DEBUG(0, "BKGRND:   %s\n", app->exec.background ? PNDMAN_TRUE : PNDMAN_FALSE);
-      DEBUG(0, "STARTDIR: %s\n", app->exec.startdir);
-      DEBUG(0, "STNDLONE: %s\n", app->exec.standalone ? PNDMAN_TRUE : PNDMAN_FALSE);
-      DEBUG(0, "COMMAND:  %s\n", app->exec.command);
-      DEBUG(0, "ARGS:     %s\n", app->exec.arguments);
-      DEBUG(0, "X11:      %s\n", x11);
-      DEBUG(0, "FREQ:     %d\n", app->frequency);
+      printf("BKGRND:   %s\n", app->exec.background ? PNDMAN_TRUE : PNDMAN_FALSE);
+      printf("STARTDIR: %s\n", app->exec.startdir);
+      printf("STNDLONE: %s\n", app->exec.standalone ? PNDMAN_TRUE : PNDMAN_FALSE);
+      printf("COMMAND:  %s\n", app->exec.command);
+      printf("ARGS:     %s\n", app->exec.arguments);
+      printf("X11:      %s\n", x11);
+      printf("FREQ:     %d\n", app->frequency);
 
       /* previewpics */
-      DEBUG(0, "LICENSE(S):");
+      printf("LICENSE(S):");
       l = app->license;
       for (; l; l = l->next)
-         DEBUG(0, "  %s, %s, %s\n", l->name, l->url, l->sourcecodeurl);
+         printf("  %s, %s, %s\n", l->name, l->url, l->sourcecodeurl);
 
       /* previewpics */
-      DEBUG(0, "ASSOCIATION(S):");
+      printf("ASSOCIATION(S):");
       a = app->association;
       for (; a; a = a->next)
-         DEBUG(0, "  %s, %s, %s\n", a->name, a->filetype, a->exec);
+         printf("  %s, %s, %s\n", a->name, a->filetype, a->exec);
 
       /* categories */
-      DEBUG(0, "CATEGORIE(S):");
+      printf("CATEGORIE(S):");
       c = app->category;
       for (; c; c = c->next)
-         DEBUG(0, "  %s, %s\n", c->main, c->sub);
+         printf("  %s, %s\n", c->main, c->sub);
 
       /* previewpics */
-      DEBUG(0, "PREVIEWPIC(S):");
+      printf("PREVIEWPIC(S):");
       p = app->previewpic;
       for (; p; p = p->next)
-         DEBUG(0, "  %s\n", p->src);
+         printf("  %s\n", p->src);
    }
-   DEBUG(0, " ");
+   printf(" ");
    while ((test = _pndman_free_pnd(test)));
 
    return RETURN_OK;

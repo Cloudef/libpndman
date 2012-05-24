@@ -39,6 +39,31 @@ static char* test_device()
    return cwd;
 }
 
+static void sync_done_cb(pndman_curl_code code, void *data)
+{
+   pndman_sync_handle *handle = (pndman_sync_handle*)data;
+   printf("%s : DONE!\n", handle->repository->name);
+   pndman_sync_handle_free(handle);
+}
+
+static size_t dcount = 0;
+static int again = 0;
+static void handle_done_cb(pndman_curl_code code, void *data)
+{
+   pndman_handle *handle = (pndman_handle*)data;
+   printf("%s : DONE!\n", handle->name);
+
+   /* handle is downloaded, "commit" it, (installs) */
+   if (pndman_handle_commit(handle, handle->repository) != 0)
+      printf("commit failed for: %s\n", handle->name);
+
+   ++dcount;
+   if (++again <= D_AGAIN)
+      pndman_handle_perform(handle);
+   else
+      pndman_handle_free(handle);
+}
+
 int main()
 {
    pndman_device *device, *d;
@@ -47,8 +72,7 @@ int main()
    pndman_handle handle[H_COUNT+1];
    pndman_sync_handle sync_handle;
    int i;
-   int again         = 0;
-   size_t dcount     = 0;
+
    char *cwd;
 
    pndman_set_verbose(3);
@@ -69,22 +93,22 @@ int main()
 
    /* read from device, then sync the repository we added */
    pndman_read_from_device(repo, device);
-   pndman_sync_request(&sync_handle, PNDMAN_SYNC_FULL, repo);
+   pndman_sync_handle_init(&sync_handle);
+   sync_handle.flags      = PNDMAN_SYNC_FULL;
+   sync_handle.repository = repo;
+   sync_handle.callback   = sync_done_cb;
+   pndman_sync_handle_perform(&sync_handle);
 
    puts("");
-   while (pndman_sync() > 0) {
+   while (pndman_curl_process() > 0) {
       printf("%s [%.2f/%.2f]%s", sync_handle.repository->url,
              sync_handle.progress.download/1048576, sync_handle.progress.total_to_download/1048576,
              sync_handle.progress.done?"\n":"\r"); fflush(stdout);
-      if (sync_handle.progress.done) {
-         printf("%s : DONE!\n", sync_handle.repository->name);
-         pndman_sync_request_free(&sync_handle);
-      }
    }
    puts("");
 
    /* make sure it's freed */
-   pndman_sync_request_free(&sync_handle);
+   pndman_sync_handle_free(&sync_handle);
 
    /* check that we actually got pnd's */
    if (!repo->pnd)
@@ -103,10 +127,12 @@ int main()
 
    i = 0;
    for (; i != H_COUNT; ++i) {
-      pndman_handle_init((char*)pnd->id, &handle[i]);
-      handle[i].pnd    = pnd; /* lets download the first pnd from repository */
-      handle[i].device = device;
-      handle[i].flags  = PNDMAN_HANDLE_INSTALL;
+      pndman_handle_init(pnd->id, &handle[i]);
+      handle[i].pnd        = pnd; /* lets download the first pnd from repository */
+      handle[i].device     = device;
+      handle[i].repository = repository;
+      handle[i].flags      = PNDMAN_HANDLE_INSTALL;
+      handle[i].callback   = handle_done_cb;
       if (pndman_handle_perform(&handle[i]) == -1)
          err("failed to perform handle");
       pnd = pnd->next;
@@ -115,25 +141,13 @@ int main()
    /* download while running,
     * in real use should check error (-1) */
    puts("");
-   while (pndman_download() > 0) {
+   while (pndman_curl_process() > 0) {
       /* check status */
       i = 0;
       for (; i != H_COUNT; ++i) {
          printf("%s [%.2f/%.2f]%s", handle[i].name,
                handle[i].progress.download/1048576, handle[i].progress.total_to_download/1048576,
                handle[i].progress.done?"\n":"\r"); fflush(stdout);
-         if (!handle[i].progress.done) continue;
-         printf("DONE: %s\n", handle[i].name);
-
-         /* handle is downloaded, "commit" it, (installs) */
-         if (pndman_handle_commit(&handle[i], repository) != 0)
-            printf("commit failed for: %s\n", handle[i].name);
-
-         ++dcount;
-         if (++again <= D_AGAIN)
-            pndman_handle_perform(&handle[i]);
-         else
-            pndman_handle_free(&handle[i]);
       }
    }
    puts("");

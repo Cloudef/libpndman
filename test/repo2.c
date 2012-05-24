@@ -4,10 +4,19 @@
 #include <unistd.h>
 #include "pndman.h"
 
-static void sample_hook(const char *function, int verbose_level, const char *str)
+static void sample_hook(const char *file, int line,
+      const char *function, int verbose_level, const char *str)
 {
    printf("[%d] %s :: %s\n", verbose_level, function, str);
 }
+
+static void sync_done_cb(pndman_curl_code code, void *data)
+{
+   pndman_sync_handle *handle = (pndman_sync_handle*)data;
+   printf("%s : DONE!\n", handle->repository->name);
+   pndman_sync_handle_free(handle);
+}
+
 
 int main()
 {
@@ -23,26 +32,28 @@ int main()
    r = repo;
    for (; r; r = r->next) ++c;
    pndman_sync_handle handle[c]; r = repo;
-   for (c = 0; r; r = r->next) pndman_sync_request(&handle[c++], PNDMAN_SYNC_FULL, r);
+   for (c = 0; r; r = r->next) {
+      pndman_sync_handle_init(&handle[c]);
+      handle[c].flags      = PNDMAN_SYNC_FULL;
+      handle[c].repository = r;
+      handle[c].callback   = sync_done_cb;
+      pndman_sync_handle_perform(&handle[c++]);
+   }
 
    puts("");
-   while (pndman_sync() > 0) {
+   while (pndman_curl_process() > 0) {
       r = repo;
       for (c = 0; r; r = r->next) {
          printf("%s [%.2f/%.2f]%s", handle[c].repository->url,
                 handle[c].progress.download/1048576, handle[c].progress.total_to_download/1048576,
                 handle[c].progress.done?"\n":"\r"); fflush(stdout);
-         if (handle[c].progress.done) {
-            printf("%s : DONE!\n", handle[c].repository->name);
-            pndman_sync_request_free(&handle[c]);
-         }
          c++;
       }
    }
    puts("");
 
    r = repo;
-   for (c = 0; r; r = r->next) pndman_sync_request_free(&handle[c++]);
+   for (c = 0; r; r = r->next) pndman_sync_handle_free(&handle[c++]);
    pndman_repository_free_all(repo);
    return EXIT_SUCCESS;
 }

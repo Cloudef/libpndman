@@ -413,7 +413,7 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
             if (!_pndman_device_new_if_exist(&device, mnt.mnt_dir))
                break;
 
-            DEBUG(PNDMAN_LEVEL_CRAP, "DETECT: %s\n", mnt.mnt_dir);
+            DEBUG(PNDMAN_LEVEL_CRAP, "DETECT: %s", mnt.mnt_dir);
             strncpy(device->mount,  mnt.mnt_dir,    PATH_MAX-1);
             strncpy(device->device, mnt.mnt_fsname, PATH_MAX-1);
             device->free      = fs.f_bfree  * fs.f_bsize;
@@ -459,7 +459,7 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
          if (!_pndman_device_new_if_exist(&device, szDrive))
             break;
 
-         DEBUG(PNDMAN_LEVEL_CRAP, "DETECT: %s : %s\n", szDrive, szName);
+         DEBUG(PNDMAN_LEVEL_CRAP, "DETECT: %s : %s", szDrive, szName);
 
          strncpy(device->mount,  szDrive, PATH_MAX-1);
          strncpy(device->device, szName,  PATH_MAX-1);
