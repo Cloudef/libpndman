@@ -115,7 +115,7 @@ static int _conflict(char *id, char *path, pndman_repository *local)
 }
 
 /* \brief handle callback */
-void _pndman_handle_done(pndman_curl_code code, void *data, const char *info)
+void _pndman_package_handle_done(pndman_curl_code code, void *data, const char *info)
 {
    pndman_sync_handle *handle  = (pndman_sync_handle*)data;
 
@@ -129,7 +129,7 @@ void _pndman_handle_done(pndman_curl_code code, void *data, const char *info)
 }
 
 /* \brief pre routine when object has install flag */
-static int _pndman_handle_download(pndman_handle *object)
+static int _pndman_package_handle_download(pndman_package_handle *object)
 {
    char tmp_path[PATH_MAX];
    char *appdata;
@@ -145,26 +145,23 @@ static int _pndman_handle_download(pndman_handle *object)
    if (!object->device)
       goto object_no_dev;
 
-   if (!object->pnd->update                             &&
-       !(object->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
-       !(object->flags & PNDMAN_HANDLE_INSTALL_MENU)    &&
-       !(object->flags & PNDMAN_HANDLE_INSTALL_APPS))
+   if (!object->pnd->update &&
+       !(object->flags & PNDMAN_PACKAGE_INSTALL_DESKTOP) &&
+       !(object->flags & PNDMAN_PACKAGE_INSTALL_MENU)    &&
+       !(object->flags & PNDMAN_PACKAGE_INSTALL_APPS))
       goto object_no_dst;
 
    if (object->pnd->update &&
-       !(object->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
-       !(object->flags & PNDMAN_HANDLE_INSTALL_MENU)    &&
-       !(object->flags & PNDMAN_HANDLE_INSTALL_APPS)) {
+       !(object->flags & PNDMAN_PACKAGE_INSTALL_DESKTOP) &&
+       !(object->flags & PNDMAN_PACKAGE_INSTALL_MENU)    &&
+       !(object->flags & PNDMAN_PACKAGE_INSTALL_APPS)) {
       if (!object->pnd->update || !strlen(object->pnd->update->path))
          goto object_wtf;
-      for (d = _pndman_device_first(object->device); d && strcmp(d->mount, object->pnd->update->mount); d = d->next);
+      for (d = _pndman_device_first(object->device);
+           d && strcmp(d->mount, object->pnd->update->mount);
+           d = d->next);
       if (!d) goto fail; /* can't find installed device */
       object->device = d; /* assign device, old pnd is installed on */
-   }
-
-   /* TODO: add optional repository element to object and object this then */
-   if (object->pnd->commercial) {
-     // _pndman_handshake(&object->request, "http://repo.openpandora.org/includes/client_access.php", _MY_PRIVATE_API_KEY, "Cloudef");
    }
 
    /* check appdata */
@@ -173,9 +170,15 @@ static int _pndman_handle_download(pndman_handle *object)
       goto fail;
 
    snprintf(tmp_path, PATH_MAX-1, "%s/%p.tmp", appdata, object);
-   handle = _pndman_curl_handle_new(object, &object->progress, _pndman_handle_done,
+   handle = _pndman_curl_handle_new(object, &object->progress, _pndman_package_handle_done,
          tmp_path);
    if (!handle) goto fail;
+
+   /* handshake for commercial download */
+   if (object->pnd->commercial) {
+     _pndman_handshake(handle, object->repository,
+           object->repository->api.key, object->repository->api.username);
+   }
 
    /* set download URL */
    curl_easy_setopt(handle->curl, CURLOPT_URL,     object->pnd->url);
@@ -207,7 +210,8 @@ fail:
 }
 
 /* \brief parse filename from HTTP header */
-static int _parse_filename_from_header(const char *filename, const char *haystack)
+static int _parse_filename_from_header(const char *filename,
+      const char *haystack)
 {
    char *needle = "filename=\"";
    char *file   = (char*)filename;
@@ -243,7 +247,8 @@ fail:
 }
 
 /* \brief post routine when handle has install flag */
-static int _pndman_handle_install(pndman_handle *object, pndman_repository *local)
+static int _pndman_package_handle_install(pndman_package_handle *object,
+      pndman_repository *local)
 {
    char install[PATH_MAX];
    char filename[PATH_MAX];
@@ -259,10 +264,10 @@ static int _pndman_handle_install(pndman_handle *object, pndman_repository *loca
    if (!object->pnd)
       goto handle_no_pnd;
 
-   if (!object->pnd->update                             &&
-       !(object->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
-       !(object->flags & PNDMAN_HANDLE_INSTALL_MENU)    &&
-       !(object->flags & PNDMAN_HANDLE_INSTALL_APPS))
+   if (!object->pnd->update &&
+       !(object->flags & PNDMAN_PACKAGE_INSTALL_DESKTOP) &&
+       !(object->flags & PNDMAN_PACKAGE_INSTALL_MENU)    &&
+       !(object->flags & PNDMAN_PACKAGE_INSTALL_APPS))
       goto handle_no_dst;
 
    /* check appdata */
@@ -271,22 +276,22 @@ static int _pndman_handle_install(pndman_handle *object, pndman_repository *loca
 
    /* check MD5 */
    md5 = _pndman_md5(handle->path);
-   if (!md5 && !(object->flags & PNDMAN_HANDLE_FORCE))
+   if (!md5 && !(object->flags & PNDMAN_PACKAGE_FORCE))
       goto fail;
 
    DEBUG(PNDMAN_LEVEL_CRAP, "R: %s L: %s", object->pnd->md5, md5);
 
    /* do check against remote */
    if (md5 && strcmp(md5, object->pnd->md5)) {
-      if (!(object->flags & PNDMAN_HANDLE_FORCE))
+      if (!(object->flags & PNDMAN_PACKAGE_FORCE))
          goto md5_fail;
       else DEBUG(2, HANDLE_MD5_DIFF);
    } free(md5); md5 = NULL;
 
    if (object->pnd->update &&
-      !(object->flags & PNDMAN_HANDLE_INSTALL_DESKTOP) &&
-      !(object->flags & PNDMAN_HANDLE_INSTALL_MENU)    &&
-      !(object->flags & PNDMAN_HANDLE_INSTALL_APPS)) {
+      !(object->flags & PNDMAN_PACKAGE_INSTALL_DESKTOP) &&
+      !(object->flags & PNDMAN_PACKAGE_INSTALL_MENU)    &&
+      !(object->flags & PNDMAN_PACKAGE_INSTALL_APPS)) {
       /* get basename of old path (update) */
       strcpy(install, object->pnd->update->path);
       dirname(install);
@@ -294,11 +299,11 @@ static int _pndman_handle_install(pndman_handle *object, pndman_repository *loca
       /* get install directory */
       strncpy(install, object->device->mount, PATH_MAX-1);
       strncat(install, "/pandora", PATH_MAX-1);
-      if (object->flags & PNDMAN_HANDLE_INSTALL_DESKTOP)
+      if (object->flags & PNDMAN_PACKAGE_INSTALL_DESKTOP)
          strncat(install, "/desktop", PATH_MAX-1);
-      else if (object->flags & PNDMAN_HANDLE_INSTALL_MENU)
+      else if (object->flags & PNDMAN_PACKAGE_INSTALL_MENU)
          strncat(install, "/menu", PATH_MAX-1);
-      else if (object->flags & PNDMAN_HANDLE_INSTALL_APPS)
+      else if (object->flags & PNDMAN_PACKAGE_INSTALL_APPS)
          strncat(install, "/apps", PATH_MAX-1);
    }
 
@@ -339,7 +344,7 @@ static int _pndman_handle_install(pndman_handle *object, pndman_repository *loca
    }
 
    /* backup? */
-   if (oldp && (object->flags & PNDMAN_HANDLE_BACKUP))
+   if (oldp && (object->flags & PNDMAN_PACKAGE_BACKUP))
       _pndman_backup(oldp, object->device);
    else
    /* remove old pnd if no backup specified and path differs */
@@ -385,7 +390,7 @@ fail:
 }
 
 /* \brief post routine when handle has removal flag */
-static int _pndman_handle_remove(pndman_handle *object, pndman_repository *local)
+static int _pndman_package_handle_remove(pndman_package_handle *object, pndman_repository *local)
 {
    FILE *f;
 
@@ -414,22 +419,22 @@ fail:
 
 /* API */
 
-/* \brief Allocate new pndman_handle for transfer */
-PNDMANAPI int pndman_handle_init(const char *name, pndman_handle *object)
+/* \brief Allocate new pndman_package_handle for transfer */
+PNDMANAPI int pndman_package_handle_init(const char *name, pndman_package_handle *object)
 {
    if (!object) {
-      BADUSE("You should pass reference to pndman_handle");
+      BADUSE("You should pass reference to pndman_package_handle");
       return RETURN_FAIL;
    }
 
-   memset(object, 0, sizeof(pndman_handle));
+   memset(object, 0, sizeof(pndman_package_handle));
    strncpy(object->name, name, PNDMAN_NAME-1);
 
    return RETURN_OK;
 }
 
-/* \brief Free pndman_handle */
-PNDMANAPI void pndman_handle_free(pndman_handle *object)
+/* \brief Free pndman_package_handle */
+PNDMANAPI void pndman_package_handle_free(pndman_package_handle *object)
 {
    if (!object) {
       BADUSE("handle pointer is NULL");
@@ -444,7 +449,7 @@ PNDMANAPI void pndman_handle_free(pndman_handle *object)
 }
 
 /* \brief Perform handle, currently only needed for INSTALL handles */
-PNDMANAPI int pndman_handle_perform(pndman_handle *object)
+PNDMANAPI int pndman_package_handle_perform(pndman_package_handle *object)
 {
    if (!object) {
       BADUSE("object pointer is NULL");
@@ -463,8 +468,8 @@ PNDMANAPI int pndman_handle_perform(pndman_handle *object)
    object->progress.done = 0;
    memset(object->error, 0, LINE_MAX);
 
-   if ((object->flags & PNDMAN_HANDLE_INSTALL))
-      if (_pndman_handle_download(object) != RETURN_OK) {
+   if ((object->flags & PNDMAN_PACKAGE_INSTALL))
+      if (_pndman_package_handle_download(object) != RETURN_OK) {
          object->flags = 0; /* don't allow continue */
          return RETURN_FAIL;
       }
@@ -474,7 +479,7 @@ PNDMANAPI int pndman_handle_perform(pndman_handle *object)
 
 /* \brief Commit handle's state to ram
  * remember to call pndman_commit afterwards! */
-PNDMANAPI int pndman_handle_commit(pndman_handle *object, pndman_repository *local)
+PNDMANAPI int pndman_package_handle_commit(pndman_package_handle *object, pndman_repository *local)
 {
    if (!object) {
       BADUSE("object pointer is NULL");
@@ -496,11 +501,11 @@ PNDMANAPI int pndman_handle_commit(pndman_handle *object, pndman_repository *loc
    /* make this idiot proof */
    local = _pndman_repository_first(local);
 
-   if ((object->flags & PNDMAN_HANDLE_REMOVE))
-      if (_pndman_handle_remove(object, local) != RETURN_OK)
+   if ((object->flags & PNDMAN_PACKAGE_REMOVE))
+      if (_pndman_package_handle_remove(object, local) != RETURN_OK)
          return RETURN_FAIL;
-   if ((object->flags & PNDMAN_HANDLE_INSTALL))
-      if (_pndman_handle_install(object, local) != RETURN_OK)
+   if ((object->flags & PNDMAN_PACKAGE_INSTALL))
+      if (_pndman_package_handle_install(object, local) != RETURN_OK)
          return RETURN_FAIL;
 
    return RETURN_OK;

@@ -188,6 +188,10 @@ pndman_package* _pndman_repository_new_pnd_check(char *id,
       char *path, pndman_version *ver, pndman_repository *repo);
 int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *repo);
 
+/* api */
+int _pndman_handshake(pndman_curl_handle *handle,
+      pndman_repository *repo, const char *key, const char *username);
+
 /* pndman_package  */
 pndman_package* _pndman_new_pnd(void);
 int  _pndman_vercmp(pndman_version *lp, pndman_version *rp);

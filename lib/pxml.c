@@ -1218,7 +1218,8 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
 
 /* \brief crawl pnds to local repository, returns number of pnd's found, and -1 on error
  * The full_crawl option allows you to specify wether to crawl application data from PND as well */
-PNDMANAPI int pndman_crawl(int full_crawl, pndman_device *device, pndman_repository *local)
+PNDMANAPI int pndman_package_crawl(int full_crawl,
+      pndman_device *device, pndman_repository *local)
 {
    if (!device || !local) {
       BADUSE("local or device pointer is NULL");
@@ -1229,7 +1230,8 @@ PNDMANAPI int pndman_crawl(int full_crawl, pndman_device *device, pndman_reposit
 }
 
 /* \brief fill single PND's data fully by crawling it locally */
-PNDMANAPI int pndman_crawl_pnd(int full_crawl, pndman_package *pnd)
+PNDMANAPI int pndman_package_crawl_single_package(int full_crawl,
+      pndman_package *pnd)
 {
    pxml_parse data;
 

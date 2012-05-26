@@ -927,7 +927,7 @@ pndman_category* _pndman_application_new_category(pndman_application *app)
 
 /* \brief calculate new md5 for the PND,
  * Use this if you don't have md5 in pnd or want to recalculate */
-const char* pndman_get_md5(pndman_package *pnd)
+const char* pndman_package_fill_md5(pndman_package *pnd)
 {
    char *md5;
    if (!pnd) return NULL;

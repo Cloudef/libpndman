@@ -366,10 +366,6 @@ PNDMANAPI pndman_repository* pndman_repository_free(
 PNDMANAPI void pndman_repository_free_all(
       pndman_repository *repo);
 
-/* \brief commit specific repository to specific device */
-PNDMANAPI int pndman_repository_commit(
-      pndman_repository *repo, pndman_device *device);
-
 /* \brief commit all repositories to specific device */
 PNDMANAPI int pndman_repository_commit_all(
       pndman_repository *list, pndman_device *device);

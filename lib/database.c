@@ -541,7 +541,8 @@ static int _pndman_check_updates(pndman_repository *list)
 
 /* \brief try read repository information from device
  * (if it's been committed there before) */
-PNDMANAPI int pndman_read_from_device(pndman_repository *repo, pndman_device *device)
+PNDMANAPI int pndman_device_read_repository(pndman_repository *repo,
+      pndman_device *device)
 {
    if (!repo || !device) {
       BADUSE("repository or device pointer is NULL");
@@ -551,7 +552,7 @@ PNDMANAPI int pndman_read_from_device(pndman_repository *repo, pndman_device *de
 }
 
 /* \brief check for updates, returns the number of updates */
-PNDMANAPI int pndman_check_updates(pndman_repository *list)
+PNDMANAPI int pndman_repository_check_updates(pndman_repository *list)
 {
    if (!list) {
       BADUSE("list pointer is NULL");
@@ -596,7 +597,8 @@ PNDMANAPI void pndman_sync_handle_free(pndman_sync_handle *handle)
 }
 
 /* \brief commits _all_ repositories to specific device */
-PNDMANAPI int pndman_commit_all(pndman_repository *repo, pndman_device *device)
+PNDMANAPI int pndman_repository_commit_all(pndman_repository *repo,
+      pndman_device *device)
 {
    if (!repo || !device) {
       BADUSE("repo or device pointer is NULL");
