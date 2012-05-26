@@ -111,6 +111,7 @@ typedef struct pndman_curl_handle
    FILE *file;
    pndman_curl_header header;
    char path[PNDMAN_PATH];
+   struct pndman_curl_handle *next;
 } pndman_curl_handle;
 
 /* \brief client api return error code */

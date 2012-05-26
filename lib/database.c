@@ -415,8 +415,7 @@ static void _pndman_sync_done(pndman_curl_code code, void *data, const char *inf
    }
 
    /* callback to this handle */
-   if (handle->callback)
-      handle->callback(code, handle);
+   if (handle->callback) handle->callback(code, handle);
 }
 
 /* \brief free internal sync request */
@@ -430,7 +429,7 @@ static void _pndman_sync_handle_free(pndman_sync_handle *object)
 }
 
 /* \brief allocate internal sync request */
-static int _pndman_new_sync_handle_init(pndman_sync_handle *object)
+static int _pndman_sync_handle_init(pndman_sync_handle *object)
 {
    /* init */
    memset(object, 0, sizeof(pndman_sync_handle));
@@ -569,7 +568,7 @@ PNDMANAPI int pndman_sync_handle_init(pndman_sync_handle *handle)
       BADUSE("handle pointer is NULL");
       return RETURN_FAIL;
    }
-   return _pndman_new_sync_handle_init(handle);
+   return _pndman_sync_handle_init(handle);
 }
 
 /* \brief perform the synchorization */

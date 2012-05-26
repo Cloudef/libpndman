@@ -7,6 +7,10 @@
 /* internal multi curl handle */
 static CURLM *_pndman_curlm = NULL;
 
+/* curl won't allow us to get
+ * handles from curlm :( */
+static pndman_curl_handle *hlist = NULL;
+
 /* \brief init internal curl header */
 static void _pndman_curl_header_init(pndman_curl_header *header)
 {
@@ -79,6 +83,7 @@ static int _pndman_curl_progress_func(pndman_curl_progress *ptr,
 /* \brief free curl handle */
 void _pndman_curl_handle_free(pndman_curl_handle *handle)
 {
+   pndman_curl_handle *h;
    assert(handle);
 
    /* cleanup */
@@ -89,7 +94,13 @@ void _pndman_curl_handle_free(pndman_curl_handle *handle)
    }
    _pndman_curl_header_free(&handle->header);
    IFDO(fclose, handle->file);
-   handle->file = NULL;
+   handle->file    = NULL;
+   handle->callback = NULL;
+
+   /* remove handle from list */
+   for (h = hlist; h && h->next != handle; h = h->next);
+   if (h) h->next = handle->next;
+   else hlist = NULL;
 
    /* free handle */
    free(handle);
@@ -100,12 +111,12 @@ pndman_curl_handle* _pndman_curl_handle_new(void *data,
       pndman_curl_progress *progress, pndman_curl_callback callback,
       const char *path)
 {
-   pndman_curl_handle *handle;
+   pndman_curl_handle *handle, *h;
    assert(data && progress && callback);
 
    if (!(handle = malloc(sizeof(pndman_curl_handle))))
       goto handle_fail;
-   memset(handle, 0, sizeof(handle));
+   memset(handle, 0, sizeof(pndman_curl_handle));
    memset(&handle->header, 0, sizeof(pndman_curl_header));
 
    if (!path) {
@@ -133,6 +144,13 @@ pndman_curl_handle* _pndman_curl_handle_new(void *data,
    curl_easy_setopt(handle->curl, CURLOPT_WRITEDATA, handle->file);
    curl_easy_setopt(handle->curl, CURLOPT_HEADERDATA, &handle->header);
    curl_easy_setopt(handle->curl, CURLOPT_COOKIEFILE, "");
+
+   /* add handle to list */
+   if (!(h = hlist)) hlist = handle;
+   else {
+      for (; h && h->next; h = h->next);
+      h->next = handle;
+   }
 
    return handle;
 
@@ -241,6 +259,7 @@ static int _pndman_curl_perform(void)
 /* \brief process all internal curl requests */
 PNDMANAPI int pndman_curl_process(void)
 {
+   pndman_curl_handle *h;
    int still_running;
 
    /* we are done :) */
@@ -256,10 +275,16 @@ PNDMANAPI int pndman_curl_process(void)
       _pndman_curl_cleanup();
 
       /* fake so that we are still running, why?
-       * this lets user to catch the final completed download/sync
-       * in download/sync loop */
+       * this lets user to catch the final completed handles
+       *
+       * However, in recent version callbacks
+       * are the better method, but this doesn't hurt anything */
       still_running = 1;
    }
+
+   /* send progress packets */
+   for (h = hlist; h; h = h->next)
+      if (h->callback) h->callback(PNDMAN_CURL_PROGRESS, h, NULL);
 
    return still_running;
 

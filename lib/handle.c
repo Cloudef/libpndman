@@ -124,8 +124,7 @@ void _pndman_package_handle_done(pndman_curl_code code, void *data, const char *
    }
 
    /* callback to this handle */
-   if (handle->callback)
-      handle->callback(code, handle);
+   if (handle->callback) handle->callback(code, handle);
 }
 
 /* \brief pre routine when object has install flag */
