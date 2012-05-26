@@ -62,6 +62,7 @@ typedef enum pndman_curl_code
 {
    PNDMAN_CURL_DONE,
    PNDMAN_CURL_FAIL,
+   PNDMAN_CURL_PROGRESS,
 } pndman_curl_code;
 
 /* \brief debug hook typedef */
@@ -70,22 +71,22 @@ typedef void (*PNDMAN_DEBUG_HOOK_FUNC)(
       int verbose_level, const char *str);
 
 /* \brief flags for sync handle */
-typedef enum pndman_sync_flags
+typedef enum pndman_sync_handle_flags
 {
    PNDMAN_SYNC_FULL = 0x001,
-} pndman_sync_flags;
+} pndman_sync_handle_flags;
 
 /* \brief flags for handles */
-typedef enum pndman_handle_flags
+typedef enum pndman_package_handle_flags
 {
-   PNDMAN_HANDLE_INSTALL         = 0x001,
-   PNDMAN_HANDLE_REMOVE          = 0x002,
-   PNDMAN_HANDLE_FORCE           = 0x004,
-   PNDMAN_HANDLE_INSTALL_DESKTOP = 0x008,
-   PNDMAN_HANDLE_INSTALL_MENU    = 0x010,
-   PNDMAN_HANDLE_INSTALL_APPS    = 0x020,
-   PNDMAN_HANDLE_BACKUP          = 0x040,
-} pndman_handle_flags;
+   PNDMAN_PACKAGE_INSTALL         = 0x001,
+   PNDMAN_PACKAGE_REMOVE          = 0x002,
+   PNDMAN_PACKAGE_FORCE           = 0x004,
+   PNDMAN_PACKAGE_INSTALL_DESKTOP = 0x008,
+   PNDMAN_PACKAGE_INSTALL_MENU    = 0x010,
+   PNDMAN_PACKAGE_INSTALL_APPS    = 0x020,
+   PNDMAN_PACKAGE_BACKUP          = 0x040,
+} pndman_package_handle_flags;
 
 /* \brief type enum for version struct */
 typedef enum pndman_version_type
@@ -275,7 +276,7 @@ typedef struct pndman_curl_progress
 typedef void (*pndman_callback)(pndman_curl_code code, void *data);
 
 /*! \brief Struct for PND transaction */
-typedef struct pndman_handle
+typedef struct pndman_package_handle
 {
    char name[PNDMAN_NAME];
    char error[PNDMAN_STR];
@@ -288,7 +289,7 @@ typedef struct pndman_handle
 
    /* don't touch */
    const void *data;
-} pndman_handle;
+} pndman_package_handle;
 
 /* \brief struct for repository synchorization */
 typedef struct pndman_sync_handle
@@ -308,11 +309,6 @@ PNDMANAPI const char* pndman_git_head(void);
 
 /* \brief get git commit description */
 PNDMANAPI const char* pndman_git_commit(void);
-
-/* \brief calculate new md5 for the PND,
- * Use this if you don't have md5 in pnd or want
- * to recalculate */
-PNDMANAPI const char* pndman_get_md5(pndman_package *pnd);
 
 /* \brief set verbose level of pndman
  * (prints to stdout, if no hook set) */
@@ -370,6 +366,20 @@ PNDMANAPI pndman_repository* pndman_repository_free(
 PNDMANAPI void pndman_repository_free_all(
       pndman_repository *repo);
 
+/* \brief commit specific repository to specific device */
+PNDMANAPI int pndman_repository_commit(
+      pndman_repository *repo, pndman_device *device);
+
+/* \brief commit all repositories to specific device */
+PNDMANAPI int pndman_repository_commit_all(
+      pndman_repository *list, pndman_device *device);
+
+/* \brief check PND updates for all repositories
+ * in the repository list
+ * returns number of updates found */
+PNDMANAPI int pndman_repository_check_updates(
+      pndman_repository *list);
+
 /* \brief add new device or initalize new device list
  * on success: returns pointer to the new device
  * on failure: returns NULL */
@@ -381,42 +391,71 @@ PNDMANAPI pndman_device* pndman_device_add(
  * on failure/none found: returns NULL */
 PNDMANAPI pndman_device* pndman_device_detect(
       pndman_device *device);
+
 /* \brief free a device (and remove from list) */
 PNDMANAPI pndman_device* pndman_device_free(
       pndman_device *device);
-
-/* \brief read repository data from device
- * 0 if repository data could be found
- * -1 if failure or no repository data */
-PNDMANAPI int pndman_read_from_device(
-      pndman_repository *repo, pndman_device *device);
 
 /* \brief free all devices
  * the list will be invalid after this */
 PNDMANAPI void pndman_device_free_all(
       pndman_device *device);
 
+/* \brief read repository data from device
+ * 0 if repository data could be found
+ * -1 if failure or no repository data */
+PNDMANAPI int pndman_device_read_repository(
+      pndman_repository *repo, pndman_device *device);
+
+/* \brief calculate new MD5 for the PND,
+ * Use this if you don't have md5 in pnd or want
+ * to recalculate.
+ *
+ * The MD5 sums are normally calculated only when,
+ * PND was installed by libpndman.
+ *
+ * If you do any PND launching or such, and PND has no MD5
+ * yet, it's good idea to recalculate using this,
+ * and check if the MD5 differs againt remote MD5. */
+PNDMANAPI const char* pndman_package_fill_md5(
+      pndman_package *pnd);
+
+/* \brief crawl device for PNDs, fills local repository
+ * if full_crawl is 1, everything from PND is crawled,
+ * otherwise only package data is crawled,
+ * while all the application data is left untouched.
+ * returns number of crawled PNDs */
+PNDMANAPI int pndman_package_crawl(int full_crawl,
+      pndman_device *device, pndman_repository *local);
+
+/* \brief update pnd_package by crawling it locally
+ * returns 0 on success, -1 on failuer */
+PNDMANAPI int pndman_package_crawl_single_package(int full_crawl,
+      pndman_package *pnd);
+
 /* \brief initialize new pndman handle
  * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_handle_init(const char *name,
-      pndman_handle *handle);
+PNDMANAPI int pndman_package_handle_init(const char *name,
+      pndman_package_handle *handle);
 
 /* \brief perform action with the handle
  * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_handle_perform(
-      pndman_handle *handle);
+PNDMANAPI int pndman_package_handle_perform(
+      pndman_package_handle *handle);
 
 /* \brief commit handle to local database
  * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_handle_commit(pndman_handle *handle,
-      pndman_repository *local);
+PNDMANAPI int pndman_package_handle_commit(
+      pndman_package_handle *handle, pndman_repository *local);
 
 /* \brief free/cancel handle */
-PNDMANAPI void pndman_handle_free(pndman_handle *handle);
+PNDMANAPI void pndman_package_handle_free(
+      pndman_package_handle *handle);
 
 /* \brief create new synchorization handle
  * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_sync_handle_init(pndman_sync_handle *handle);
+PNDMANAPI int pndman_sync_handle_init(
+      pndman_sync_handle *handle);
 
 /* \brief perform synchorization
  * return 0 on success, -1 on failure */
@@ -426,29 +465,6 @@ PNDMANAPI int pndman_sync_handle_perform(
 /* \brief free/cancel synchorization */
 PNDMANAPI void pndman_sync_handle_free(
       pndman_sync_handle *handle);
-
-/* \brief commit all repositories to specific device */
-PNDMANAPI int pndman_commit_all(pndman_repository *list,
-      pndman_device *device);
-
-/* \brief crawl device for PNDs, fills local repository
- * if full_crawl is 1, everything from PND is crawled,
- * otherwise only package data is crawled,
- * while all the application data is left untouched.
- * returns number of crawled PNDs */
-PNDMANAPI int pndman_crawl(int full_crawl,
-      pndman_device *device, pndman_repository *local);
-
-/* \brief update pnd_package by crawling it locally
- * returns 0 on success, -1 on failuer */
-PNDMANAPI int pndman_crawl_pnd(int full_crawl,
-      pndman_package *pnd);
-
-/* \brief check PND updates for all repositories
- * in the repository list
- * returns number of updates found */
-PNDMANAPI int pndman_check_updates(
-      pndman_repository *list);
 
 /* \brief perform curl operation
  * returns number of curl operations pending
