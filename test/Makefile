@@ -10,7 +10,7 @@ endif
 
 all : ${TESTS}
 	for c in ${TESTS}; do \
-	   ${CC} -I../include ${CFLAGS} $${c} ${LIBS} -o ${OUT}/test/$${c%.c}${EXT}; \
+	   ${CC} -Wno-unused-function -I../include ${CFLAGS} $${c} ${LIBS} -o ${OUT}/test/$${c%.c}${EXT}; \
 	done
 
 clean:
