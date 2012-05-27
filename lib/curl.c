@@ -176,6 +176,9 @@ int _pndman_curl_handle_perform(pndman_curl_handle *handle)
          goto open_fail;
    }
 
+   /* print url */
+   DEBUG(PNDMAN_LEVEL_CRAP, handle->url);
+
    /* set file options */
    curl_easy_setopt(handle->curl, CURLOPT_URL, handle->url);
    if (strlen(handle->post)) {
@@ -278,6 +281,15 @@ static int _pndman_curl_perform(void)
       if (msg->msg == CURLMSG_DONE) { /* DONE */
          if (handle->progress)
             handle->progress->done = msg->data.result==CURLE_OK?1:0;
+
+         char buffer[1024];
+         memset(buffer, 0, sizeof(buffer));
+         DEBUG(PNDMAN_LEVEL_CRAP, handle->header.data);
+         fseek(handle->file, 0L, SEEK_SET);
+         while (fgets(buffer, sizeof(buffer), handle->file))
+            puts(buffer);
+         fseek(handle->file, 0L, SEEK_SET);
+
          if (msg->data.result != CURLE_OK)
             handle->callback(PNDMAN_CURL_FAIL, handle->data,
                   curl_easy_strerror(msg->data.result), handle);
