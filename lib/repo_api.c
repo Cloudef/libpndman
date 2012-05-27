@@ -368,8 +368,10 @@ static void _pndman_api_download_history_perform(
 
    snprintf(url, PNDMAN_URL-1, "%s/%s", packet->repository->api.root, API_DOWNLOAD_HISTORY);
    _pndman_curl_handle_set_url(request->handle, url);
-   if (_pndman_curl_handle_perform(request->handle) == RETURN_OK)
+   if (_pndman_curl_handle_perform(request->handle) == RETURN_OK) {
       request->handle = NULL;
+      request->data   = NULL;
+   }
 
    /* free request */
    _pndman_api_request_free(request);
