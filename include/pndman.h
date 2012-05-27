@@ -287,8 +287,8 @@ typedef struct pndman_package_handle
    pndman_curl_progress progress;
    pndman_callback callback;
 
-   /* don't touch */
-   const void *data;
+   /* internal request data */
+   void *data;
 } pndman_package_handle;
 
 /* \brief struct for repository synchorization */
@@ -300,9 +300,14 @@ typedef struct pndman_sync_handle
    pndman_curl_progress progress;
    pndman_callback callback;
 
-   /* don't touch */
-   const void *data;
+   /* internal request data */
+   void *data;
 } pndman_sync_handle;
+
+/* \brief callback for comment pull */
+typedef void (*pndman_api_comment_callback)(
+      pndman_package *pnd, const char *version,
+      time_t date, const char *username, const char *comment);
 
 /* \brief get git head */
 PNDMANAPI const char* pndman_git_head(void);
