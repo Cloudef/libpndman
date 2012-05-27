@@ -289,7 +289,7 @@ int _pndman_json_client_api_return(void *file, pndman_api_status *status)
    fflush(file);
    fseek(file, 0L, SEEK_SET);
    if (!(root = json_loadf(file, 0, &error)))
-      goto bad_json;
+      goto fail;
 
    status->status = API_ERROR;
    if (!(object = json_object_get(root, "error"))) {
@@ -305,8 +305,6 @@ int _pndman_json_client_api_return(void *file, pndman_api_status *status)
    return status->status==API_SUCCESS?
           RETURN_OK:RETURN_FAIL;
 
-bad_json:
-   DEBFAIL(JSON_BAD_JSON, "client api");
 fail:
    IFDO(json_decref, root);
    return RETURN_FAIL;
