@@ -428,7 +428,7 @@ fail:
 }
 
 /* \brief rate pnd */
-int _pndman_rate_pnd(pndman_package *pnd, pndman_repository *repository, int rate)
+int _pndman_api_rate_pnd(pndman_package *pnd, pndman_repository *repository, int rate)
 {
    assert(pnd && repository);
 
@@ -451,7 +451,7 @@ fail:
 }
 
 /* \brief comment pnd */
-int _pndman_comment_pnd(pndman_package *pnd, pndman_repository *repository,
+int _pndman_api_comment_pnd(pndman_package *pnd, pndman_repository *repository,
       const char *comment)
 {
    pndman_comment_packet *packet = NULL;
@@ -473,7 +473,7 @@ fail:
 }
 
 /* \brief get comments for pnd */
-int _pndman_comment_pnd_pull(pndman_package *pnd, pndman_repository *repository,
+int _pndman_api_comment_pnd_pull(pndman_package *pnd, pndman_repository *repository,
       pndman_api_comment_callback callback)
 {
    char url[PNDMAN_URL];
