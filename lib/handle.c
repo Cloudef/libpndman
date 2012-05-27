@@ -16,7 +16,7 @@ static int _pndman_move_file(const char* src, const char* dst)
    FILE *f;
 
    /* remove dst, if exists */
-   if ((f = fopen(dst, "r"))) {
+   if ((f = fopen(dst, "rb"))) {
       fclose(f);
       if (unlink(dst) != 0)
          goto rm_fail;
@@ -94,7 +94,7 @@ static int _file_exist(char *path)
 {
    FILE *f;
 
-   if ((f = fopen(path, "r"))) {
+   if ((f = fopen(path, "rb"))) {
       fclose(f);
       return RETURN_TRUE;
    }
@@ -117,11 +117,10 @@ static int _conflict(char *id, char *path, pndman_repository *local)
 /* \brief handle callback */
 void _pndman_package_handle_done(pndman_curl_code code, void *data, const char *info)
 {
-   pndman_sync_handle *handle  = (pndman_sync_handle*)data;
+   pndman_package_handle *handle  = (pndman_package_handle*)data;
 
-   if (code == PNDMAN_CURL_FAIL) {
-      strncpy(handle->error, info, PNDMAN_STR);
-   }
+   if (code == PNDMAN_CURL_FAIL)
+      strncpy(handle->error, info, PNDMAN_STR-1);
 
    /* callback to this handle */
    if (handle->callback) handle->callback(code, handle);
@@ -169,22 +168,18 @@ static int _pndman_package_handle_download(pndman_package_handle *object)
       goto fail;
 
    snprintf(tmp_path, PATH_MAX-1, "%s/%p.tmp", appdata, object);
-   handle = _pndman_curl_handle_new(object, &object->progress, _pndman_package_handle_done,
-         tmp_path);
+   object->data = handle = _pndman_curl_handle_new(object, &object->progress,
+         _pndman_package_handle_done, tmp_path);
    if (!handle) goto fail;
 
-   /* handshake for commercial download */
+   /* commercial or normal pnd? */
    if (object->pnd->commercial) {
-     _pndman_handshake(handle, object->repository,
-           object->repository->api.key, object->repository->api.username);
+     return _pndman_api_commercial_download(handle, object);
+   } else {
+      /* set download URL */
+      curl_easy_setopt(handle->curl, CURLOPT_URL,     object->pnd->url);
+      return _pndman_curl_handle_perform(handle);
    }
-
-   /* set download URL */
-   curl_easy_setopt(handle->curl, CURLOPT_URL,     object->pnd->url);
-   curl_easy_setopt(handle->curl, CURLOPT_PRIVATE, object);
-
-   /* do it */
-   return _pndman_curl_handle_perform(handle);
 
 object_no_pnd:
    DEBFAIL(HANDLE_NO_PND);
@@ -279,6 +274,7 @@ static int _pndman_package_handle_install(pndman_package_handle *object,
       goto fail;
 
    DEBUG(PNDMAN_LEVEL_CRAP, "R: %s L: %s", object->pnd->md5, md5);
+   DEBUG(PNDMAN_LEVEL_CRAP, "%s", handle->path);
 
    /* do check against remote */
    if (md5 && strcmp(md5, object->pnd->md5)) {
@@ -394,7 +390,7 @@ static int _pndman_package_handle_remove(pndman_package_handle *object, pndman_r
    FILE *f;
 
    /* sanity checks */
-   if (!(f = fopen(object->pnd->path, "r")))
+   if (!(f = fopen(object->pnd->path, "rb")))
       goto read_fail;
    fclose(f);
 
@@ -435,12 +431,12 @@ PNDMANAPI int pndman_package_handle_init(const char *name, pndman_package_handle
 /* \brief Free pndman_package_handle */
 PNDMANAPI void pndman_package_handle_free(pndman_package_handle *object)
 {
+   pndman_curl_handle *handle;
    if (!object) {
       BADUSE("handle pointer is NULL");
       return;
    }
 
-   pndman_curl_handle *handle;
    handle = (pndman_curl_handle*)object->data;
    IFDO(_pndman_curl_handle_free, handle);
    object->data      = NULL;

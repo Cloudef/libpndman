@@ -405,13 +405,11 @@ static void _pndman_sync_done(pndman_curl_code code, void *data, const char *inf
    pndman_sync_handle *handle  = (pndman_sync_handle*)data;
    pndman_curl_handle *chandle = (pndman_curl_handle*)handle->data;
 
-   if (code == PNDMAN_CURL_FAIL) {
-      strncpy(handle->error, info, PNDMAN_STR);
-   } else if (code == PNDMAN_CURL_DONE) {
-      if (_pndman_json_process(handle->repository, chandle->file) == RETURN_OK) {
-         /* update timestamp */
+   if (code == PNDMAN_CURL_FAIL)
+      strncpy(handle->error, info, PNDMAN_STR-1);
+   else if (code == PNDMAN_CURL_DONE) {
+      if (_pndman_json_process(handle->repository, chandle->file) == RETURN_OK)
          handle->repository->timestamp = time(0);
-      }
    }
 
    /* callback to this handle */

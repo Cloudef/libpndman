@@ -63,7 +63,7 @@ static void _pndman_api_request_free(
 }
 
 /* \brief generate nonce */
-static int _pndman_gen_nonce(char *buffer)
+static int _pndman_api_generate_nonce(char *buffer)
 {
    unsigned int i;
    char *md5 = NULL;
@@ -86,7 +86,7 @@ fail:
 }
 
 /* \brief check if handshake was success */
-static void _pndman_handshake_check(pndman_api_request *request)
+static void _pndman_api_handshake_check(pndman_api_request *request)
 {
    pndman_api_status status;
    pndman_curl_handle *handle = request->handle;
@@ -104,7 +104,7 @@ fail:
 }
 
 /* \brief handshake perform */
-static void _pndman_handshake_perform(pndman_api_request *request)
+static void _pndman_api_handshake_perform(pndman_api_request *request)
 {
    char cnonce[NONCE_LEN];
    char buffer[1024], *hash = NULL;
@@ -114,7 +114,7 @@ static void _pndman_handshake_perform(pndman_api_request *request)
    pndman_curl_handle *handle = request->handle;
    packet = (pndman_handshake_packet*)request->packet;
 
-   if (_pndman_gen_nonce(cnonce) != RETURN_OK)
+   if (_pndman_api_generate_nonce(cnonce) != RETURN_OK)
       goto fail;
 
    if (_pndman_json_get_value("nonce", nonce, sizeof(nonce),
@@ -141,15 +141,15 @@ fail:
 }
 
 /* \brief api request callback */
-static void _pndman_handshake_cb(pndman_curl_code code,
+static void _pndman_api_handshake_cb(pndman_curl_code code,
       void *data, const char *info)
 {
    pndman_api_request *handle = (pndman_api_request*)data;
    if (code == PNDMAN_CURL_DONE) {
       if (handle->type == PNDMAN_API_NONCE)
-         _pndman_handshake_perform(handle);
+         _pndman_api_handshake_perform(handle);
       else if (handle->type == PNDMAN_API_HANDSHAKE)
-         _pndman_handshake_check(handle);
+         _pndman_api_handshake_check(handle);
 #if 0
       else if (handle->type == PNDMAN_API_RATE)
          _pndman_rate_perform(handle);
@@ -162,7 +162,7 @@ static void _pndman_handshake_cb(pndman_curl_code code,
 }
 
 /* \brief create new handshake packet */
-pndman_handshake_packet* _pndman_handshake_packet(const char *key, const char *username)
+static pndman_handshake_packet* _pndman_api_handshake_packet(const char *key, const char *username)
 {
    pndman_handshake_packet *packet;
    if (!(packet = malloc(sizeof(pndman_handshake_packet))))
@@ -179,7 +179,7 @@ fail:
 }
 
 /* \brief handshake with repository */
-int _pndman_handshake(pndman_curl_handle *handle,
+static int _pndman_api_handshake(pndman_curl_handle *handle,
       pndman_repository *repo, const char *key, const char *username)
 {
    char url[PNDMAN_URL];
@@ -191,10 +191,10 @@ int _pndman_handshake(pndman_curl_handle *handle,
    if (!(request = _pndman_api_request_new(PNDMAN_API_NONCE, handle)))
       goto fail;
 
-   if (!(request->packet = _pndman_handshake_packet(key, username)))
+   if (!(request->packet = _pndman_api_handshake_packet(key, username)))
       goto fail;
 
-   handle->callback = _pndman_handshake_cb;
+   handle->callback = _pndman_api_handshake_cb;
    curl_easy_setopt(handle->curl, CURLOPT_POSTFIELDS, "stage=1");
    if (_pndman_curl_handle_perform(handle) != RETURN_OK)
       goto fail;
@@ -203,6 +203,15 @@ int _pndman_handshake(pndman_curl_handle *handle,
 
 fail:
    IFDO(_pndman_api_request_free, request);
+   return RETURN_FAIL;
+}
+
+/* INTERNAL API */
+
+/* \brief handshake for commercial download */
+int _pndman_api_commercial_download(pndman_curl_handle *handle,
+      pndman_package_handle *package)
+{
    return RETURN_FAIL;
 }
 

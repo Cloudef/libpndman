@@ -111,7 +111,6 @@ typedef struct pndman_curl_handle
    FILE *file;
    pndman_curl_header header;
    char path[PNDMAN_PATH];
-   struct pndman_curl_handle *next;
 } pndman_curl_handle;
 
 /* \brief client api return error code */
@@ -134,7 +133,7 @@ typedef struct pndman_api_comment {
    char     user[PNDMAN_SHRT_STR];
    char     comment[PNDMAN_API_COMMENT_LEN];
    struct   pndman_api_comment *next;
-}pndmann_api_comment;
+} pndman_api_comment;
 
 /* internal string utils */
 void  _strip_slash(char *path);
@@ -190,8 +189,8 @@ pndman_package* _pndman_repository_new_pnd_check(char *id,
 int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *repo);
 
 /* api */
-int _pndman_handshake(pndman_curl_handle *handle,
-      pndman_repository *repo, const char *key, const char *username);
+int _pndman_api_commercial_download(pndman_curl_handle *handle,
+      pndman_package_handle *package);
 
 /* pndman_package  */
 pndman_package* _pndman_new_pnd(void);

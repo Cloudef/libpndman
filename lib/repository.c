@@ -251,7 +251,7 @@ static int _pndman_repository_check(pndman_repository *repo)
 
    for (p = repo->pnd; p; p = pn) {
       pn = p->next;
-      if (!(f = fopen(p->path, "r"))) {
+      if (!(f = fopen(p->path, "rb"))) {
          if (_pndman_repository_free_pnd(p, repo) == RETURN_OK)
             ++removed;
       }
