@@ -15,6 +15,7 @@ static void _pndman_curl_header_init(pndman_curl_header *header)
    memset(header, 0, sizeof(pndman_curl_header));
    if (!(header->data = malloc(PNDMAN_CURL_CHUNK)))
          return;
+   memset(header->data, 0, PNDMAN_CURL_CHUNK);
    header->size = PNDMAN_CURL_CHUNK;
 }
 
@@ -57,6 +58,8 @@ static size_t _pndman_curl_write_header(void *data, size_t size, size_t nmemb, p
                return 0;
          memcpy(new, header->data, header->size);
       }
+      memset(header->data+header->size, 0,
+             header->size + PNDMAN_CURL_CHUNK);
       header->data  = new;
       header->size += PNDMAN_CURL_CHUNK;
    }
@@ -284,9 +287,10 @@ static int _pndman_curl_perform(void)
 
          char buffer[1024];
          memset(buffer, 0, sizeof(buffer));
-         DEBUG(PNDMAN_LEVEL_CRAP, handle->header.data);
+         if (handle->header.size)
+            DEBUG(PNDMAN_LEVEL_CRAP, (char*)handle->header.data);
          fseek(handle->file, 0L, SEEK_SET);
-         if (fgets(buffer, sizeof(buffer), handle->file))
+         if (fgets(buffer, sizeof(buffer)-1, handle->file))
             puts(buffer);
          fseek(handle->file, 0L, SEEK_SET);
 
