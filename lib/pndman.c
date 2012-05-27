@@ -52,7 +52,7 @@ int _strnupcmp(const char *hay, const char *needle, size_t len)
 }
 
 /* \brief return temporary file */
-FILE* _pndman_get_tmp_file()
+void* _pndman_get_tmp_file()
 {
    FILE *tmp;
 
