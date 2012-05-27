@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <curl/curl.h>
 
 /* internal multi curl handle */
 static CURLM *_pndman_curlm = NULL;
@@ -72,7 +73,7 @@ static int _pndman_curl_progress_func(pndman_curl_handle *handle,
 {
    handle->progress->download           = download;
    handle->progress->total_to_download  = total_to_download;
-   handle->callback(PNDMAN_CURL_PROGRESS, handle->data, NULL);
+   handle->callback(PNDMAN_CURL_PROGRESS, handle->data, NULL, handle);
    return 0;
 }
 
@@ -103,45 +104,22 @@ pndman_curl_handle* _pndman_curl_handle_new(void *data,
       const char *path)
 {
    pndman_curl_handle *handle;
-   assert(data && progress && callback);
 
    if (!(handle = malloc(sizeof(pndman_curl_handle))))
       goto handle_fail;
    memset(handle, 0, sizeof(pndman_curl_handle));
    memset(&handle->header, 0, sizeof(pndman_curl_header));
 
-   if (!path) {
-      if (!(handle->file = _pndman_get_tmp_file()))
-         goto fail;
-   } else {
-      if (!(handle->file = fopen(path, "w+b")))
-         goto open_fail;
-      memcpy(handle->path, path, PNDMAN_PATH);
-   }
-
    if (!(handle->curl = curl_easy_init()))
       goto curl_fail;
 
    /* set defaults */
+   if (path) memcpy(handle->path, path, PNDMAN_PATH);
    handle->data      = data;
    handle->callback  = callback;
    handle->progress  = progress;
-   curl_easy_setopt(handle->curl, CURLOPT_WRITEFUNCTION, _pndman_curl_write_file);
-   curl_easy_setopt(handle->curl, CURLOPT_HEADERFUNCTION, _pndman_curl_write_header);
-   curl_easy_setopt(handle->curl, CURLOPT_CONNECTTIMEOUT, PNDMAN_CURL_TIMEOUT);
-   curl_easy_setopt(handle->curl, CURLOPT_NOPROGRESS, 0);
-   curl_easy_setopt(handle->curl, CURLOPT_PROGRESSFUNCTION, _pndman_curl_progress_func);
-   curl_easy_setopt(handle->curl, CURLOPT_WRITEDATA, handle->file);
-   curl_easy_setopt(handle->curl, CURLOPT_HEADERDATA, &handle->header);
-   curl_easy_setopt(handle->curl, CURLOPT_PROGRESSDATA, handle);
-   curl_easy_setopt(handle->curl, CURLOPT_COOKIEFILE, "");
-   curl_easy_setopt(handle->curl, CURLOPT_PRIVATE, handle);
-
    return handle;
 
-open_fail:
-   DEBFAIL(ACCESS_FAIL, path);
-   goto fail;
 handle_fail:
    DEBFAIL(PNDMAN_ALLOC_FAIL, "pndman_curl_handle");
    goto fail;
@@ -154,24 +132,92 @@ fail:
    return NULL;
 }
 
+/* \brief set curl handle's url */
+void _pndman_curl_handle_set_url(pndman_curl_handle *handle, const char *url)
+{
+   if (!url) return;
+   strncpy(handle->url, url, PNDMAN_URL-1);
+}
+
+/* \brief set curl handle's post field */
+void _pndman_curl_handle_set_post(pndman_curl_handle *handle, const char *post)
+{
+   if (!post) return;
+   strncpy(handle->post, post, PNDMAN_POST-1);
+}
+
 /* \brief perform curl operation */
 int _pndman_curl_handle_perform(pndman_curl_handle *handle)
 {
-   if (!_pndman_curlm) {
-#if 0
-      // if (curl_global_init(CURL_GLOBAL_ALL) != 0)
-      //   goto fail;
-#endif
-      if (!(_pndman_curlm = curl_multi_init()))
-         goto fail;
+   /* no callback or data, we will fail */
+   if (!handle->data || !handle->callback)
+      goto no_data_or_callback;
+
+   /* no url, fail */
+   if (!strlen(handle->url))
+      goto no_url;
+
+   /* reopen handle if needed */
+   if (handle->file) {
+      curl_multi_remove_handle(_pndman_curlm, handle->curl);
+      curl_easy_reset(handle->curl);
+      fclose(handle->file);
+      handle->file = NULL;
+      _pndman_curl_header_free(&handle->header);
+      memset(&handle->header, 0, sizeof(pndman_curl_header));
+      DEBUG(PNDMAN_LEVEL_CRAP, "CURL REOPEN");
    }
 
-   _pndman_curl_init_progress(handle->progress);
+   if (!strlen(handle->path)) {
+      if (!(handle->file = _pndman_get_tmp_file()))
+         goto fail;
+   } else {
+      if (!(handle->file = fopen(handle->path, "w+b")))
+         goto open_fail;
+   }
+
+   /* set file options */
+   curl_easy_setopt(handle->curl, CURLOPT_URL, handle->url);
+   if (strlen(handle->post)) {
+         curl_easy_setopt(handle->curl, CURLOPT_POSTFIELDS, handle->post);
+      DEBUG(PNDMAN_LEVEL_CRAP, "POST: %s", handle->post);
+   }
+
+   curl_easy_setopt(handle->curl, CURLOPT_HEADERFUNCTION, _pndman_curl_write_header);
+   curl_easy_setopt(handle->curl, CURLOPT_CONNECTTIMEOUT, PNDMAN_CURL_TIMEOUT);
+   curl_easy_setopt(handle->curl, CURLOPT_NOPROGRESS, handle->progress?0:1);
+   curl_easy_setopt(handle->curl, CURLOPT_PROGRESSFUNCTION, _pndman_curl_progress_func);
+   curl_easy_setopt(handle->curl, CURLOPT_HEADERDATA, &handle->header);
+   curl_easy_setopt(handle->curl, CURLOPT_PROGRESSDATA, handle);
+   curl_easy_setopt(handle->curl, CURLOPT_COOKIEFILE, "");
+   curl_easy_setopt(handle->curl, CURLOPT_PRIVATE, handle);
+   curl_easy_setopt(handle->curl, CURLOPT_WRITEFUNCTION, _pndman_curl_write_file);
+   curl_easy_setopt(handle->curl, CURLOPT_WRITEDATA, handle->file);
+
+   if (!_pndman_curlm && !(_pndman_curlm = curl_multi_init()))
+      goto curlm_fail;
+
+   /* init progress if needed */
+   if (handle->progress)
+      _pndman_curl_init_progress(handle->progress);
+
    curl_multi_add_handle(_pndman_curlm, handle->curl);
    return RETURN_OK;
 
-fail:
+no_data_or_callback:
+   DEBFAIL(CURL_NO_DATA_OR_CALLBACK);
+   goto fail;
+no_url:
+   DEBFAIL(CURL_NO_URL);
+   goto fail;
+open_fail:
+   DEBFAIL(ACCESS_FAIL, handle->path);
+   goto fail;
+curlm_fail:
    DEBFAIL(PNDMAN_ALLOC_FAIL, "CURLM");
+fail:
+   IFDO(fclose, handle->file);
+   if (strlen(handle->path)) unlink(handle->path);
    return RETURN_FAIL;
 }
 
@@ -230,14 +276,20 @@ static int _pndman_curl_perform(void)
    while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left))) {
       curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &handle);
       if (msg->msg == CURLMSG_DONE) { /* DONE */
-         handle->progress->done = msg->data.result==CURLE_OK?1:0;
+         if (handle->progress)
+            handle->progress->done = msg->data.result==CURLE_OK?1:0;
          if (msg->data.result != CURLE_OK)
             handle->callback(PNDMAN_CURL_FAIL, handle->data,
-                  curl_easy_strerror(msg->data.result));
+                  curl_easy_strerror(msg->data.result), handle);
          else {
             fflush(handle->file);
-            handle->callback(PNDMAN_CURL_DONE, handle->data, NULL);
+            handle->callback(PNDMAN_CURL_DONE, handle->data, NULL, handle);
          }
+
+         /* if we got messages and still running == 0
+          * make it back 1, since callbacks might restart
+          * curl requests */
+         if (!still_running) still_running = 1;
       }
    }
 
