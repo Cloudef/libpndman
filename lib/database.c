@@ -400,10 +400,10 @@ fail:
 }
 
 /* \brief perform internal sync */
-static void _pndman_sync_done(pndman_curl_code code, void *data, const char *info)
+static void _pndman_sync_done(pndman_curl_code code, void *data, const char *info,
+      pndman_curl_handle *chandle)
 {
    pndman_sync_handle *handle  = (pndman_sync_handle*)data;
-   pndman_curl_handle *chandle = (pndman_curl_handle*)handle->data;
 
    if (code == PNDMAN_CURL_FAIL)
       strncpy(handle->error, info, PNDMAN_STR-1);
@@ -441,7 +441,6 @@ static int _pndman_sync_handle_perform(pndman_sync_handle *object)
    char timestamp[PNDMAN_TIMESTAMP];
    pndman_curl_handle *handle;
    assert(object && object->repository);
-   handle = (pndman_curl_handle*)object->data;
 
    /* check wether, to do merging or full sync */
    if (strlen(object->repository->updates) &&
@@ -460,7 +459,7 @@ static int _pndman_sync_handle_perform(pndman_sync_handle *object)
          _pndman_sync_done, NULL);
    if (!handle) goto fail;
 
-   curl_easy_setopt(handle->curl, CURLOPT_URL, url);
+   _pndman_curl_handle_set_url(handle, url);
    free(url);
 
    /* do it */
