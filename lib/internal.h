@@ -35,8 +35,9 @@
                                        PNDMAN_LEVEL_ERROR, fmt, ##__VA_ARGS__)
 
 /* etc.. */
-#define PNDMAN_CURL_TIMEOUT 15L
-#define PNDMAN_CURL_CHUNK   1024
+#define PNDMAN_CURL_TIMEOUT   15L
+#define PNDMAN_CURL_CHUNK     1024
+#define PNDMAN_CURL_MAX_RETRY 5
 
 /* strings */
 #define DATABASE_URL_COPY_FAIL   "Failed to copy url from repository."
@@ -114,6 +115,8 @@ typedef struct pndman_curl_handle
    void *data;
    void *curl;
    void *file;
+   size_t resume;
+   size_t retry;
    pndman_curl_callback callback;
    pndman_curl_progress *progress;
    pndman_curl_header header;
