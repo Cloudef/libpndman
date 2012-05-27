@@ -66,7 +66,7 @@ char* _pndman_md5(const char *file)
    char *md5;
    unsigned char digest[MD5_DIGEST_LENGTH];
 
-   if (!(f = fopen(file, "rb")))
+   if (!(f = fopen(file, "r")))
       goto fail;
 
    if (_pndman_md5file(f, digest) != 0)
