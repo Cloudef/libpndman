@@ -4,10 +4,10 @@
 /* public api */
 #include "../include/pndman.h"
 #include <string.h>     /* for strrchr */
-#include <curl/curl.h>  /* for CURL */
 
 /* internal sizes */
-#define PNDMAN_API_COMMENT_LEN 300
+#define PNDMAN_API_COMMENT_LEN   300
+#define PNDMAN_POST              256
 
 /* constants */
 #define PNDMAN_APPDATA        "libpndman"
@@ -48,6 +48,8 @@
 #define CURL_CURLM_FAIL          "Internal CURLM initialization failed."
 #define CURL_HANDLE_FAIL         "Failed to allocate CURL handle."
 #define CURL_REQUEST_FAIL        "Failed to init curl request."
+#define CURL_NO_DATA_OR_CALLBACK "No data or callback in internal curl handle."
+#define CURL_NO_URL              "No url specified for curl handle"
 #define DEVICE_IS_NOT_DIR        "%s, is not a directory."
 #define DEVICE_ACCESS_FAIL       "%s, should have write and read permissions."
 #define DEVICE_ROOT_FAIL         "Could not get root device of %s absolute directory."
@@ -67,6 +69,7 @@
 #define JSON_BAD_JSON            "Bad json data, won't process sync for: %s"
 #define JSON_NO_P_ARRAY          "No packages array for: %s"
 #define JSON_NO_R_HEADER         "No repo header for: %s"
+#define JSON_NO_V_ARRAY          "No versions array for: %s"
 #define PXML_XML_CPY_FAIL        "PXML is too big for pndman :("
 #define PXML_START_TAG_FAIL      "PXML parse failed: could not find start tag before EOF."
 #define PXML_END_TAG_FAIL        "PXML parse failed: could not find end tag before EOF."
@@ -91,8 +94,12 @@ typedef enum PNDMAN_RETURN
    RETURN_FALSE =  !RETURN_TRUE
 } PNDMAN_RETURN;
 
+/* forward declaration */
+struct pndman_curl_handle;
+
 /* \brief callback function definition to curl handle */
-typedef void (*pndman_curl_callback)(pndman_curl_code code, void *data, const char *info);
+typedef void (*pndman_curl_callback)(pndman_curl_code code, void *data, const char *info,
+      struct pndman_curl_handle *handle);
 
 /* \brief curl header presention */
 typedef struct pndman_curl_header
@@ -105,11 +112,13 @@ typedef struct pndman_curl_header
 typedef struct pndman_curl_handle
 {
    void *data;
+   void *curl;
+   void *file;
    pndman_curl_callback callback;
    pndman_curl_progress *progress;
-   CURL *curl;
-   FILE *file;
    pndman_curl_header header;
+   char url[PNDMAN_URL];
+   char post[PNDMAN_POST];
    char path[PNDMAN_PATH];
 } pndman_curl_handle;
 
@@ -127,14 +136,6 @@ typedef struct pndman_api_status {
    char text[PNDMAN_SHRT_STR];
 } pndman_api_status;
 
-/* \brief client api comment struct */
-typedef struct pndman_api_comment {
-   time_t   date;
-   char     user[PNDMAN_SHRT_STR];
-   char     comment[PNDMAN_API_COMMENT_LEN];
-   struct   pndman_api_comment *next;
-} pndman_api_comment;
-
 /* internal string utils */
 void  _strip_slash(char *path);
 char* _strupstr(const char *hay, const char *needle);
@@ -142,7 +143,7 @@ int   _strupcmp(const char *hay, const char *needle);
 int   _strnupcmp(const char *hay, const char *needle, size_t len);
 
 /* temporary files */
-FILE* _pndman_get_tmp_file();
+void* _pndman_get_tmp_file();
 
 /* errors && verbose */
 void _pndman_set_error(const char *file, int line,
@@ -156,16 +157,20 @@ pndman_curl_handle* _pndman_curl_handle_new(void *data,
       const char *path);
 void _pndman_curl_handle_free(pndman_curl_handle *handle);
 int  _pndman_curl_handle_perform(pndman_curl_handle *handle);
+void _pndman_curl_handle_set_post(pndman_curl_handle *handle, const char *post);
+void _pndman_curl_handle_set_url(pndman_curl_handle *handle, const char *url);
 
 /* json */
 int _pndman_json_api_value(const char *key, char *value, size_t size,
       const char *buffer);
 int _pndman_json_api_status(const char *buffer, pndman_api_status *status);
-int _pndman_json_commit(pndman_repository *repo, FILE *f);
-int _pndman_json_process(pndman_repository *repo, FILE *f);
-int _pndman_json_client_api_return(FILE *file, pndman_api_status *status);
+int _pndman_json_commit(pndman_repository *repo, void *f);
+int _pndman_json_process(pndman_repository *repo, void *f);
+int _pndman_json_client_api_return(void *file, pndman_api_status *status);
 int _pndman_json_get_value(const char *key, char *value,
-      size_t size, FILE *file);
+      size_t size, void *file);
+int _pndman_json_comment_pull(pndman_api_comment_callback callback,
+      pndman_package *pnd, void *file);
 
 /* md5 functions (remember free result) */
 char* _pndman_md5_buf(char *buffer, size_t size);
@@ -187,6 +192,10 @@ pndman_package* _pndman_repository_new_pnd(pndman_repository *repo);
 pndman_package* _pndman_repository_new_pnd_check(char *id,
       char *path, pndman_version *ver, pndman_repository *repo);
 int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *repo);
+
+/* internal callback access */
+void _pndman_package_handle_done(pndman_curl_code code, void *data, const char *info,
+      pndman_curl_handle *chandle);
 
 /* api */
 int _pndman_api_commercial_download(pndman_curl_handle *handle,
