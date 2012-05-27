@@ -320,11 +320,14 @@ static int _pndman_curl_perform(void)
 
             /* fail if max retries exceeded */
             if (handle->retry >= PNDMAN_CURL_MAX_RETRY) {
+               handle->resume = 0;
+               handle->retry  = 0;
                handle->callback(PNDMAN_CURL_FAIL, handle->data,
                      curl_easy_strerror(msg->data.result), handle);
             }
          } else {
             handle->resume = 0;
+            handle->retry  = 0;
             fflush(handle->file);
             handle->callback(PNDMAN_CURL_DONE, handle->data, NULL, handle);
          }
