@@ -114,18 +114,6 @@ static int _conflict(char *id, char *path, pndman_repository *local)
    return RETURN_FALSE;
 }
 
-/* \brief handle callback */
-void _pndman_package_handle_done(pndman_curl_code code, void *data, const char *info)
-{
-   pndman_package_handle *handle  = (pndman_package_handle*)data;
-
-   if (code == PNDMAN_CURL_FAIL)
-      strncpy(handle->error, info, PNDMAN_STR-1);
-
-   /* callback to this handle */
-   if (handle->callback) handle->callback(code, handle);
-}
-
 /* \brief pre routine when object has install flag */
 static int _pndman_package_handle_download(pndman_package_handle *object)
 {
@@ -173,11 +161,11 @@ static int _pndman_package_handle_download(pndman_package_handle *object)
    if (!handle) goto fail;
 
    /* commercial or normal pnd? */
-   if (object->pnd->commercial) {
-     return _pndman_api_commercial_download(handle, object);
+   if (object->repository && object->pnd->commercial) {
+      return _pndman_api_commercial_download(handle, object);
    } else {
       /* set download URL */
-      curl_easy_setopt(handle->curl, CURLOPT_URL,     object->pnd->url);
+      _pndman_curl_handle_set_url(handle, object->pnd->url);
       return _pndman_curl_handle_perform(handle);
    }
 
@@ -410,6 +398,21 @@ read_fail:
    DEBFAIL(READ_FAIL, object->pnd->path);
 fail:
    return RETURN_FAIL;
+}
+
+/* INTERNAL API */
+
+/* \brief handle callback */
+void _pndman_package_handle_done(pndman_curl_code code, void *data, const char *info,
+      pndman_curl_handle *chandle)
+{
+   pndman_package_handle *handle  = (pndman_package_handle*)data;
+
+   if (code == PNDMAN_CURL_FAIL)
+      strncpy(handle->error, info, PNDMAN_STR-1);
+
+   /* callback to this handle */
+   if (handle->callback) handle->callback(code, handle);
 }
 
 /* API */
