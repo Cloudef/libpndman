@@ -286,7 +286,7 @@ static int _pndman_curl_perform(void)
          memset(buffer, 0, sizeof(buffer));
          DEBUG(PNDMAN_LEVEL_CRAP, handle->header.data);
          fseek(handle->file, 0L, SEEK_SET);
-         while (fgets(buffer, sizeof(buffer), handle->file))
+         if (fgets(buffer, sizeof(buffer), handle->file))
             puts(buffer);
          fseek(handle->file, 0L, SEEK_SET);
 
