@@ -10,6 +10,7 @@
 #  define getcwd _getcwd
 #elif __linux__
 #  include <sys/stat.h>
+#  include <dirent.h>
 #endif
 
 /* common error function */
@@ -19,8 +20,16 @@ static void err(const char *str)
    exit(EXIT_FAILURE);
 }
 
+/* get last device from list */
+static pndman_device* common_get_last_device(pndman_device* d)
+{
+   pndman_device* last = d;
+   while(last->next) last = last->next;
+   return last;
+}
+
 /* returns path to test device */
-static char* test_device()
+static char* common_get_path_to_fake_device()
 {
    char *cwd = malloc(PATH_MAX);
    if (!cwd) return NULL;
@@ -35,55 +44,111 @@ static char* test_device()
          free(cwd);
          return NULL;
       }
+
+   if (!cwd) err("failed to get virtual device path");
+   printf("-!- %s\n", cwd);
    return cwd;
 }
 
 /* read repositories from devices */
-static void repo_auto_read(pndman_repository *rl, pndman_device *dl)
+static void common_read_repositories_from_device(
+      pndman_repository *rl, pndman_device *dl)
 {
    pndman_repository *r = rl;
    pndman_device *d;
    for (; r; r = r->next)
       for (d = dl; d; d = d->next)
-         pndman_read_from_device(r, d);
+         pndman_device_read_repository(r, d);
 }
 
 /* create and perform sync handles */
-static void sync_auto_create(pndman_sync_handle *handle,
-      size_t num, pndman_repository *list, pndman_callback cb)
+static void common_create_sync_handles(pndman_sync_handle *handle,
+      size_t num, pndman_repository *list, pndman_callback cb,
+      unsigned int flags)
 {
    size_t i;
    pndman_repository *r = list->next;
    for (i = 0; r; r = r->next) {
       if (i > num) break;
-      if (!(pndman_sync_handle_init(&handle[i])))
+      if (pndman_sync_handle_init(&handle[i]) != 0)
          err("pndman_sync_handle_init failed");
       handle[i].repository = r;
       handle[i].callback   = cb;
+      handle[i].flags      = flags;
       pndman_sync_handle_perform(&handle[i]);
    }
 }
 
+/* create package handles */
+static void common_create_package_handles(pndman_package_handle *handle,
+      size_t num, pndman_device *device, pndman_repository *repo, pndman_callback cb)
+{
+   size_t i;
+   for (i = 0; i != num; ++i) {
+      if (pndman_package_handle_init("noname", &handle[i]) != 0)
+         err("pndman_package_handle_init failed");
+      handle[i].repository = repo;
+      handle[i].device     = device;
+      handle[i].callback   = cb;
+   }
+}
+
+/* perform package handles */
+static void common_perform_package_handles(pndman_package_handle *handle,
+      size_t num, unsigned int flags)
+{
+   size_t i;
+   for (i = 0; i != num; ++i) {
+      handle[i].flags = flags;
+      pndman_package_handle_perform(&handle[i]);
+   }
+}
+
 /* auto commit all repositories */
-static void repo_auto_commit(pndman_repository *rl, pndman_device *dl)
+static void common_commit_repositories_to_device(
+      pndman_repository *rl, pndman_device *dl)
 {
    pndman_device *d = dl;
    for (; d; d = d->next)
-      pndman_commit_all(rl, d);
+      pndman_repository_commit_all(rl, d);
 }
 
-/* common curl loop */
-static void curl_loop(void)
+/* common sync callback */
+static void common_sync_cb(pndman_curl_code code, void *data)
 {
-   puts("");
-   while (pndman_curl_process() > 0) {
-      for (x = 0; x != 1; ++x) {
-         printf("%s [%.2f/%.2f]%s", handle[x].repository->url,
-                handle[x].progress.download/1048576, handle[x].progress.total_to_download/1048576,
-                handle[x].progress.done?"\n":"\r"); fflush(stdout);
-      }
+   pndman_sync_handle *handle = (pndman_sync_handle*)data;
+
+   if (code == PNDMAN_CURL_DONE ||
+       code == PNDMAN_CURL_FAIL) {
+      printf("%s : %s!\n", handle->repository->name,
+            code==PNDMAN_CURL_DONE?"DONE":handle->error);
+      pndman_sync_handle_free(handle);
+   } else if (code == PNDMAN_CURL_PROGRESS) {
+      printf("%s [%.2f/%.2f]%s", handle->repository->url,
+            handle->progress.download/1048576, handle->progress.total_to_download/1048576,
+            handle->progress.done?"\n":"\r"); fflush(stdout);
    }
-   puts("");
 }
 
-#endif /* __common_h__
+/* common package callback */
+static void common_package_cb(pndman_curl_code code, void *data)
+{
+   pndman_package_handle *handle = (pndman_package_handle*)data;
+
+   if (code == PNDMAN_CURL_DONE ||
+       code == PNDMAN_CURL_FAIL) {
+      printf("%s : %s!\n", handle->pnd->id,
+            code==PNDMAN_CURL_DONE?"DONE":handle->error);
+      if (code == PNDMAN_CURL_DONE) {
+         if (pndman_package_handle_commit(handle, handle->repository) != 0)
+            printf("commit failed for: %s\n", handle->name);
+      }
+      pndman_package_handle_free(handle);
+   } else if (code == PNDMAN_CURL_PROGRESS) {
+      printf("%s [%.2f/%.2f]%s", handle->pnd->id,
+            handle->progress.download/1048576, handle->progress.total_to_download/1048576,
+            handle->progress.done?"\n":"\r"); fflush(stdout);
+   }
+}
+
+#endif /* __common_h__ */

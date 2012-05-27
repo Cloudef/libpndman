@@ -1,66 +1,41 @@
 #include "pndman.h"
 #include "common.h"
 
-#define REPO_URL "http://repo.openpandora.org/includes/get_data.php"
-
-static void sync_done_cb(pndman_curl_code code, void *data)
-{
-   pndman_sync_handle *handle = (pndman_sync_handle*)data;
-   printf("%s : DONE!\n", handle->repository->name);
-   pndman_sync_handle_free(handle);
-}
-
-int main()
+#define REPOSITORY_URL "http://repo.openpandora.org/includes/get_data.php"
+int main(int argc, char **argv)
 {
    pndman_repository *repository, *r;
-   pndman_device     *device, *d;
+   pndman_device     *device;
    pndman_package    *pnd;
-   pndman_sync_handle handle[1]; /* we should have only one remote repository */
-   unsigned int x;
+   pndman_sync_handle handle[1];
    char *cwd;
 
-   puts("This test, tests various repository operations within libpndman.");
-   puts("We'll first try to add "REPO_URL" two times, but since it already exists, second add should fail.");
-   puts("");
-   puts("Additionally it does some free trickery, so there should be no memory leaks or segmentation faults either.");
+   puts("-!- TEST repo");
    puts("");
 
-   /* set verbose level to max */
    pndman_set_verbose(PNDMAN_LEVEL_CRAP);
-
-   /* get test device */
-   if (!(cwd = test_device()))
-      err("failed to get virtual device path");
-
-   /* add device */
+   cwd = common_get_path_to_fake_device();
    if (!(device = pndman_device_add(cwd, NULL)))
       err("failed to add device, check that it exists");
 
-   /* add repository */
    repository = pndman_repository_init();
    if (!repository)
       err("failed to allocate repository list");
 
-   /* test duplicates */
-   if (!pndman_repository_add(REPO_URL, repository))
-      err("failed to add "REPO_URL", :/");
-   if (pndman_repository_add(REPO_URL, repository))
+   if (!pndman_repository_add(REPOSITORY_URL, repository))
+      err("failed to add "REPOSITORY_URL", :/");
+   if (pndman_repository_add(REPOSITORY_URL, repository))
       err("second repo add should fail!");
 
-   /* read all repositories locally */
-   repo_auto_read(repository, device);
+   common_read_repositories_from_device(repository, device);
+   common_create_sync_handles(handle, 1, repository, common_sync_cb, 0);
 
-   /* create and perform sync handles */
-   sync_auto_create(handle, 1, repository, sync_done_cb);
-
-   /* wait for repositories to sync */
-   curl_loop();
-
-   /* output information about repositories */
    puts("");
-   r = repository;
-   for (; r; r = r->next)
-   {
+   while (pndman_curl_process() > 0);
+   puts("");
+
+   puts("");
+   for (r = repository; r; r = r->next) {
       printf("%s :\n", r->name);
       printf("   UPD: %s\n", r->updates);
       printf("   URL: %s\n", r->url);
@@ -69,8 +44,6 @@ int main()
       printf("   TIM: %lu\n", r->timestamp);
       puts("");
 
-      /* print only local repo packages if any,
-       * run handle exe to get some :) */
       if (!r->prev) {
          for (pnd = r->pnd; pnd; pnd = pnd->next) {
             printf("ID:    %s\n", pnd->id);
@@ -83,14 +56,14 @@ int main()
    }
    puts("");
 
-   /* commit all repositories to every device */
-   repo_auto_commit(repository, device);
+   common_commit_repositories_to_device(repository, device);
 
-   /* cleanup */
    pndman_repository_free_all(repository);
    pndman_device_free_all(device);
    free(cwd);
 
+   puts("");
+   puts("-!- DONE");
    return EXIT_SUCCESS;
 }
 

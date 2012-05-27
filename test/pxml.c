@@ -1,41 +1,7 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <string.h>
 #include "pndman.h"
+#include "common.h"
 
-static void err(char *str)
-{
-   puts(str);
-   exit(EXIT_FAILURE);
-}
-
-#ifdef __WIN32__
-#  define getcwd _getcwd
-#elif __linux__
-#  include <sys/stat.h>
-#  include <dirent.h>
-#endif
-static char* test_device()
-{
-   char *cwd = malloc(PATH_MAX);
-   if (!cwd) return NULL;
-   getcwd(cwd, PATH_MAX);
-   strncat(cwd, "/SD", PATH_MAX-1);
-   if (access(cwd, F_OK) != 0)
-#ifdef __WIN32__
-      if (mkdir(cwd) == -1) {
-#else
-      if (mkdir(cwd, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1) {
-#endif
-         free(cwd);
-         return NULL;
-      }
-   return cwd;
-}
-
-int main()
+int main(int argc, char **argv)
 {
 #ifdef __linux__
    DIR *dp;
@@ -49,15 +15,11 @@ int main()
    char *cwd;
    size_t count = 0;
 
-   pndman_set_verbose(3);
-
-   cwd = test_device();
-   if (!cwd) err("failed to get virtual device path");
-
-   puts("This test, tests various pxml operations within libpndman.");
-   puts("To get some pnds, run handle(.exe) first.");
+   puts("-!- TEST pxml");
    puts("");
 
+   pndman_set_verbose(PNDMAN_LEVEL_CRAP);
+   cwd = common_get_path_to_fake_device();
 #ifdef __linux__
    /* copy path */
    strncpy(path1, cwd, PATH_MAX-1);
@@ -95,9 +57,11 @@ int main()
 #endif
 
    free(cwd);
-
    puts("");
    printf("%zu PNDs\n", count);
+
+   puts("");
+   puts("-!- DONE");
    return EXIT_SUCCESS;
 }
 

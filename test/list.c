@@ -1,28 +1,17 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <time.h>
 #include "pndman.h"
+#include "common.h"
 
-pndman_device* getLast(pndman_device* d)
-{
-   pndman_device* last = d;
-   while(last->next) last = last->next;
-   return last;
-}
-
-/* note we won't check errors here, so nasty things can happen */
-int main()
+/* NOTE: we won't check errors here, so nasty things can happen */
+int main(int argc, char **argv)
 {
    pndman_device *device, *d;
    pndman_repository *repo, *r;
 
-   pndman_set_verbose(3);
+   pndman_set_verbose(PNDMAN_LEVEL_CRAP);
 
    device = pndman_device_add("/tmp", NULL);
-   pndman_device *d2 = pndman_device_add("/media/Storage", device);
-   pndman_device *d3 = pndman_device_add("/media/Anime", device);
+   pndman_device *d2 = pndman_device_add("/media", device);
+   pndman_device *d3 = pndman_device_add("/home", device);
 
    pndman_device_free(device);
    pndman_device_free(d2);
@@ -31,9 +20,7 @@ int main()
    device = pndman_device_add("/tmp", NULL);
    pndman_device_detect(device);
 
-   /* great for checking what's going on */
 #if 0
-   /* print the structure */
    puts("");
    for (d = device; d; d = d->next) {
       printf("%s : %s\n", d->device, d->mount);
@@ -43,8 +30,7 @@ int main()
    puts("");
 #endif
 
-   /* 1 for random order */
-#if 1
+#if 1 /* 1 for random order */
    srand(time(0));
    while (device) {
       for (d = device; (rand() % 2) && d && d->next; d = d->next);
@@ -65,10 +51,7 @@ int main()
    pndman_repository_add("http://cloudef.eu/", repo);
    pndman_repository_add("http://cloudef.eu/asd", repo);
 
-
-   /* great for checking what's going on */
 #if 0
-   /* print the structure */
    puts("");
    for (r = repo; r; r = r->next) {
       printf("%s\n",strlen(r->name) ? r->name : r->url);
@@ -78,8 +61,7 @@ int main()
    puts("");
 #endif
 
-   /* 1 for random order */
-#if 1
+#if 1 /* 1 for random order */
    srand(time(0));
    while (repo) {
       for (r = repo; (rand() % 2) && r && r->next; r = r->next);
