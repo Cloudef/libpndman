@@ -406,10 +406,19 @@ fail:
 void _pndman_package_handle_done(pndman_curl_code code, void *data, const char *info,
       pndman_curl_handle *chandle)
 {
+   pndman_api_status status;
    pndman_package_handle *handle  = (pndman_package_handle*)data;
 
-   if (code == PNDMAN_CURL_FAIL)
+   if (code == PNDMAN_CURL_FAIL) {
       strncpy(handle->error, info, PNDMAN_STR-1);
+   } else if (code == PNDMAN_CURL_DONE) {
+      /* we success, but this might be a json error */
+      if ((_pndman_json_client_api_return(chandle->file,
+                  &status) != RETURN_OK) && strlen(status.text)) {
+         code = PNDMAN_CURL_FAIL;
+         strncpy(handle->error, status.text, PNDMAN_STR-1);
+      }
+   }
 
    /* callback to this handle */
    if (handle->callback) handle->callback(code, handle);
