@@ -2,7 +2,6 @@
 #include "common.h"
 
 #define HANDLE_COUNT 4
-#define REPOSITORY_URL "http://repo.openpandora.org/includes/get_data.php"
 int main(int argc, char **argv)
 {
    pndman_device *device, *d;

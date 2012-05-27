@@ -1,7 +1,6 @@
 #include "pndman.h"
 #include "common.h"
 
-#define REPOSITORY_URL "http://repo.openpandora.org/includes/get_data.php"
 int main(int argc, char **argv)
 {
    pndman_repository *repository, *r;
