@@ -369,7 +369,7 @@ static void _pndman_api_handshake_cb(pndman_curl_code code,
          _pndman_api_handshake_perform(handle);
       else if (handle->type == PNDMAN_API_HANDSHAKE)
          _pndman_api_handshake_check(handle);
-   } else {
+   } else if (code == PNDMAN_CURL_FAIL) {
       DEBFAIL("handshake failed : %s", info);
       _pndman_api_request_free(handle);
    }
@@ -424,7 +424,7 @@ int _pndman_api_commercial_download(pndman_curl_handle *handle,
       goto fail;
 
    return _pndman_api_handshake(handle, package->repository,
-         _pndman_api_download_cb, package);
+         _pndman_api_download_cb, packet);
 
 fail:
    return RETURN_FAIL;
