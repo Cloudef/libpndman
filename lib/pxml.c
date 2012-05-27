@@ -1221,10 +1221,8 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
 PNDMANAPI int pndman_package_crawl(int full_crawl,
       pndman_device *device, pndman_repository *local)
 {
-   if (!device || !local) {
-      BADUSE("local or device pointer is NULL");
-      return RETURN_FAIL;
-   }
+   CHECKUSE(device);
+   CHECKUSE(local);
    local = _pndman_repository_first(local);
    return _pndman_crawl_to_repository(full_crawl, device, local);
 }
@@ -1234,11 +1232,7 @@ PNDMANAPI int pndman_package_crawl_single_package(int full_crawl,
       pndman_package *pnd)
 {
    pxml_parse data;
-
-   if (!pnd) {
-      BADUSE("pnd pointer is NULL");
-      return RETURN_FAIL;
-   }
+   CHECKUSE(pnd);
 
    data.pnd   = pnd;
    data.app   = NULL;

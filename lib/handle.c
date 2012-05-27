@@ -428,57 +428,42 @@ void _pndman_package_handle_done(pndman_curl_code code, void *data, const char *
 /* API */
 
 /* \brief Allocate new pndman_package_handle for transfer */
-PNDMANAPI int pndman_package_handle_init(const char *name, pndman_package_handle *object)
+PNDMANAPI int pndman_package_handle_init(const char *name, pndman_package_handle *handle)
 {
-   if (!object) {
-      BADUSE("You should pass reference to pndman_package_handle");
-      return RETURN_FAIL;
-   }
+   CHECKUSE(name);
+   CHECKUSE(handle);
 
-   memset(object, 0, sizeof(pndman_package_handle));
-   strncpy(object->name, name, PNDMAN_NAME-1);
-
+   memset(handle, 0, sizeof(pndman_package_handle));
+   strncpy(handle->name, name, PNDMAN_NAME-1);
    return RETURN_OK;
 }
 
 /* \brief Free pndman_package_handle */
-PNDMANAPI void pndman_package_handle_free(pndman_package_handle *object)
+PNDMANAPI void pndman_package_handle_free(pndman_package_handle *handle)
 {
-   pndman_curl_handle *handle;
-   if (!object) {
-      BADUSE("handle pointer is NULL");
-      return;
-   }
+   pndman_curl_handle *chandle;
+   CHECKUSEV(handle);
 
-   handle = (pndman_curl_handle*)object->data;
-   IFDO(_pndman_curl_handle_free, handle);
-   object->data      = NULL;
-   object->callback  = NULL;
+   chandle = (pndman_curl_handle*)handle->data;
+   IFDO(_pndman_curl_handle_free, chandle);
+   handle->data      = NULL;
+   handle->callback  = NULL;
 }
 
 /* \brief Perform handle, currently only needed for INSTALL handles */
-PNDMANAPI int pndman_package_handle_perform(pndman_package_handle *object)
+PNDMANAPI int pndman_package_handle_perform(pndman_package_handle *handle)
 {
-   if (!object) {
-      BADUSE("object pointer is NULL");
-      return RETURN_FAIL;
-   }
-   if (!object->pnd) {
-      BADUSE("handle has no PND");
-      return RETURN_FAIL;
-   }
-   if (!object->flags) {
-      BADUSE("handle has no flags");
-      return RETURN_FAIL;
-   }
+   CHECKUSE(handle);
+   CHECKUSE(handle->pnd);
+   CHECKUSE(handle->flags);
 
    /* reset done */
-   object->progress.done = 0;
-   memset(object->error, 0, LINE_MAX);
+   handle->progress.done = 0;
+   memset(handle->error, 0, LINE_MAX);
 
-   if ((object->flags & PNDMAN_PACKAGE_INSTALL))
-      if (_pndman_package_handle_download(object) != RETURN_OK) {
-         object->flags = 0; /* don't allow continue */
+   if ((handle->flags & PNDMAN_PACKAGE_INSTALL))
+      if (_pndman_package_handle_download(handle) != RETURN_OK) {
+         handle->flags = 0; /* don't allow continue */
          return RETURN_FAIL;
       }
 
@@ -487,33 +472,21 @@ PNDMANAPI int pndman_package_handle_perform(pndman_package_handle *object)
 
 /* \brief Commit handle's state to ram
  * remember to call pndman_commit afterwards! */
-PNDMANAPI int pndman_package_handle_commit(pndman_package_handle *object, pndman_repository *local)
+PNDMANAPI int pndman_package_handle_commit(pndman_package_handle *handle, pndman_repository *local)
 {
-   if (!object) {
-      BADUSE("object pointer is NULL");
-      return RETURN_FAIL;
-   }
-   if (!object->flags) {
-      BADUSE("handle has no flags");
-      return RETURN_FAIL;
-   }
-   if (!object->pnd) {
-      BADUSE("handle has no pnd");
-      return RETURN_FAIL;
-   }
-   if (!local) {
-      BADUSE("local pointer is NULL");
-      return RETURN_FAIL;
-   }
+   CHECKUSE(handle);
+   CHECKUSE(handle->flags);
+   CHECKUSE(handle->pnd);
+   CHECKUSE(local);
 
    /* make this idiot proof */
    local = _pndman_repository_first(local);
 
-   if ((object->flags & PNDMAN_PACKAGE_REMOVE))
-      if (_pndman_package_handle_remove(object, local) != RETURN_OK)
+   if ((handle->flags & PNDMAN_PACKAGE_REMOVE))
+      if (_pndman_package_handle_remove(handle, local) != RETURN_OK)
          return RETURN_FAIL;
-   if ((object->flags & PNDMAN_PACKAGE_INSTALL))
-      if (_pndman_package_handle_install(object, local) != RETURN_OK)
+   if ((handle->flags & PNDMAN_PACKAGE_INSTALL))
+      if (_pndman_package_handle_install(handle, local) != RETURN_OK)
          return RETURN_FAIL;
 
    return RETURN_OK;

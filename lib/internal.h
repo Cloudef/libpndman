@@ -27,6 +27,9 @@
 #define THIS_FILE             ((strrchr(__FILE__, '/') ?: __FILE__ - 1) + 1)
 #define DBG_FMT               "\2@FILE \5%-20s \2@LINE \5%-4d \5>> \4%s\n\5%s"
 #define DBG_WRN_BAD_USE       "\2-!- Bad usage of function:\5 "
+#define CHECKUSE(x)           if (!x) { BADUSE("%s is NULL", #x); return RETURN_FAIL; }
+#define CHECKUSEP(x)          if (!x) { BADUSE("%s is NULL", #x); return NULL; }
+#define CHECKUSEV(x)          if (!x) { BADUSE("%s is NULL", #x); return; }
 #define BADUSE(fmt,...)       _pndman_debug_hook(THIS_FILE, __LINE__, __func__, \
                                        PNDMAN_LEVEL_WARN, DBG_WRN_BAD_USE""fmt, ##__VA_ARGS__)
 #define DEBUG(level,fmt,...)  _pndman_debug_hook(THIS_FILE, __LINE__, __func__, \

@@ -264,7 +264,7 @@ static int _pndman_repository_check(pndman_repository *repo)
 
 /* \brief Initialize repo list
  * NOTE: first repository == local repository */
-pndman_repository* pndman_repository_init()
+PNDMANAPI pndman_repository* pndman_repository_init(void)
 {
    pndman_repository *repo;
    repo = _pndman_repository_init();
@@ -274,22 +274,17 @@ pndman_repository* pndman_repository_init()
 }
 
 /* \brief Add new repository */
-pndman_repository* pndman_repository_add(const char *url, pndman_repository *repo)
+PNDMANAPI pndman_repository* pndman_repository_add(const char *url, pndman_repository *repo)
 {
-   if (!repo) {
-      BADUSE("repo list pointer is NULL");
-      return NULL;
-   }
+   CHECKUSEP(url);
+   CHECKUSEP(repo);
    return _pndman_repository_add(url, repo);
 }
 
 /* \brief Clear repository, effectiely frees the PND list */
 PNDMANAPI void pndman_repository_clear(pndman_repository *repo)
 {
-   if (!repo) {
-      BADUSE("repo pointer is NULL");
-      return;
-   }
+   CHECKUSEV(repo);
    _pndman_repository_free_pnd_all(repo);
    repo->pnd = NULL;
 }
@@ -297,10 +292,7 @@ PNDMANAPI void pndman_repository_clear(pndman_repository *repo)
 /* \brief Check local repository for bad/removed PNDs, returns number of packages removed */
 PNDMANAPI int pndman_repository_check_local(pndman_repository *local)
 {
-   if (!local) {
-      BADUSE("local pointer is NULL");
-      return 0;
-   }
+   CHECKUSE(local);
    local = _pndman_repository_first(local); /* make fool proof */
    return _pndman_repository_check(local);
 }
@@ -308,20 +300,14 @@ PNDMANAPI int pndman_repository_check_local(pndman_repository *local)
 /* \brief Free one repo, returns first repo */
 PNDMANAPI pndman_repository* pndman_repository_free(pndman_repository *repo)
 {
-   if (!repo) {
-      BADUSE("repo pointer is NULL");
-      return NULL;
-   }
+   CHECKUSEP(repo);
    return _pndman_repository_free(repo);
 }
 
 /* \brief Free all repos */
 PNDMANAPI void pndman_repository_free_all(pndman_repository *repo)
 {
-   if (!repo) {
-      BADUSE("repo pointer is NULL");
-      return;
-   }
+   CHECKUSEV(repo);
    _pndman_repository_free_all(repo);
 }
 

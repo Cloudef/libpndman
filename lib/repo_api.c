@@ -473,27 +473,8 @@ fail:
    return RETURN_FAIL;
 }
 
-/* INTERNAL API */
-
-/* \brief handshake for commercial download */
-int _pndman_api_commercial_download(pndman_curl_handle *handle,
-      pndman_package_handle *package)
-{
-   pndman_download_packet *packet;
-   assert(package->repository);
-
-   if (!(packet = _pndman_api_download_packet(package)))
-      goto fail;
-
-   return _pndman_api_handshake(handle, package->repository,
-         _pndman_api_download_cb, packet);
-
-fail:
-   return RETURN_FAIL;
-}
-
 /* \brief rate pnd */
-int _pndman_api_rate_pnd(pndman_package *pnd, pndman_repository *repository, int rate)
+static int _pndman_api_rate_pnd(pndman_package *pnd, pndman_repository *repository, int rate)
 {
    assert(pnd && repository);
 
@@ -516,7 +497,7 @@ fail:
 }
 
 /* \brief comment pnd */
-int _pndman_api_comment_pnd(pndman_package *pnd, pndman_repository *repository,
+static int _pndman_api_comment_pnd(pndman_package *pnd, pndman_repository *repository,
       const char *comment)
 {
    pndman_comment_packet *packet = NULL;
@@ -538,7 +519,7 @@ fail:
 }
 
 /* \brief get comments for pnd */
-int _pndman_api_comment_pnd_pull(pndman_package *pnd, pndman_repository *repository,
+static int _pndman_api_comment_pnd_pull(pndman_package *pnd, pndman_repository *repository,
       pndman_api_comment_callback callback)
 {
    char url[PNDMAN_URL];
@@ -568,7 +549,7 @@ fail:
 }
 
 /* \brief get download history */
-int _pndman_api_download_history(pndman_repository *repository,
+static int _pndman_api_download_history(pndman_repository *repository,
       pndman_api_history_callback callback)
 {
    pndman_history_packet *packet = NULL;
@@ -586,4 +567,69 @@ int _pndman_api_download_history(pndman_repository *repository,
 fail:
    IFDO(_pndman_curl_handle_free, handle);
    return RETURN_FAIL;
+}
+
+/* INTERNAL API */
+
+/* \brief handshake for commercial download */
+int _pndman_api_commercial_download(pndman_curl_handle *handle,
+      pndman_package_handle *package)
+{
+   pndman_download_packet *packet;
+   assert(package->repository);
+
+   if (!(packet = _pndman_api_download_packet(package)))
+      goto fail;
+
+   return _pndman_api_handshake(handle, package->repository,
+         _pndman_api_download_cb, packet);
+
+fail:
+   return RETURN_FAIL;
+}
+
+/* PUBLIC API */
+
+/* \brief send comment to pnd */
+PNDMANAPI int pndman_api_comment_pnd(pndman_package *pnd,
+      pndman_repository *repository, const char *comment)
+{
+   CHECKUSE(pnd);
+   CHECKUSE(repository);
+   CHECKUSE(comment);
+
+   return _pndman_api_comment_pnd(pnd,
+         repository, comment);
+}
+
+/* \brief get comments from pnd */
+PNDMANAPI int pndman_api_comment_pnd_pull(pndman_package *pnd,
+      pndman_repository *repository, pndman_api_comment_callback callback)
+{
+   CHECKUSE(pnd);
+   CHECKUSE(repository);
+   CHECKUSE(callback);
+
+   return _pndman_api_comment_pnd_pull(pnd,
+         repository, callback);
+}
+
+/* \brief rate pnd */
+PNDMANAPI int pndman_api_rate_pnd(pndman_package *pnd,
+      pndman_repository *repository, int rate)
+{
+   CHECKUSE(pnd);
+   CHECKUSE(repository);
+
+   return _pndman_api_rate_pnd(pnd, repository, rate);
+}
+
+/* \brief get download history */
+PNDMANAPI int pndman_api_download_history(
+      pndman_repository *repository, pndman_api_history_callback callback)
+{
+   CHECKUSE(repository);
+   CHECKUSE(callback);
+
+   return _pndman_api_download_history(repository, callback);
 }

@@ -531,6 +531,8 @@ PNDMANAPI pndman_device* pndman_device_detect(pndman_device *device)
 PNDMANAPI pndman_device* pndman_device_add(const char *path, pndman_device *device)
 {
    pndman_device *d;
+   CHECKUSEP(path);
+
    if ((d = _pndman_device_add(path, device))) {
       _pndman_remove_tmp_files(d);
       _pndman_device_get_appdata_no_create(d->appdata, d);
@@ -541,20 +543,14 @@ PNDMANAPI pndman_device* pndman_device_add(const char *path, pndman_device *devi
 /* \brief free one device */
 PNDMANAPI pndman_device* pndman_device_free(pndman_device *device)
 {
-   if (!device) {
-      BADUSE("device pointer is NULL");
-      return NULL;
-   }
+   CHECKUSEP(device);
    return _pndman_device_free(device);
 }
 
 /* \brief free all devices */
 PNDMANAPI void pndman_device_free_all(pndman_device *device)
 {
-   if (!device) {
-      BADUSE("device pointer is NULL");
-      return;
-   }
+   CHECKUSEV(device);
    _pndman_device_free_all(device);
 }
 

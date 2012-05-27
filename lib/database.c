@@ -540,20 +540,15 @@ static int _pndman_check_updates(pndman_repository *list)
 PNDMANAPI int pndman_device_read_repository(pndman_repository *repo,
       pndman_device *device)
 {
-   if (!repo || !device) {
-      BADUSE("repository or device pointer is NULL");
-      return RETURN_FAIL;
-   }
+   CHECKUSE(repo);
+   CHECKUSE(device);
    return _pndman_db_get(repo, device);
 }
 
 /* \brief check for updates, returns the number of updates */
 PNDMANAPI int pndman_repository_check_updates(pndman_repository *list)
 {
-   if (!list) {
-      BADUSE("list pointer is NULL");
-      return RETURN_FAIL;
-   }
+   CHECKUSE(list);
    list = _pndman_repository_first(list); /* idiot proof */
    return _pndman_check_updates(list);
 }
@@ -561,34 +556,22 @@ PNDMANAPI int pndman_repository_check_updates(pndman_repository *list)
 /* \brief create new synchorization request object */
 PNDMANAPI int pndman_sync_handle_init(pndman_sync_handle *handle)
 {
-   if (!handle) {
-      BADUSE("handle pointer is NULL");
-      return RETURN_FAIL;
-   }
+   CHECKUSE(handle);
    return _pndman_sync_handle_init(handle);
 }
 
 /* \brief perform the synchorization */
 PNDMANAPI int pndman_sync_handle_perform(pndman_sync_handle *handle)
 {
-   if (!handle) {
-      BADUSE("handle pointer is NULL");
-      return RETURN_FAIL;
-   }
-   if (!handle->repository) {
-      BADUSE("handle has no repository");
-      return RETURN_FAIL;
-   }
-
+   CHECKUSE(handle);
+   CHECKUSE(handle->repository);
    return _pndman_sync_handle_perform(handle);
 }
 
 /* \brief free sync request */
 PNDMANAPI void pndman_sync_handle_free(pndman_sync_handle *handle)
 {
-   if (!handle) {
-      BADUSE("handle pointer is NULL");
-   }
+   CHECKUSEV(handle);
    _pndman_sync_handle_free(handle);
 }
 
@@ -596,10 +579,8 @@ PNDMANAPI void pndman_sync_handle_free(pndman_sync_handle *handle)
 PNDMANAPI int pndman_repository_commit_all(pndman_repository *repo,
       pndman_device *device)
 {
-   if (!repo || !device) {
-      BADUSE("repo or device pointer is NULL");
-      return RETURN_FAIL;
-   }
+   CHECKUSE(repo);
+   CHECKUSE(device);
    return _pndman_db_commit(repo, device);
 }
 
