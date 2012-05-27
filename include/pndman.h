@@ -472,6 +472,31 @@ PNDMANAPI int pndman_sync_handle_perform(
 PNDMANAPI void pndman_sync_handle_free(
       pndman_sync_handle *handle);
 
+/* \brief comment on pnd package,
+ * you need to pass the repository as well.
+ * returns 0 on success, -1 on failure */
+PNDMANAPI int pndman_api_comment_pnd(pndman_package *pnd,
+      pndman_repository *repository, const char *comment);
+
+/* \brief get comments from pnd package,
+ * comment data is retivied through
+ * pndman_api_comment_callback prototype.
+ * returns 0 on success, -1 on failure */
+PNDMANAPI int pndman_api_comment_pnd_pull(pndman_package *pnd,
+      pndman_repository *repository, pndman_api_comment_callback callback);
+
+/* \brief rate pnd package.
+ * returns 0 on success, -1 on failure */
+PNDMANAPI int pndman_api_rate_pnd(pndman_package *pnd,
+      pndman_repository *repository, int rate);
+
+/* \brief get download history from repository
+ * history is retivied through
+ * pndman_api_history_callback prototype.
+ * returns 0 on success, -1 on failure */
+PNDMANAPI int pndman_api_download_history(
+      pndman_repository *repository, pndman_api_history_callback callback);
+
 /* \brief perform curl operation
  * returns number of curl operations pending
  *
