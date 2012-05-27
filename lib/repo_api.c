@@ -134,8 +134,6 @@ static void _pndman_api_comment_cb(pndman_api_request *request)
    request->handle->data     = API_COMMENT;
 
    snprintf(url, PNDMAN_URL-1, "%s/%s", packet->repository->api.root, API_COMMENT);
-   DEBUG(PNDMAN_LEVEL_CRAP, url);
-
    snprintf(buffer, PNDMAN_POST-1, "id=%s&c=%s", packet->pnd->id, packet->comment);
    _pndman_curl_handle_set_url(request->handle, url);
    _pndman_curl_handle_set_post(request->handle, buffer);
@@ -157,8 +155,6 @@ static void _pndman_api_rate_cb(pndman_api_request *request)
    request->handle->data     = API_RATE;
 
    snprintf(url, PNDMAN_URL-1, "%s/%s", packet->repository->api.root, API_RATE);
-   DEBUG(PNDMAN_LEVEL_CRAP, url);
-
    snprintf(buffer, PNDMAN_POST-1, "id=%s&r=%d", packet->pnd->id, packet->rate);
    _pndman_curl_handle_set_url(request->handle, url);
    _pndman_curl_handle_set_post(request->handle, buffer);
@@ -393,7 +389,6 @@ static int _pndman_api_handshake(pndman_curl_handle *handle,
       goto fail;
 
    snprintf(url, PNDMAN_URL-1, "%s/%s", repo->api.root, API_HANDSHAKE);
-   DEBUG(PNDMAN_LEVEL_CRAP, url);
 
    request->data     = data;
    request->callback = callback;
@@ -493,7 +488,6 @@ int _pndman_comment_pnd_pull(pndman_package *pnd, pndman_repository *repository,
 
    snprintf(url, PNDMAN_URL-1, "%s/%s", repository->api.root, API_COMMENT);
    snprintf(buffer, sizeof(buffer)-1, "id=%s&pull=true", pnd->id);
-   DEBUG(PNDMAN_LEVEL_CRAP, url);
 
    handle->data = packet;
    packet->callback = callback;
