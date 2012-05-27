@@ -171,6 +171,8 @@ int _pndman_json_get_value(const char *key, char *value,
       size_t size, void *file);
 int _pndman_json_comment_pull(pndman_api_comment_callback callback,
       pndman_package *pnd, void *file);
+int _pndman_json_download_history(pndman_api_history_callback callback,
+      void *file);
 
 /* md5 functions (remember free result) */
 char* _pndman_md5_buf(char *buffer, size_t size);

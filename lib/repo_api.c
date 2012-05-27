@@ -5,9 +5,10 @@
 #include <string.h>
 #include <assert.h>
 
-#define API_HANDSHAKE   "handshake"
-#define API_RATE        "rate"
-#define API_COMMENT     "comment"
+#define API_HANDSHAKE         "handshake"
+#define API_RATE              "rate"
+#define API_COMMENT           "comment"
+#define API_DOWNLOAD_HISTORY  "history"
 #define NONCE_LEN 33
 
 /* forward declaration */
@@ -46,6 +47,13 @@ typedef struct pndman_rate_packet
    pndman_package *pnd;
    pndman_repository *repository;
 } pndman_rate_packet;
+
+/* \brief download history packet */
+typedef struct pndman_history_packet
+{
+   pndman_repository *repository;
+   pndman_api_history_callback callback;
+} pndman_history_packet;
 
 /* \brief download packet */
 typedef struct pndman_download_packet
@@ -117,6 +125,24 @@ static void _pndman_api_comment_pull_cb(pndman_curl_code code,
 
    _pndman_json_comment_pull(packet->callback, packet->pnd, chandle->file);
    DEBUG(PNDMAN_LEVEL_CRAP, "comment pull: %s",
+         code==PNDMAN_CURL_DONE?"OK":info);
+
+   free(packet);
+   _pndman_curl_handle_free(chandle);
+}
+
+/* \brief dowload history callback */
+static void _pndman_api_download_history_cb(pndman_curl_code code,
+      void *data, const char *info, pndman_curl_handle *chandle)
+{
+   pndman_history_packet *packet = (pndman_history_packet*)data;
+
+   if (code != PNDMAN_CURL_DONE &&
+       code != PNDMAN_CURL_FAIL)
+      return;
+
+   _pndman_json_download_history(packet->callback, chandle->file);
+   DEBUG(PNDMAN_LEVEL_CRAP, "download history: %s",
          code==PNDMAN_CURL_DONE?"OK":info);
 
    free(packet);
@@ -261,6 +287,24 @@ fail:
    return NULL;
 }
 
+/* \brief create new download history packet */
+static pndman_history_packet* _pndman_api_history_packet(
+      pndman_repository *repo, pndman_api_history_callback callback)
+{
+   pndman_history_packet *packet;
+   if (!(packet = malloc(sizeof(pndman_history_packet))))
+      goto fail;
+   memset(packet, 0, sizeof(pndman_history_packet));
+   packet->repository = repo;
+   packet->callback = callback;
+
+   return packet;
+
+fail:
+   DEBFAIL(PNDMAN_ALLOC_FAIL, "pndman_history_packet");
+   return NULL;
+}
+
 /* \brief generate nonce */
 static int _pndman_api_generate_nonce(char *buffer)
 {
@@ -309,6 +353,25 @@ static void _pndman_api_handshake_check(pndman_api_request *request)
 
 fail:
    DEBFAIL(API_FAIL, status.number, status.text);
+   _pndman_api_request_free(request);
+}
+
+/* \brief perform download history after handshake */
+static void _pndman_api_download_history_perform(
+      pndman_api_request *request)
+{
+   char url[PNDMAN_URL];
+   pndman_history_packet *packet = (pndman_history_packet*)request->data;
+
+   request->handle->callback = _pndman_api_download_history_cb;
+   request->handle->data     = packet;
+
+   snprintf(url, PNDMAN_URL-1, "%s/%s", packet->repository->api.root, API_DOWNLOAD_HISTORY);
+   _pndman_curl_handle_set_url(request->handle, url);
+   if (_pndman_curl_handle_perform(request->handle) == RETURN_OK)
+      request->handle = NULL;
+
+   /* free request */
    _pndman_api_request_free(request);
 }
 
@@ -496,6 +559,27 @@ int _pndman_api_comment_pnd_pull(pndman_package *pnd, pndman_repository *reposit
    _pndman_curl_handle_set_url(handle, url);
    _pndman_curl_handle_set_post(handle, buffer);
    return _pndman_curl_handle_perform(handle);
+
+fail:
+   IFDO(_pndman_curl_handle_free, handle);
+   return RETURN_FAIL;
+}
+
+/* \brief get download history */
+int _pndman_api_download_history(pndman_repository *repository,
+      pndman_api_history_callback callback)
+{
+   pndman_history_packet *packet = NULL;
+   pndman_curl_handle *handle;
+
+   if (!(handle = _pndman_curl_handle_new(NULL, NULL, NULL, NULL)))
+      goto fail;
+
+   if (!(packet = _pndman_api_history_packet(repository, callback)))
+      goto fail;
+
+   return _pndman_api_handshake(handle, repository,
+         _pndman_api_download_history_perform, packet);
 
 fail:
    IFDO(_pndman_curl_handle_free, handle);

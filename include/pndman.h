@@ -310,6 +310,10 @@ typedef void (*pndman_api_comment_callback)(
       pndman_package *pnd, const char *version,
       time_t date, const char *username, const char *comment);
 
+/* \brief callback for download history */
+typedef void (*pndman_api_history_callback)(
+      const char *id, pndman_version *version, time_t download_date);
+
 /* \brief get git head */
 PNDMANAPI const char* pndman_git_head(void);
 

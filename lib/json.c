@@ -337,6 +337,10 @@ bad_json:
    return RETURN_FAIL;
 }
 
+/* define some macros for api json functions */
+#define json_fast_string(x,y)    if (x) y = json_string_value(x)
+#define json_fast_number(x,y,c)  if (x) y = (c)json_number_value(x)
+
 /* \brief process comment json data */
 int _pndman_json_comment_pull(
       pndman_api_comment_callback callback,
@@ -358,13 +362,13 @@ int _pndman_json_comment_pull(
    versions = json_object_get(root, "versions");
    if (json_is_array(versions)) {
       while ((varray = json_array_get(versions, v++))) {
-         version  = json_string_value(json_object_get(varray, "version"));
+         json_fast_string(json_object_get(varray, "version"), version);
          comments = json_object_get(varray, "comments");
          if (!json_is_array(comments)) continue; c = 0;
          while ((carray = json_array_get(comments, c++))) {
-            date     = (time_t)json_number_value(json_object_get(carray, "date"));
-            username = json_string_value(json_object_get(carray, "username"));
-            comment  = json_string_value(json_object_get(carray, "comment"));
+            json_fast_number(json_object_get(carray, "date"), date, time_t);
+            json_fast_string(json_object_get(carray, "username"), username);
+            json_fast_string(json_object_get(carray, "comment"), comment);
             callback(pnd, version, date, username, comment);
          }
       }
@@ -378,6 +382,52 @@ bad_json:
    IFDO(json_decref, root);
    return RETURN_FAIL;
 }
+
+/* \brief process download history json data */
+int _pndman_json_download_history(
+      pndman_api_history_callback callback,
+      void *file)
+{
+   time_t date;
+   const char *id;
+   pndman_version version;
+   json_t *root, *history, *packages, *parray;
+   json_error_t error;
+   size_t p = 0;
+   assert(file && callback);
+
+   /* flush and reset to beginning */
+   fflush(file);
+   fseek(file, 0L, SEEK_SET);
+   if (!(root = json_loadf(file, 0, &error)))
+      goto bad_json;
+
+   history = json_object_get(root, "history");
+   if (json_is_object(history)) {
+      packages = json_object_get(history, "packages");
+      if (json_is_array(packages)) {
+         while ((parray = json_array_get(packages, p++))) {
+            memset(&version, 0, sizeof(pndman_version));
+            json_fast_string(json_object_get(parray, "id"), id);
+            _json_set_version(&version, json_object_get(parray,"version"));
+            json_fast_number(json_object_get(parray, "download_date"), date, time_t);
+            callback(id, &version, date);
+         }
+      } else DEBUG(PNDMAN_LEVEL_WARN, JSON_NO_P_ARRAY, "download history");
+   }
+
+   json_decref(root);
+   return RETURN_OK;
+
+bad_json:
+   DEBFAIL(JSON_BAD_JSON, "download history");
+   IFDO(json_decref, root);
+   return RETURN_FAIL;
+}
+
+/* undef macros for above functions */
+#undef json_fast_number
+#undef json_fast_string
 
 /* \brief process retivied json data */
 int _pndman_json_process(pndman_repository *repo, void *file)
