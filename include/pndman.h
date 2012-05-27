@@ -86,6 +86,7 @@ typedef enum pndman_package_handle_flags
    PNDMAN_PACKAGE_INSTALL_MENU    = 0x010,
    PNDMAN_PACKAGE_INSTALL_APPS    = 0x020,
    PNDMAN_PACKAGE_BACKUP          = 0x040,
+   PNDMAN_PACKAGE_LOG_HISTORY     = 0x080,
 } pndman_package_handle_flags;
 
 /* \brief type enum for version struct */

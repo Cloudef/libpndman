@@ -160,11 +160,12 @@ static int _pndman_package_handle_download(pndman_package_handle *object)
          _pndman_package_handle_done, tmp_path);
    if (!handle) goto fail;
 
-   /* commercial or normal pnd? */
-   if (object->repository && object->pnd->commercial) {
+   /* commercial or logged download */
+   if (object->repository && (object->pnd->commercial ||
+            (object->flags & PNDMAN_PACKAGE_LOG_HISTORY))) {
       return _pndman_api_commercial_download(handle, object);
    } else {
-      /* set download URL */
+      /* normal anonyomous */
       _pndman_curl_handle_set_url(handle, object->pnd->url);
       return _pndman_curl_handle_perform(handle);
    }
