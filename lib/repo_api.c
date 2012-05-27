@@ -168,6 +168,7 @@ static void _pndman_api_rate_cb(pndman_api_request *request)
 /* \brief authenticated download callback */
 static void _pndman_api_download_cb(pndman_api_request *request)
 {
+   char url[PNDMAN_URL];
    pndman_download_packet *packet = (pndman_download_packet*)request->data;
    pndman_package_handle *handle  = packet->handle;
 
@@ -175,7 +176,8 @@ static void _pndman_api_download_cb(pndman_api_request *request)
    request->handle->callback = _pndman_package_handle_done;
    request->handle->data     = handle;
 
-   _pndman_curl_handle_set_url(request->handle, handle->pnd->url);
+   snprintf(url, PNDMAN_URL-1, "%s&a=false", handle->pnd->url);
+   _pndman_curl_handle_set_url(request->handle, url);
    _pndman_curl_handle_set_post(request->handle, "");
    if (_pndman_curl_handle_perform(request->handle) == RETURN_OK)
       request->handle = NULL;
