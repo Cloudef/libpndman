@@ -143,7 +143,7 @@ static void common_package_cb(pndman_curl_code code, void *data)
             code==PNDMAN_CURL_DONE?"DONE":handle->error);
       if (code == PNDMAN_CURL_DONE) {
          if (pndman_package_handle_commit(handle, handle->repository) != 0)
-            printf("commit failed for: %s\n", handle->name);
+            printf("commit failed for: %s\n", handle->pnd->id);
       }
       pndman_package_handle_free(handle);
    } else if (code == PNDMAN_CURL_PROGRESS) {
