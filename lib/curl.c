@@ -33,10 +33,10 @@ static void _pndman_curl_init_progress(pndman_curl_progress *progress)
 }
 
 /* \brief write to file */
-static size_t _pndman_curl_write_file(void *data, size_t size, size_t nmemb, FILE *file)
+static size_t _pndman_curl_write_file(void *data, size_t size, size_t nmemb, pndman_curl_handle *handle)
 {
-   assert(file);
-   size_t written = fwrite(data, size, nmemb, file);
+   size_t written = fwrite(data, size, nmemb, handle->file);
+   if (written) handle->resume += written;
    return written;
 }
 
@@ -44,7 +44,6 @@ static size_t _pndman_curl_write_file(void *data, size_t size, size_t nmemb, FIL
 static size_t _pndman_curl_write_header(void *data, size_t size, size_t nmemb, pndman_curl_header *header)
 {
    void *new;
-   assert(header);
 
    /* init header if needed */
    if (!header->size)
@@ -175,7 +174,8 @@ int _pndman_curl_handle_perform(pndman_curl_handle *handle)
       if (!(handle->file = _pndman_get_tmp_file()))
          goto fail;
    } else {
-      if (!(handle->file = fopen(handle->path, "w+b")))
+      if (!(handle->file = fopen(handle->path,
+                  handle->resume?"a+b":"w+b")))
          goto open_fail;
    }
 
@@ -198,7 +198,13 @@ int _pndman_curl_handle_perform(pndman_curl_handle *handle)
    curl_easy_setopt(handle->curl, CURLOPT_COOKIEFILE, "");
    curl_easy_setopt(handle->curl, CURLOPT_PRIVATE, handle);
    curl_easy_setopt(handle->curl, CURLOPT_WRITEFUNCTION, _pndman_curl_write_file);
-   curl_easy_setopt(handle->curl, CURLOPT_WRITEDATA, handle->file);
+   curl_easy_setopt(handle->curl, CURLOPT_WRITEDATA, handle);
+   curl_easy_setopt(handle->curl, CURLOPT_LOW_SPEED_LIMIT, 10240L);
+   curl_easy_setopt(handle->curl, CURLOPT_LOW_SPEED_TIME, 10L);
+   if (handle->resume && strlen(handle->path)) {
+      curl_easy_setopt(handle->curl, CURLOPT_RESUME_FROM, handle->resume);
+      DEBUG(PNDMAN_LEVEL_CRAP, "Handle resume: %zu", handle->resume);
+   }
 
    if (!_pndman_curlm && !(_pndman_curlm = curl_multi_init()))
       goto curlm_fail;
@@ -294,10 +300,31 @@ static int _pndman_curl_perform(void)
             puts(buffer);
          fseek(handle->file, 0L, SEEK_SET);
 
-         if (msg->data.result != CURLE_OK)
-            handle->callback(PNDMAN_CURL_FAIL, handle->data,
-                  curl_easy_strerror(msg->data.result), handle);
-         else {
+         if (msg->data.result != CURLE_OK) {
+            /* is http 1.1 resume supported? */
+            if (msg->data.result == CURLE_RANGE_ERROR ||
+                msg->data.result == CURLE_BAD_DOWNLOAD_RESUME)
+               handle->retry = PNDMAN_CURL_MAX_RETRY;
+
+            /* try http 1.1 download resume */
+            if ((msg->data.result == CURLE_PARTIAL_FILE ||
+                 msg->data.result == CURLE_WRITE_ERROR  ||
+                 msg->data.result == CURLE_OPERATION_TIMEDOUT ||
+                 msg->data.result == CURLE_ABORTED_BY_CALLBACK) &&
+                  handle->retry < PNDMAN_CURL_MAX_RETRY) {
+               /* retry */
+               if (_pndman_curl_handle_perform(handle) == RETURN_OK)
+                  handle->retry++;
+               else handle->retry = PNDMAN_CURL_MAX_RETRY;
+            } else handle->retry = PNDMAN_CURL_MAX_RETRY;
+
+            /* fail if max retries exceeded */
+            if (handle->retry >= PNDMAN_CURL_MAX_RETRY) {
+               handle->callback(PNDMAN_CURL_FAIL, handle->data,
+                     curl_easy_strerror(msg->data.result), handle);
+            }
+         } else {
+            handle->resume = 0;
             fflush(handle->file);
             handle->callback(PNDMAN_CURL_DONE, handle->data, NULL, handle);
          }
