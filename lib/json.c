@@ -278,13 +278,16 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
 /* INTERNAL */
 
 /* \brief get return value from client api */
-int _pndman_json_client_api_return(FILE *file, pndman_api_status *status)
+int _pndman_json_client_api_return(void *file, pndman_api_status *status)
 {
    json_t *root = NULL, *object;
    json_error_t error;
    assert(file && status);
-
    memset(status, 0, sizeof(pndman_api_status));
+
+   /* flush and reset to beginning */
+   fflush(file);
+   fseek(file, 0L, SEEK_SET);
    if (!(root = json_loadf(file, 0, &error)))
       goto bad_json;
 
@@ -311,13 +314,16 @@ fail:
 
 /* \brief get value from single json object */
 int _pndman_json_get_value(const char *key, char *value,
-      size_t size, FILE *file)
+      size_t size, void *file)
 {
    json_t *root = NULL;
    json_error_t error;
    assert(key && value && file);
    memset(value, 0, size);
 
+   /* flush and reset to beginning */
+   fflush(file);
+   fseek(file, 0L, SEEK_SET);
    if (!(root = json_loadf(file, 0, &error)))
       goto bad_json;
 
@@ -331,17 +337,59 @@ bad_json:
    return RETURN_FAIL;
 }
 
+/* \brief process comment json data */
+int _pndman_json_comment_pull(
+      pndman_api_comment_callback callback,
+      pndman_package *pnd, void *file)
+{
+   time_t date;
+   const char *version, *comment, *username;
+   json_t *root, *versions, *varray, *comments, *carray;
+   json_error_t error;
+   size_t v = 0, c = 0;
+   assert(file && callback);
+
+   /* flush and reset to beginning */
+   fflush(file);
+   fseek(file, 0L, SEEK_SET);
+   if (!(root = json_loadf(file, 0, &error)))
+      goto bad_json;
+
+   versions = json_object_get(root, "versions");
+   if (json_is_array(versions)) {
+      while ((varray = json_array_get(versions, v++))) {
+         version  = json_string_value(json_object_get(varray, "version"));
+         comments = json_object_get(varray, "comments");
+         if (!json_is_array(comments)) continue; c = 0;
+         while ((carray = json_array_get(comments, c++))) {
+            date     = (time_t)json_number_value(json_object_get(carray, "date"));
+            username = json_string_value(json_object_get(carray, "username"));
+            comment  = json_string_value(json_object_get(carray, "comment"));
+            callback(pnd, version, date, username, comment);
+         }
+      }
+   } else DEBUG(PNDMAN_LEVEL_WARN, JSON_NO_V_ARRAY, "comment pull");
+
+   json_decref(root);
+   return RETURN_OK;
+
+bad_json:
+   DEBFAIL(JSON_BAD_JSON, "comment pull");
+   IFDO(json_decref, root);
+   return RETURN_FAIL;
+}
+
 /* \brief process retivied json data */
-int _pndman_json_process(pndman_repository *repo, FILE *data)
+int _pndman_json_process(pndman_repository *repo, void *file)
 {
    json_t *root = NULL, *repo_header, *packages;
    json_error_t error;
-   assert(repo && data);
+   assert(repo && file);
 
    /* flush and reset to beginning */
-   fflush(data);
-   fseek(data, 0L, SEEK_SET);
-   if (!(root = json_loadf(data, 0, &error)))
+   fflush(file);
+   fseek(file, 0L, SEEK_SET);
+   if (!(root = json_loadf(file, 0, &error)))
       goto bad_json;
 
    repo_header = json_object_get(root, "repository");
@@ -404,7 +452,7 @@ static void _fstrf(FILE *f, char *value, int delim)
 }
 
 /* \brief outputs json for repository */
-int _pndman_json_commit(pndman_repository *r, FILE *f)
+int _pndman_json_commit(pndman_repository *r, void *f)
 {
    pndman_package *p;
    pndman_translated *t, *d;
