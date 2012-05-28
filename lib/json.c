@@ -511,8 +511,17 @@ int _pndman_json_commit(pndman_repository *r, void *f)
    assert(f && r);
 
    fprintf(f, "{"); /* start */
-   fprintf(f, "\"repository\":{\"name\":\"%s\",\"version\":\"%s\",\"updates\":\"%s\",\"timestamp\":%zu},",
-         r->name, r->version, r->updates, r->timestamp);
+   fprintf(f, "\"repository\":{");
+   _fkeyf(f, "name", r->name, 1);
+   _fkeyf(f, "version", r->version, 1);
+   _fkeyf(f, "updates", r->updates, 1);
+   fprintf(f, "\"timestamp\":%zu,", r->timestamp);
+   _fkeyf(f, "client_api", r->api.root, r->api.store_credentials?1:0);
+   if (r->api.store_credentials) {
+      _fkeyf(f, "username", r->api.username, 1);
+      _fkeyf(f, "api_key", r->api.key, 0);
+   }
+   fprintf(f, "},");
    fprintf(f, "\"packages\":["); /* packages */
    for (p = r->pnd; p; p = p->next) {
       fprintf(f, "{");

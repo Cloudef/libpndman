@@ -311,4 +311,14 @@ PNDMANAPI void pndman_repository_free_all(pndman_repository *repo)
    _pndman_repository_free_all(repo);
 }
 
+/* \brief set credentials for repo api access */
+PNDMANAPI void pndman_repository_set_credentials(pndman_repository *repo,
+      const char *username, const char *key, int store_credentials)
+{
+   CHECKUSEV(repo);
+   strncpy(repo->api.username, username, PNDMAN_SHRT_STR-1);
+   strncpy(repo->api.key, key, PNDMAN_SHRT_STR-1);
+   repo->api.store_credentials = store_credentials;
+}
+
 /* vim: set ts=8 sw=3 tw=0 :*/

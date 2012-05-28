@@ -239,6 +239,7 @@ typedef struct pndman_repository_api
    char root[PNDMAN_URL];
    char username[PNDMAN_SHRT_STR];
    char key[PNDMAN_STR];
+   char store_credentials;
 } pndman_repository_api;
 
 /*! \brief struct representing repository */
@@ -385,6 +386,11 @@ PNDMANAPI int pndman_repository_commit_all(
  * returns number of updates found */
 PNDMANAPI int pndman_repository_check_updates(
       pndman_repository *list);
+
+/* \brief set credentials for repository
+ * and decide, if to store them locally or not */
+PNDMANAPI void pndman_repository_set_credentials(pndman_repository *repository,
+      const char *username, const char *key, int store_credentials);
 
 /* \brief add new device or initalize new device list
  * on success: returns pointer to the new device
