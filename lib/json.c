@@ -225,7 +225,8 @@ static int _pndman_json_repo_header(json_t *repo_header, pndman_repository *repo
 }
 
 /* \brief json parse repository packages */
-static int _pndman_json_process_packages(json_t *packages, pndman_repository *repo)
+static int _pndman_json_process_packages(json_t *packages, pndman_repository *repo,
+      pndman_device *device)
 {
    json_t         *package;
    pndman_package *pnd;
@@ -261,7 +262,6 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       memcpy(pnd->id,     id,  PNDMAN_ID);
       memcpy(pnd->path, path,  PNDMAN_PATH);
       _json_set_string(pnd->repository,   json_object_get(package,"repository"), PNDMAN_STR);
-      _json_set_string(pnd->mount ,       json_object_get(package,"mount"),   PNDMAN_PATH);
       _json_set_string(pnd->md5,          json_object_get(package,"md5"),     PNDMAN_MD5);
       _json_set_string(pnd->url,          json_object_get(package,"uri"),     PNDMAN_STR);
       _json_set_version(&pnd->version,    json_object_get(package,"version"));
@@ -279,7 +279,12 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       _json_set_categories(pnd,           json_object_get(package,"categories"));
       _json_set_number(&pnd->commercial,  json_object_get(package,"commercial"), int);
 
-      _strip_slash(pnd->mount);
+      /* update mount, if device given */
+      if (device) {
+         strncpy(pnd->mount, device->mount, PNDMAN_PATH-1);
+         _strip_slash(pnd->mount);
+      }
+
       _strip_slash(pnd->url);
       _strip_slash(pnd->icon);
    }
@@ -439,7 +444,8 @@ bad_json:
 #undef json_fast_string
 
 /* \brief process retivied json data */
-int _pndman_json_process(pndman_repository *repo, void *file)
+int _pndman_json_process(pndman_repository *repo,
+      pndman_device *device, void *file)
 {
    json_t *root = NULL, *repo_header, *packages;
    json_error_t error;
@@ -456,7 +462,7 @@ int _pndman_json_process(pndman_repository *repo, void *file)
       if (_pndman_json_repo_header(repo_header, repo) == RETURN_OK) {
          packages = json_object_get(root, "packages");
          if (json_is_array(packages))
-            _pndman_json_process_packages(packages, repo);
+            _pndman_json_process_packages(packages, repo, device);
          else DEBUG(PNDMAN_LEVEL_WARN, JSON_NO_P_ARRAY, repo->url);
       }
    } else DEBUG(PNDMAN_LEVEL_WARN, JSON_NO_R_HEADER, repo->url);
@@ -546,7 +552,6 @@ int _pndman_json_commit(pndman_repository *r, void *f)
       if (!r->prev) {
          _fkeyf(f, "path", p->path, 1);
          _fkeyf(f, "repository", p->repository, 1);
-         _fkeyf(f, "mount", p->mount, 1);
       }
 
       _fkeyf(f, "id", p->id, 1);

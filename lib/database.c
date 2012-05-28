@@ -322,7 +322,7 @@ static int _pndman_db_get_local(pndman_repository *repo, pndman_device *device)
       goto read_fail;
 
    /* read local database */
-   _pndman_json_process(repo, f);
+   _pndman_json_process(repo, device, f);
 
    fclose(f);
    return RETURN_OK;
@@ -384,7 +384,7 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
 
    /* process and close */
    fflush(f2);
-   _pndman_json_process(repo,f2);
+   _pndman_json_process(repo, NULL, f2);
    fclose(f2); fclose(f);
    return RETURN_OK;
 
@@ -408,7 +408,7 @@ static void _pndman_sync_done(pndman_curl_code code, void *data, const char *inf
    if (code == PNDMAN_CURL_FAIL)
       strncpy(handle->error, info, PNDMAN_STR-1);
    else if (code == PNDMAN_CURL_DONE) {
-      if (_pndman_json_process(handle->repository, chandle->file) == RETURN_OK)
+      if (_pndman_json_process(handle->repository, NULL, chandle->file) == RETURN_OK)
          handle->repository->timestamp = time(0);
    }
 

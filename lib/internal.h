@@ -171,7 +171,8 @@ int _pndman_json_api_value(const char *key, char *value, size_t size,
       const char *buffer);
 int _pndman_json_api_status(const char *buffer, pndman_api_status *status);
 int _pndman_json_commit(pndman_repository *repo, void *f);
-int _pndman_json_process(pndman_repository *repo, void *f);
+int _pndman_json_process(pndman_repository *repo,
+      pndman_device *device, void *f);
 int _pndman_json_client_api_return(void *file, pndman_api_status *status);
 int _pndman_json_get_value(const char *key, char *value,
       size_t size, void *file);
