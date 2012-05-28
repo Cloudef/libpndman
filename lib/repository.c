@@ -276,9 +276,14 @@ PNDMANAPI pndman_repository* pndman_repository_init(void)
 /* \brief Add new repository */
 PNDMANAPI pndman_repository* pndman_repository_add(const char *url, pndman_repository *repo)
 {
+   char stripped[PNDMAN_URL];
    CHECKUSEP(url);
    CHECKUSEP(repo);
-   return _pndman_repository_add(url, repo);
+
+   memset(stripped, 0, PNDMAN_URL-1);
+   strncpy(stripped, url, PNDMAN_URL-1);
+   _strip_slash(stripped);
+   return _pndman_repository_add(stripped, repo);
 }
 
 /* \brief Clear repository, effectiely frees the PND list */
