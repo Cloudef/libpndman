@@ -515,15 +515,16 @@ static void _fstrf(FILE *f, char *value, int delim)
 }
 
 /* \brief outputs json for repository */
-int _pndman_json_commit(pndman_repository *r, void *f)
+int _pndman_json_commit(pndman_repository *r,
+      pndman_device *d, void *f)
 {
    pndman_package *p;
-   pndman_translated *t, *d;
+   pndman_translated *t, *td;
    pndman_previewpic *pic;
    pndman_category *c;
    pndman_license *l;
    int found = 0;
-   assert(f && r);
+   assert(f && d && r);
 
    fprintf(f, "{"); /* start */
    fprintf(f, "\"repository\":{");
@@ -544,6 +545,10 @@ int _pndman_json_commit(pndman_repository *r, void *f)
    fprintf(f, "},");
    fprintf(f, "\"packages\":["); /* packages */
    for (p = r->pnd; p; p = p->next) {
+      /* this pnd doesn't belong to this device */
+      if (!r->prev && strcmp(p->mount, d->mount))
+         continue;
+
       fprintf(f, "{");
 
       /* local repository */
@@ -570,15 +575,15 @@ int _pndman_json_commit(pndman_repository *r, void *f)
       fprintf(f, "\"localizations\":{");
       for (t = p->title; t; t = t->next) {
          found = 0;
-         for (d = p->description; d ; d = d->next)
-            if (!_strupcmp(d->lang, t->lang)) {
+         for (td = p->description; td ; td = td->next)
+            if (!_strupcmp(td->lang, t->lang)) {
                found = 1;
                break;
             }
 
          fprintf(f, "\"%s\":{", t->lang);
          _fkeyf(f, "title", t->string, 1);
-         _fkeyf(f, "description", found ? d->string : "", 0);
+         _fkeyf(f, "description", found ? td->string : "", 0);
          fprintf(f, "}%s", t->next ? "," : "");
       }
 

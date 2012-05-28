@@ -211,7 +211,7 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
       goto write_fail;
 
    /* write local db */
-   _pndman_json_commit(repo, f);
+   _pndman_json_commit(repo, device, f);
 
    fclose(f);
 
@@ -273,7 +273,7 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
    for (; r; r = r->next) {
       if (!strlen(r->url)) continue;
       fprintf(f, "[%s]\n", r->url);
-      _pndman_json_commit(r, f);
+      _pndman_json_commit(r, device, f);
    }
 
    fclose(f);
