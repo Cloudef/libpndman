@@ -5,6 +5,7 @@
 #include <expat.h>
 #include <assert.h>
 #include <ctype.h>
+#include <sys/stat.h>
 
 #ifndef __WIN32__
 #  include <sys/stat.h>
@@ -1198,6 +1199,8 @@ fail:
 static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_repository *local)
 {
    pndman_package *list, *p, *n = NULL, *pnd;
+   char path[PNDMAN_PATH];
+   struct stat st;
    int ret;
    assert(device && local);
 
@@ -1220,9 +1223,15 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
    for (p = list; p; p = n) {
       pnd = _pndman_repository_new_pnd_check(p, p->path, device->mount, local);
       if (pnd) {
+         /* copy needed stuff over */
          if (!full) _pndman_package_free_applications(pnd);
          _pndman_copy_pnd(pnd, p);
          strcpy(pnd->mount, device->mount);
+         _pndman_pnd_get_path(pnd, path);
+
+         /* stat for modified time */
+         if (!pnd->modified_time && stat(path, &st) == 0)
+            pnd->modified_time = st.st_mtime;
       }
 
       /* free */
@@ -1252,6 +1261,7 @@ PNDMANAPI int pndman_package_crawl_single_package(int full_crawl,
 {
    char path[PNDMAN_PATH];
    pxml_parse data;
+   struct stat st;
    CHECKUSE(pnd);
 
    _pndman_pnd_get_path(pnd, path);
@@ -1261,7 +1271,19 @@ PNDMANAPI int pndman_package_crawl_single_package(int full_crawl,
    data.bckward_title = 1; /* backwards compatibility with PXML titles */
    data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
    data.state = PXML_PARSE_DEFAULT;
-   return _pndman_crawl_process(path, pnd->path, &data);
+
+   if (_pndman_crawl_process(path, pnd->path, &data)
+         != RETURN_OK)
+      goto fail;
+
+   /* stat for modified time */
+   if (!pnd->modified_time && stat(path, &st) == 0)
+      pnd->modified_time = st.st_mtime;
+
+   return RETURN_OK;
+
+fail:
+   return RETURN_FAIL;
 }
 
 /* \brief test function */
