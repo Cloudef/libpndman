@@ -51,8 +51,8 @@ inline pndman_device* _pndman_device_last(pndman_device *device)
 /* \brief remove temp files in appdata (don't create tree) */
 static void _pndman_remove_tmp_files(pndman_device *device)
 {
-   char tmp[PATH_MAX];
-   char tmp2[PATH_MAX];
+   char tmp[PNDMAN_PATH];
+   char tmp2[PNDMAN_PATH];
 #ifndef __WIN32__
    DIR *dp;
    struct dirent *ep;
@@ -62,8 +62,8 @@ static void _pndman_remove_tmp_files(pndman_device *device)
 #endif
    assert(device && device->mount);
 
-   memset(tmp, 0, PATH_MAX);
-   memset(tmp2,0, PATH_MAX);
+   memset(tmp, 0, PNDMAN_PATH);
+   memset(tmp2,0, PNDMAN_PATH);
    _pndman_device_get_appdata_no_create(tmp, device);
    if (!strlen(tmp)) return;
 
@@ -73,23 +73,23 @@ static void _pndman_remove_tmp_files(pndman_device *device)
    while (ep = readdir(dp)) {
       if (strstr(ep->d_name, ".tmp")) {
          strcpy(tmp2, tmp);
-         strncat(tmp2, "/", PATH_MAX-1);
-         strncat(tmp2, ep->d_name, PATH_MAX-1);
+         strncat(tmp2, "/", PNDMAN_PATH-1);
+         strncat(tmp2, ep->d_name, PNDMAN_PATH-1);
          remove(tmp2);
       }
    }
    closedir(dp);
 #else
    strcpy(tmp2, tmp);
-   strncat(tmp2, "/*.tmp", PATH_MAX-1);
+   strncat(tmp2, "/*.tmp", PNDMAN_PATH-1);
 
    if ((hFind = FindFirstFile(tmp, &dp)) == INVALID_HANDLE_VALUE)
       return;
 
    do {
       strcpy(tmp2, tmp);
-      strncat(tmp2, "/", PATH_MAX-1);
-      strncat(tmp2, dp.cFileName, PATH_MAX-1);
+      strncat(tmp2, "/", PNDMAN_PATH-1);
+      strncat(tmp2, dp.cFileName, PNDMAN_PATH-1);
       remove(tmp2);
    } while (FindNextFile(hFind, &dp));
    FindClose(hFind);
@@ -114,46 +114,46 @@ static int _check_create_tree_dir(char *path)
 /* \brief check the pnd tree before writing to ->appdata */
 static int _pndman_device_check_pnd_tree(pndman_device *device)
 {
-   char tmp[PATH_MAX];
-   char tmp2[PATH_MAX];
+   char tmp[PNDMAN_PATH];
+   char tmp2[PNDMAN_PATH];
    assert(device && strlen(device->mount));
 
    /* <device>/pandora */
-   strncpy(tmp, device->mount, PATH_MAX-1);
-   strncat(tmp, "/pandora", PATH_MAX-1);
+   strncpy(tmp, device->mount, PNDMAN_PATH-1);
+   strncat(tmp, "/pandora", PNDMAN_PATH-1);
    if (_check_create_tree_dir(tmp) == -1)
       return RETURN_FAIL;
 
    /* <device>/apps */
-   memcpy(tmp2, tmp, PATH_MAX);
-   strncat(tmp2, "/apps", PATH_MAX-1);
+   memcpy(tmp2, tmp, PNDMAN_PATH);
+   strncat(tmp2, "/apps", PNDMAN_PATH-1);
    if (_check_create_tree_dir(tmp2) == -1)
       return RETURN_FAIL;
 
    /* <device>/menu */
-   memcpy(tmp2, tmp, PATH_MAX);
-   strncat(tmp2, "/menu", PATH_MAX-1);
+   memcpy(tmp2, tmp, PNDMAN_PATH);
+   strncat(tmp2, "/menu", PNDMAN_PATH-1);
    if (_check_create_tree_dir(tmp2) == -1)
       return RETURN_FAIL;
 
    /* <device>/desktop */
-   memcpy(tmp2, tmp, PATH_MAX);
-   strncat(tmp2, "/desktop", PATH_MAX-1);
+   memcpy(tmp2, tmp, PNDMAN_PATH);
+   strncat(tmp2, "/desktop", PNDMAN_PATH-1);
    if (_check_create_tree_dir(tmp2) == -1)
       return RETURN_FAIL;
 
    /* <device>/appdata */
-   memcpy(tmp2, tmp, PATH_MAX);
-   strncat(tmp2, "/appdata", PATH_MAX-1);
+   memcpy(tmp2, tmp, PNDMAN_PATH);
+   strncat(tmp2, "/appdata", PNDMAN_PATH-1);
    if (_check_create_tree_dir(tmp2) == -1)
       return RETURN_FAIL;
 
    /* <device>/appdata/<LIBPNDMAN_APPDATA_FOLDER> */
-   strncat(tmp2, "/"PNDMAN_APPDATA, PATH_MAX-1);
+   strncat(tmp2, "/"PNDMAN_APPDATA, PNDMAN_PATH-1);
    if (_check_create_tree_dir(tmp2) == -1)
       return RETURN_FAIL;
 
-   memcpy(device->appdata, tmp2, PATH_MAX);
+   memcpy(device->appdata, tmp2, PNDMAN_PATH);
    return RETURN_OK;
 }
 
@@ -269,8 +269,8 @@ static pndman_device* _pndman_device_add_absolute(const char *path, pndman_devic
       return NULL;
 
    /* fill device struct */
-   strncpy(device->mount,  path, PATH_MAX-1);
-   strncpy(device->device, path, PATH_MAX-1);
+   strncpy(device->mount,  path, PNDMAN_PATH-1);
+   strncpy(device->device, path, PNDMAN_PATH-1);
    device->free      = fs.f_bfree  * fs.f_bsize;
    device->size      = fs.f_blocks * fs.f_bsize;
    device->available = fs.f_bavail * fs.f_bsize;
@@ -326,21 +326,21 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
       return NULL;
 
    /* fill device struct */
-   strncpy(device->mount,  mnt.mnt_dir,    PATH_MAX-1);
-   strncpy(device->device, mnt.mnt_fsname, PATH_MAX-1);
+   strncpy(device->mount,  mnt.mnt_dir,    PNDMAN_PATH-1);
+   strncpy(device->device, mnt.mnt_fsname, PNDMAN_PATH-1);
    device->free      = fs.f_bfree  * fs.f_bsize;
    device->size      = fs.f_blocks * fs.f_bsize;
    device->available = fs.f_bavail * fs.f_bsize;
    _strip_slash(device->device);
    _strip_slash(device->mount);
 #elif __WIN32__
-   char szName[PATH_MAX];
+   char szName[PNDMAN_PATH];
    char szDrive[3] = { ' ', ':', '\0' };
    szDrive[0] = path[0];
    ULARGE_INTEGER bytes_available, bytes_size, bytes_free;
 
-   memset(szName, 0, PATH_MAX);
-   if (!QueryDosDevice(szDrive, szName, PATH_MAX-1)) {
+   memset(szName, 0, PNDMAN_PATH);
+   if (!QueryDosDevice(szDrive, szName, PNDMAN_PATH-1)) {
       DEBFAIL(ROOT_FAIL, szName);
       return NULL;
    }
@@ -361,10 +361,10 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
 
    /* fill device struct */
    if (strlen(path) > 3 && _strupcmp(szDrive, path))
-      strncpy(device->mount, path, PATH_MAX-1);
+      strncpy(device->mount, path, PNDMAN_PATH-1);
    else
-      strncpy(device->mount,  szDrive, PATH_MAX-1);
-   strncpy(device->device, szName, PATH_MAX-1);
+      strncpy(device->mount,  szDrive, PNDMAN_PATH-1);
+   strncpy(device->device, szName, PNDMAN_PATH-1);
    device->free      = bytes_free.QuadPart;
    device->size      = bytes_size.QuadPart;
    device->available = bytes_available.QuadPart;
@@ -384,11 +384,11 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
    struct mntent *m;
    struct mntent mnt;
    struct statfs fs;
-   char strings[4096], pandoradir[PATH_MAX];
+   char strings[4096], pandoradir[PNDMAN_PATH];
 
    first = device;
    mtab = setmntent(LINUX_MTAB, "r");
-   memset(strings, 0, 4096); memset(pandoradir, 0, PATH_MAX);
+   memset(strings, 0, 4096); memset(pandoradir, 0, PNDMAN_PATH);
    while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
       if ((mnt.mnt_dir != NULL) && (statfs(mnt.mnt_dir, &fs) == 0)) {
          if(strstr(mnt.mnt_fsname, "/dev")                   &&
@@ -405,7 +405,7 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
              * this might be SD with rootfs install.
              * where only /pandora is owned by everyone. */
             strcpy(pandoradir, mnt.mnt_dir);
-            strncat(pandoradir, "/pandora", PATH_MAX-1);
+            strncat(pandoradir, "/pandora", PNDMAN_PATH-1);
             if (access(pandoradir,  R_OK | W_OK) == -1 &&
                 access(mnt.mnt_dir, R_OK | W_OK) == -1)
                continue;
@@ -414,8 +414,8 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
                break;
 
             DEBUG(PNDMAN_LEVEL_CRAP, "DETECT: %s", mnt.mnt_dir);
-            strncpy(device->mount,  mnt.mnt_dir,    PATH_MAX-1);
-            strncpy(device->device, mnt.mnt_fsname, PATH_MAX-1);
+            strncpy(device->mount,  mnt.mnt_dir,    PNDMAN_PATH-1);
+            strncpy(device->device, mnt.mnt_fsname, PNDMAN_PATH-1);
             device->free      = fs.f_bfree  * fs.f_bsize;
             device->size      = fs.f_blocks * fs.f_bsize;
             device->available = fs.f_bavail * fs.f_bsize;
@@ -427,12 +427,12 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
    }
    endmntent(mtab);
 #elif __WIN32__
-   char szTemp[512], szName[PATH_MAX-1];
+   char szTemp[512], szName[PNDMAN_PATH-1];
    char szDrive[3] = { ' ', ':', '\0' };
-   char pandoradir[PATH_MAX], *p;
+   char pandoradir[PNDMAN_PATH], *p;
    ULARGE_INTEGER bytes_free, bytes_available, bytes_size;
 
-   memset(szTemp, 0, 512); memset(pandoradir, 0, PATH_MAX);
+   memset(szTemp, 0, 512); memset(pandoradir, 0, PNDMAN_PATH);
    if (!GetLogicalDriveStrings(511, szTemp))
       return NULL;
 
@@ -441,13 +441,13 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
    while (*p) {
       *szDrive = *p;
 
-      if (QueryDosDevice(szDrive, szName, PATH_MAX-1)) {
+      if (QueryDosDevice(szDrive, szName, PNDMAN_PATH-1)) {
          /* check for read && write perms
           * test against both, / and /pandora,
           * this might be SD with rootfs install.
           * where only /pandora is owned by everyone. */
          strcpy(pandoradir, szDrive);
-         strncat(pandoradir, "/pandora", PATH_MAX-1);
+         strncat(pandoradir, "/pandora", PNDMAN_PATH-1);
          if (access(pandoradir,  R_OK | W_OK) == -1 &&
              access(szDrive,     R_OK | W_OK) == -1)
          { while (*p++); continue; }
@@ -461,8 +461,8 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
 
          DEBUG(PNDMAN_LEVEL_CRAP, "DETECT: %s : %s", szDrive, szName);
 
-         strncpy(device->mount,  szDrive, PATH_MAX-1);
-         strncpy(device->device, szName,  PATH_MAX-1);
+         strncpy(device->mount,  szDrive, PNDMAN_PATH-1);
+         strncpy(device->device, szName,  PNDMAN_PATH-1);
          device->free      = bytes_free.QuadPart;
          device->size      = bytes_size.QuadPart;
          device->available = bytes_available.QuadPart;
@@ -500,16 +500,16 @@ char* _pndman_device_get_appdata(pndman_device *device)
 void _pndman_device_get_appdata_no_create(char *appdata, pndman_device *device)
 {
    assert(device && appdata);
-   memset(appdata, 0, PATH_MAX);
+   memset(appdata, 0, PNDMAN_PATH);
    if (strlen(device->appdata) && access(device->appdata, F_OK) == RETURN_OK)
       strcpy(appdata, device->appdata);
    else {
-      strncpy(appdata, device->mount, PATH_MAX-1);
-      strncat(appdata, "/pandora", PATH_MAX-1);
-      strncat(appdata, "/appdata", PATH_MAX-1);
-      strncat(appdata, "/"PNDMAN_APPDATA, PATH_MAX-1);
+      strncpy(appdata, device->mount, PNDMAN_PATH-1);
+      strncat(appdata, "/pandora", PNDMAN_PATH-1);
+      strncat(appdata, "/appdata", PNDMAN_PATH-1);
+      strncat(appdata, "/"PNDMAN_APPDATA, PNDMAN_PATH-1);
       if (access(appdata, F_OK) != RETURN_OK)
-         memset(appdata, 0, PATH_MAX);
+         memset(appdata, 0, PNDMAN_PATH);
    }
 }
 

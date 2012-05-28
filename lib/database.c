@@ -102,10 +102,10 @@ static int readblock(char *path)
    }
    close(fd);
 #else
-   char lckpath[PATH_MAX];
+   char lckpath[PNDMAN_PATH];
    /* on non posix, do it uncertain way by creating lock file */
    strcpy(lckpath, path);
-   strncat(lckpath, ".lck", PATH_MAX-1);
+   strncat(lckpath, ".lck", PNDMAN_PATH-1);
    if (blockfile(lckpath) != RETURN_OK)
       return RETURN_FAIL;
 #endif
@@ -140,11 +140,11 @@ static FILE* lockfile(char *path)
    return fd;
 #else
    FILE *f;
-   char lckpath[PATH_MAX];
+   char lckpath[PNDMAN_PATH];
 
    /* on non posix, do it uncertain way by creating lock file */
    strcpy(lckpath, path);
-   strncat(lckpath, ".lck", PATH_MAX-1);
+   strncat(lckpath, ".lck", PNDMAN_PATH-1);
 
    /* block until ready */
    if (blockfile(lckpath) != RETURN_OK)
@@ -173,10 +173,10 @@ static void unlockfile(FILE *f, char *path)
    fcntl(fd, F_SETLK, &fl);
    close(fd);
 #else
-   char lckpath[PATH_MAX];
+   char lckpath[PNDMAN_PATH];
    /* on non posix, do it uncertain way by creating lock file */
    strcpy(lckpath, path);
-   strncat(lckpath, ".lck", PATH_MAX-1);
+   strncat(lckpath, ".lck", PNDMAN_PATH-1);
    fclose(f);
    unlink(lckpath);
 #endif
@@ -187,15 +187,15 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
 {
    FILE *f = NULL;
    BLOCK_FD fd = BLOCK_INIT;
-   char db_path[PATH_MAX], *appdata;
+   char db_path[PNDMAN_PATH], *appdata;
    assert(device);
 
    /* check appdata */
    appdata = _pndman_device_get_appdata(device);
    if (!appdata || !strlen(appdata)) goto fail;
 
-   strncpy(db_path, appdata, PATH_MAX-1);
-   strncat(db_path, "/local.db", PATH_MAX-1);
+   strncpy(db_path, appdata, PNDMAN_PATH-1);
+   strncat(db_path, "/local.db", PNDMAN_PATH-1);
    DEBUG(PNDMAN_LEVEL_CRAP, "-!- writing to %s", db_path);
 
    /* lock the file */
@@ -240,7 +240,7 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
    FILE *f = NULL;
    BLOCK_FD fd = BLOCK_INIT;
    pndman_repository *r;
-   char db_path[PATH_MAX], *appdata;
+   char db_path[PNDMAN_PATH], *appdata;
 
    assert(device);
 
@@ -252,8 +252,8 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
    appdata = _pndman_device_get_appdata(device);
    if (!appdata || !strlen(appdata)) goto fail;
 
-   strncpy(db_path, appdata, PATH_MAX-1);
-   strncat(db_path, "/repo.db", PATH_MAX-1);
+   strncpy(db_path, appdata, PNDMAN_PATH-1);
+   strncat(db_path, "/repo.db", PNDMAN_PATH-1);
    DEBUG(PNDMAN_LEVEL_CRAP, "-!- writing to %s", db_path);
 
    /* lock the file */
@@ -301,8 +301,8 @@ fail:
 static int _pndman_db_get_local(pndman_repository *repo, pndman_device *device)
 {
    FILE *f = NULL;
-   char db_path[PATH_MAX];
-   char appdata[PATH_MAX];
+   char db_path[PNDMAN_PATH];
+   char appdata[PNDMAN_PATH];
    assert(repo && device);
 
    /* check appdata */
@@ -310,8 +310,8 @@ static int _pndman_db_get_local(pndman_repository *repo, pndman_device *device)
    if (!strlen(appdata)) goto fail;
 
    /* begin to read local database */
-   strncpy(db_path, appdata, PATH_MAX-1);
-   strncat(db_path, "/local.db", PATH_MAX-1);
+   strncpy(db_path, appdata, PNDMAN_PATH-1);
+   strncat(db_path, "/local.db", PNDMAN_PATH-1);
    DEBUG(PNDMAN_LEVEL_CRAP, "-!- local from %s", db_path);
 
    /* block until ready for read */
@@ -340,8 +340,8 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
    FILE *f = NULL, *f2 = NULL;
    char s[LINE_MAX];
    char s2[LINE_MAX];
-   char db_path[PATH_MAX];
-   char appdata[PATH_MAX];
+   char db_path[PNDMAN_PATH];
+   char appdata[PNDMAN_PATH];
    char *ret;
    int  parse = 0;
    assert(device);
@@ -359,8 +359,8 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
    if (!strlen(appdata)) goto fail;
 
    /* begin to read other repositories */
-   strncpy(db_path, appdata, PATH_MAX-1);
-   strncat(db_path, "/repo.db", PATH_MAX-1);
+   strncpy(db_path, appdata, PNDMAN_PATH-1);
+   strncat(db_path, "/repo.db", PNDMAN_PATH-1);
    DEBUG(PNDMAN_LEVEL_CRAP, "-!- reading from %s", db_path);
 
    /* block until ready for read */
