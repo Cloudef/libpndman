@@ -16,9 +16,9 @@
 #define PXML_MAX_SIZE      1024 * 1024
 #define PXML_WINDOW        4096
 #define PXML_WINDOW_FRACT  PXML_WINDOW-10
-#define XML_HEADER         "<?xml version=\"1.1\" encoding=\"UTF-8\" ?>"
-#define XMLSTART()         { pos = 0; strip = '<'; }
-#define XMLCOPY(x,y,z)     if (PXML_MAX_SIZE>(pos+=z)) memcpy(PXML+x,y,z); else goto xml_too_big;
+#define XML_HEADER         "<?xml version=\"1.1\" encoding=\"UTF-8\"?>"
+#define XMLSTART()         pos = 0; strip = '<';
+#define XMLCOPY(x,y,z)     if (PXML_MAX_SIZE>pos+z) { memcpy(PXML+x,y,z); pos +=z; } else goto xml_too_big;
 
 /* PXML Tags */
 #define PXML_PACKAGE_TAG      "package"
