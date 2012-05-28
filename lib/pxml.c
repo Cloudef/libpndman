@@ -975,16 +975,23 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
 }
 
 /* \brief Process crawl */
-static int _pndman_crawl_process(const char *pnd_file, pxml_parse *data)
+static int _pndman_crawl_process(const char *path,
+      const char *relative, pxml_parse *data)
 {
    char PXML[PXML_MAX_SIZE];
+   char full_path[PNDMAN_PATH];
    size_t size = 0;
    FILE *f;
-   assert(pnd_file && data);
+   assert(path && relative && data);
+
+   memset(full_path, 0, PNDMAN_PATH-1);
+   strncpy(full_path, path, PNDMAN_PATH-1);
+   strncat(full_path, "/", PNDMAN_PATH-1);
+   strncat(full_path, relative, PNDMAN_PATH-1);
 
    memset(PXML, 0, PXML_MAX_SIZE);
-   if (_fetch_pxml_from_pnd(pnd_file, PXML, &size) != RETURN_OK)
-      return RETURN_FAIL;
+   if (_fetch_pxml_from_pnd(full_path, PXML, &size) != RETURN_OK)
+      goto fail;
 
    /* reset some stuff before crawling for post process */
    memset(data->pnd->version.major,  0, PNDMAN_VERSION);
@@ -994,26 +1001,32 @@ static int _pndman_crawl_process(const char *pnd_file, pxml_parse *data)
 
    /* parse */
    if (_pxml_pnd_parse(data, PXML, size) != RETURN_OK)
-      return RETURN_FAIL;
+      goto parse_fail;
+
    _pxml_pnd_post_process(data->pnd);
 
    /* add size to the pnd */
-   if ((f = fopen(pnd_file, "rb"))) {
+   if ((f = fopen(full_path, "r"))) {
       fseek(f, 0, SEEK_END);
       data->pnd->size = ftell(f);
       fclose(f);
    }
 
    /* add path to the pnd */
-   strncpy(data->pnd->path, pnd_file, PATH_MAX-1);
-
+   strncpy(data->pnd->path, relative, PNDMAN_PATH-1);
    return RETURN_OK;
+
+parse_fail:
+   DEBFAIL(PXML_PND_PARSE_FAIL, relative);
+fail:
+   return RETURN_FAIL;
 }
 
 /* \brief Crawl directory */
-static int _pndman_crawl_dir(char *path, pndman_package *list)
+static int _pndman_crawl_dir(const char *path,
+      const char *relative, pndman_package *list)
 {
-   char tmp[PATH_MAX];
+   char tmp[PNDMAN_PATH], relav[PNDMAN_PATH];
    pxml_parse data;
    pndman_package *pnd, *p;
    int ret;
@@ -1032,6 +1045,17 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
    pnd = NULL; p = NULL;
    ret = 0;
 
+   memset(relav, 0, PNDMAN_PATH);
+   memset(tmp, 0, PNDMAN_PATH);
+
+   /* copy relative */
+   strncpy(relav, relative, PNDMAN_PATH-1);
+
+   /* copy full */
+   strncpy(tmp, path, PNDMAN_PATH-1);
+   strncat(tmp, "/", PNDMAN_PATH-1);
+   strncat(tmp, relative, PNDMAN_PATH-1);
+
    /* jump to end of list */
    if (strlen(list->id)) for (p = list; p && p->next; p = p->next);
 
@@ -1043,17 +1067,17 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
       if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, "..")) continue; /* no we don't want this! */
       /* recrusive */
       if (ep->d_type == DT_DIR) {
-         strcpy(tmp, path);
-         strncat(tmp, "/", PATH_MAX-1);
-         strncat(tmp, ep->d_name, PATH_MAX-1);
-         ret += _pndman_crawl_dir(tmp, list);
+         strncpy(relav, relative, PNDMAN_PATH-1);
+         strncat(relav, "/", PNDMAN_PATH-1);
+         strncat(relav, ep->d_name, PNDMAN_PATH-1);
+         ret += _pndman_crawl_dir(tmp, relav, list);
          continue;
       }
       if (ep->d_type != DT_REG) continue;                /* we only want regular files */
       if (!_strupstr(ep->d_name, ".pnd")) continue;     /* we only want .pnd files */
-      strcpy(tmp, path);
-      strncat(tmp, "/", PATH_MAX-1);
-      strncat(tmp, ep->d_name, PATH_MAX-1);
+      strncpy(relav, relative, PNDMAN_PATH-1);
+      strncat(relav, "/", PNDMAN_PATH-1);
+      strncat(relav, ep->d_name, PNDMAN_PATH-1);
 
       /* create pnd */
       pnd = _pndman_new_pnd();
@@ -1066,7 +1090,7 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
       data.bckward_title = 1; /* backwards compatibility with PXML titles */
       data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
       data.state = PXML_PARSE_DEFAULT;
-      if (_pndman_crawl_process(tmp, &data) != RETURN_OK) {
+      if (_pndman_crawl_process(tmp, relav, &data) != RETURN_OK) {
          while ((pnd = _pndman_free_pnd(pnd)));
          continue;
       }
@@ -1084,26 +1108,31 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
    }
    closedir(dp);
 #else /* WIN32 */
-   strcpy(tmp, path);
-   strncat(tmp, "/*", PATH_MAX-1);
 
+   /* do this for wildcard search */
+   strncat(tmp, "/*", PNDMAN_PATH-1);
    if ((hFind = FindFirstFile(tmp, &dp)) == INVALID_HANDLE_VALUE)
       return 0;
+
+   /* copy full path again */
+   strncpy(tmp, path, PNDMAN_PATH-1);
+   strncat(tmp, "/", PNDMAN_PATH-1);
+   strncat(tmp, relative, PNDMAN_PATH-1);
 
    do {
       if (!strcmp(dp.cFileName, ".") || !strcmp(dp.cFileName, "..")) continue; /* we don't want this */
       /* recrusive */
       if (dp.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY) {
-         strcpy(tmp, path);
-         strncat(tmp, "/", PATH_MAX-1);
-         strncat(tmp, dp.cFileName, PATH_MAX-1);
-         ret += _pndman_crawl_dir(tmp, list);
+         strncpy(relav, relative, PNDMAN_PATH-1);
+         strncat(relav, "/", PNDMAN_PATH-1);
+         strncat(relav, dp.cFileName, PNDMAN_PATH-1);
+         ret += _pndman_crawl_dir(tmp, relav, list);
          continue;
       }
       if (!_strupstr(dp.cFileName, ".pnd")) continue; /* we only want .pnd files */
-      strcpy(tmp, path);
-      strncat(tmp, "/", PATH_MAX-1);
-      strncat(tmp, dp.cFileName, PATH_MAX-1);
+      strncpy(relav, relative, PNDMAN_PATH-1);
+      strncat(relav, "/", PNDMAN_PATH-1);
+      strncat(relav, dp.cFileName, PNDMAN_PATH-1);
 
       /* create pnd */
       pnd = _pndman_new_pnd();
@@ -1116,7 +1145,7 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
       data.bckward_title = 1; /* backwards compatibility with PXML titles */
       data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
       data.state = PXML_PARSE_DEFAULT;
-      if (_pndman_crawl_process(tmp, &data) != RETURN_OK) {
+      if (_pndman_crawl_process(tmp, relav, &data) != RETURN_OK) {
          while ((pnd = _pndman_free_pnd(pnd)));
          continue;
       }
@@ -1140,39 +1169,32 @@ static int _pndman_crawl_dir(char *path, pndman_package *list)
 /* \brief Crawl to pndman_package list */
 static int _pndman_crawl_to_pnd_list(pndman_device *device, pndman_package *list)
 {
-   char tmp[PATH_MAX];
-   char tmp2[PATH_MAX];
+   char tmp[PNDMAN_PATH];
    int ret = 0;
    assert(device && list);
-
-   memset(tmp,  0, PATH_MAX);
+   memset(tmp,  0, PNDMAN_PATH);
 
    /* pandora root */
-   strncpy(tmp, device->mount,   PATH_MAX-1);
-   strncat(tmp, "/pandora",      PATH_MAX-1);
+   strncpy(tmp, device->mount, PNDMAN_PATH-1);
 
    /* can't access */
-   if (access(tmp, F_OK) != 0) {
-      DEBFAIL(ACCESS_FAIL, tmp);
-      return RETURN_FAIL;
-   }
+   if (access(tmp, F_OK) != 0)
+      goto fail;
 
    /* desktop */
-   strcpy(tmp2, tmp);
-   strncat(tmp2, "/desktop", PATH_MAX-1);
-   ret += _pndman_crawl_dir(tmp2, list);
+   ret += _pndman_crawl_dir(tmp, "pandora/desktop", list);
 
    /* menu */
-   strcpy(tmp2, tmp);
-   strncat(tmp2, "/menu", PATH_MAX-1);
-   ret += _pndman_crawl_dir(tmp2, list);
+   ret += _pndman_crawl_dir(tmp, "pandora/menu", list);
 
    /* apps */
-   strcpy(tmp2, tmp);
-   strncat(tmp2, "/apps", PATH_MAX-1);
-   ret += _pndman_crawl_dir(tmp2, list);
+   ret += _pndman_crawl_dir(tmp, "pnadora/apps", list);
 
    return ret;
+
+fail:
+   DEBFAIL(ACCESS_FAIL, tmp);
+   return RETURN_FAIL;
 }
 
 /* \brief crawl to repository, return number of pnd's found, and -1 on error */
@@ -1199,7 +1221,7 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
 
    /* merge pnd's to repo */
    for (p = list; p; p = n) {
-      pnd = _pndman_repository_new_pnd_check(p->id, p->path, &p->version, local);
+      pnd = _pndman_repository_new_pnd_check(p, p->path, device->mount, local);
       if (pnd) {
          if (!full) _pndman_package_free_applications(pnd);
          _pndman_copy_pnd(pnd, p);
@@ -1231,16 +1253,18 @@ PNDMANAPI int pndman_package_crawl(int full_crawl,
 PNDMANAPI int pndman_package_crawl_single_package(int full_crawl,
       pndman_package *pnd)
 {
+   char path[PNDMAN_PATH];
    pxml_parse data;
    CHECKUSE(pnd);
 
+   _pndman_pnd_get_path(pnd, path);
    data.pnd   = pnd;
    data.app   = NULL;
    data.data  = NULL;
    data.bckward_title = 1; /* backwards compatibility with PXML titles */
    data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
    data.state = PXML_PARSE_DEFAULT;
-   return _pndman_crawl_process(pnd->path, &data);
+   return _pndman_crawl_process(path, pnd->path, &data);
 }
 
 /* \brief test function */

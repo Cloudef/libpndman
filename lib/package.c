@@ -46,6 +46,15 @@ int _pndman_vercmp(pndman_version *lp, pndman_version *rp)
    return ret;
 }
 
+/* \brief get full path of PND */
+void _pndman_pnd_get_path(pndman_package *pnd, char *buffer)
+{
+   memset(buffer, 0, PNDMAN_PATH-1);
+   strncpy(buffer, pnd->mount, PNDMAN_PATH-1);
+   strncat(buffer, "/", PNDMAN_PATH-1);
+   strncat(buffer, pnd->path, PNDMAN_PATH-1);
+}
+
 /* \brief Init version struct */
 static void _pndman_init_version(pndman_version *ver)
 {

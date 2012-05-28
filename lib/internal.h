@@ -79,6 +79,7 @@
 #define PXML_END_TAG_FAIL        "PXML parse failed: could not find end tag before EOF."
 #define PXML_EXPAT_FAIL          "Failed to allocate expat XML parser"
 #define PXML_INVALID_XML         "PXML: %s\n-----\n%s\n-----\n"
+#define PXML_PND_PARSE_FAIL      "Failed to parse pnd: %s"
 #define PNDMAN_ALLOC_FAIL        "Failed to allocate %s, shit might break now."
 #define PNDMAN_TMP_FILE_FAIL     "Failed to get temporary file."
 #define API_HASH_FAIL            "Hashing failed."
@@ -198,8 +199,8 @@ pndman_repository* _pndman_repository_last(pndman_repository *repo);
 pndman_repository* _pndman_repository_get(const char *url,
       pndman_repository *list);
 pndman_package* _pndman_repository_new_pnd(pndman_repository *repo);
-pndman_package* _pndman_repository_new_pnd_check(char *id,
-      char *path, pndman_version *ver, pndman_repository *repo);
+pndman_package* _pndman_repository_new_pnd_check(pndman_package *in_pnd,
+      const char *path, const char *mount, pndman_repository *repo);
 int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *repo);
 
 /* internal callback access */
@@ -213,6 +214,7 @@ int _pndman_api_commercial_download(pndman_curl_handle *handle,
 /* pndman_package  */
 pndman_package* _pndman_new_pnd(void);
 int  _pndman_vercmp(pndman_version *lp, pndman_version *rp);
+void _pndman_pnd_get_path(pndman_package *pnd, char *buffer);
 void _pndman_package_free_titles(pndman_package *pnd);
 void _pndman_package_free_descriptions(pndman_package *pnd);
 void _pndman_package_free_previewpics(pndman_package *pnd);

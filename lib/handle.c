@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <libgen.h>
+#include <assert.h>
 
 #ifdef __linux__
 #  include <sys/stat.h>
@@ -14,6 +15,7 @@
 static int _pndman_move_file(const char* src, const char* dst)
 {
    FILE *f;
+   assert(src && dst);
 
    /* remove dst, if exists */
    if ((f = fopen(dst, "rb"))) {
@@ -40,9 +42,10 @@ fail:
 /* \brief get backup directory */
 static int _get_backup_dir(char *buffer, pndman_device *device)
 {
+   assert(buffer && device);
    strcpy(buffer, device->mount);
-   strncat(buffer, "/pandora", PATH_MAX-1);
-   strncat(buffer, "/backup", PATH_MAX-1);
+   strncat(buffer, "/pandora", PNDMAN_PATH-1);
+   strncat(buffer, "/backup", PNDMAN_PATH-1);
    if (access(buffer, F_OK) != 0) {
       if (errno == EACCES)
          return RETURN_FAIL;
@@ -56,43 +59,11 @@ static int _get_backup_dir(char *buffer, pndman_device *device)
    return RETURN_OK;
 }
 
-/* \brief backup pnd */
-static int _pndman_backup(pndman_package *pnd, pndman_device *device)
-{
-   char tmp[PATH_MAX], bckdir[PATH_MAX];
-
-   /* can't backup from void */
-   if (!strlen(pnd->path))
-      return RETURN_FAIL;
-
-   /* get backup directory */
-   if (_get_backup_dir(bckdir, device) != RETURN_OK) {
-      DEBFAIL(HANDLE_BACKUP_DIR_FAIL, device);
-      return RETURN_FAIL;
-   }
-
-   /* copy path */
-   strcpy(tmp, bckdir);
-   strncat(tmp, "/", PATH_MAX-1);
-   strncat(tmp, pnd->id, PATH_MAX-1);
-   strncat(tmp, " - ", PATH_MAX-1);
-   strncat(tmp, pnd->version.major, PATH_MAX-1);
-   strncat(tmp, ".", PATH_MAX-1);
-   strncat(tmp, pnd->version.minor, PATH_MAX-1);
-   strncat(tmp, ".", PATH_MAX-1);
-   strncat(tmp, pnd->version.release, PATH_MAX-1);
-   strncat(tmp, ".", PATH_MAX-1);
-   strncat(tmp, pnd->version.build, PATH_MAX-1);
-   strncat(tmp, ".pnd", PATH_MAX-1);
-
-   DEBUG(PNDMAN_LEVEL_CRAP, "backup: %s -> %s", pnd->path, tmp);
-   return _pndman_move_file(pnd->path, tmp);
-}
-
 /* \brief check if file exists */
 static int _file_exist(char *path)
 {
    FILE *f;
+   assert(path);
 
    if ((f = fopen(path, "rb"))) {
       fclose(f);
@@ -102,12 +73,54 @@ static int _file_exist(char *path)
    return RETURN_FALSE;
 }
 
+/* \brief backup pnd */
+static int _pndman_backup(pndman_package *pnd, pndman_device *device)
+{
+   char tmp[PNDMAN_PATH], bckdir[PNDMAN_PATH], path[PNDMAN_PATH];
+   assert(pnd && device);
+
+   /* get full path */
+   _pndman_pnd_get_path(pnd, path);
+
+   /* can't backup from void */
+   if (_file_exist(path) != RETURN_OK)
+      goto fail;
+
+   /* get backup directory */
+   if (_get_backup_dir(bckdir, device) != RETURN_OK)
+      goto backup_fail;
+
+   /* copy path */
+   strcpy(tmp, bckdir);
+   strncat(tmp, "/", PNDMAN_PATH-1);
+   strncat(tmp, pnd->id, PNDMAN_PATH-1);
+   strncat(tmp, " - ", PNDMAN_PATH-1);
+   strncat(tmp, pnd->version.major, PNDMAN_PATH-1);
+   strncat(tmp, ".", PNDMAN_PATH-1);
+   strncat(tmp, pnd->version.minor, PNDMAN_PATH-1);
+   strncat(tmp, ".", PNDMAN_PATH-1);
+   strncat(tmp, pnd->version.release, PNDMAN_PATH-1);
+   strncat(tmp, ".", PNDMAN_PATH-1);
+   strncat(tmp, pnd->version.build, PNDMAN_PATH-1);
+   strncat(tmp, ".pnd", PNDMAN_PATH-1);
+
+   DEBUG(PNDMAN_LEVEL_CRAP, "backup: %s -> %s", path, tmp);
+   return _pndman_move_file(path, tmp);
+
+backup_fail:
+   DEBFAIL(HANDLE_BACKUP_DIR_FAIL, device);
+fail:
+   return RETURN_FAIL;
+}
+
 /* \brief check conflicts */
 static int _conflict(char *id, char *path, pndman_repository *local)
 {
    pndman_package *pnd;
+   assert(id && path && local);
+
    for (pnd = local->pnd; pnd; pnd = pnd->next)
-      if (strcmp(id,pnd->id) && !strcmp(path,pnd->path)) {
+      if (strcmp(id,pnd->id) && !strcmp(path, pnd->path)) {
          DEBUG(PNDMAN_LEVEL_CRAP, "CONFLICT: %s - %s", pnd->id, pnd->path);
          return RETURN_TRUE;
       }
@@ -117,10 +130,11 @@ static int _conflict(char *id, char *path, pndman_repository *local)
 /* \brief pre routine when object has install flag */
 static int _pndman_package_handle_download(pndman_package_handle *object)
 {
-   char tmp_path[PATH_MAX];
+   char tmp_path[PNDMAN_PATH];
    char *appdata;
    pndman_device *d;
    pndman_curl_handle *handle;
+   assert(object);
 
    if (!object->pnd)
       goto object_no_pnd;
@@ -155,7 +169,7 @@ static int _pndman_package_handle_download(pndman_package_handle *object)
    if (!appdata || !strlen(appdata))
       goto fail;
 
-   snprintf(tmp_path, PATH_MAX-1, "%s/%p.tmp", appdata, object);
+   snprintf(tmp_path, PNDMAN_PATH-1, "%s/%p.tmp", appdata, object);
    object->data = handle = _pndman_curl_handle_new(object, &object->progress,
          _pndman_package_handle_done, tmp_path);
    if (!handle) goto fail;
@@ -199,6 +213,8 @@ static int _parse_filename_from_header(const char *filename,
    char *needle = "filename=\"";
    char *file   = (char*)filename;
    int pos = 0, rpos = 0, found = 0;
+   assert(filename && haystack);
+
    for(; rpos < strlen(haystack); rpos++) {
       if(!found) {
          if(haystack[rpos] == needle[pos]) {
@@ -233,13 +249,15 @@ fail:
 static int _pndman_package_handle_install(pndman_package_handle *object,
       pndman_repository *local)
 {
-   char install[PATH_MAX];
-   char filename[PATH_MAX];
-   char tmp[PATH_MAX];
+   char install[PNDMAN_PATH];
+   char relative[PNDMAN_PATH];
+   char filename[PNDMAN_PATH];
+   char tmp[PNDMAN_PATH];
    char *appdata, *md5 = NULL;
    int uniqueid = 0;
    pndman_package *pnd, *oldp;
    pndman_curl_handle *handle;
+   assert(object && local);
 
    handle = (pndman_curl_handle*)object->data;
    if (!object->device)
@@ -252,6 +270,11 @@ static int _pndman_package_handle_install(pndman_package_handle *object,
        !(object->flags & PNDMAN_PACKAGE_INSTALL_MENU)    &&
        !(object->flags & PNDMAN_PACKAGE_INSTALL_APPS))
       goto handle_no_dst;
+
+   memset(relative, 0, PNDMAN_PATH);
+   memset(install, 0, PNDMAN_PATH);
+   memset(filename, 0, PNDMAN_PATH);
+   memset(tmp, 0, PNDMAN_PATH);
 
    /* check appdata */
    appdata = _pndman_device_get_appdata(object->device);
@@ -277,25 +300,24 @@ static int _pndman_package_handle_install(pndman_package_handle *object,
       !(object->flags & PNDMAN_PACKAGE_INSTALL_MENU)    &&
       !(object->flags & PNDMAN_PACKAGE_INSTALL_APPS)) {
       /* get basename of old path (update) */
-      strcpy(install, object->pnd->update->path);
-      dirname(install);
+      strncpy(relative, object->pnd->update->path, PNDMAN_PATH-1);
+      dirname(relative);
    } else {
       /* get install directory */
-      strncpy(install, object->device->mount, PATH_MAX-1);
-      strncat(install, "/pandora", PATH_MAX-1);
+      strncpy(relative, "pandora", PNDMAN_PATH-1);
       if (object->flags & PNDMAN_PACKAGE_INSTALL_DESKTOP)
-         strncat(install, "/desktop", PATH_MAX-1);
+         strncat(relative, "/desktop", PNDMAN_PATH-1);
       else if (object->flags & PNDMAN_PACKAGE_INSTALL_MENU)
-         strncat(install, "/menu", PATH_MAX-1);
+         strncat(relative, "/menu", PNDMAN_PATH-1);
       else if (object->flags & PNDMAN_PACKAGE_INSTALL_APPS)
-         strncat(install, "/apps", PATH_MAX-1);
+         strncat(relative, "/apps", PNDMAN_PATH-1);
    }
 
    /* parse download header */
    if (_parse_filename_from_header(filename, (char*)handle->header.data) != RETURN_OK) {
       /* use PND's id as filename as fallback */
-      strncpy(filename, object->pnd->id, PATH_MAX-1);
-      strncat(filename, ".pnd", PATH_MAX-1); /* add extension! */
+      strncpy(filename, object->pnd->id, PNDMAN_PATH-1);
+      strncat(filename, ".pnd", PNDMAN_PATH-1); /* add extension! */
    }
 
    /* check if we have same pnd id installed already,
@@ -303,28 +325,29 @@ static int _pndman_package_handle_install(pndman_package_handle *object,
    oldp = NULL;
    if (object->pnd->update) oldp = object->pnd->update;
    for (pnd = local->pnd; pnd && !oldp; pnd = pnd->next)
-      if (!strcmp(object->pnd->id, pnd->id))
+      if (!strcmp(object->pnd->id, pnd->id) &&
+          !strcmp(object->pnd->mount, pnd->mount))
          oldp = pnd;
 
    /* temporary path used for conflict checking */
-   strcpy(tmp, install);
-   strncat(tmp, "/", PATH_MAX-1);
-   strncat(tmp, filename, PATH_MAX-1);
+   strcpy(tmp, relative);
+   strncat(tmp, "/", PNDMAN_PATH-1);
+   strncat(tmp, filename, PNDMAN_PATH-1);
 
    /* if there is conflict use pnd id as filename */
    if ((!oldp || _conflict(object->pnd->id, tmp, local)) && _file_exist(tmp)) {
-      strncat(install, "/", PATH_MAX-1);
-      strncat(install, object->pnd->id, PATH_MAX-1);
-      snprintf(tmp, PATH_MAX-1, "%s.pnd", install);
+      strncat(relative, "/", PNDMAN_PATH-1);
+      strncat(relative, object->pnd->id, PNDMAN_PATH-1);
+      snprintf(tmp, PNDMAN_PATH-1, "%s.pnd", relative);
       while (_file_exist(tmp) && strcmp(tmp, oldp?oldp->path:"/dev/null")) {
          uniqueid++;
-         snprintf(tmp, PATH_MAX-1, "%s_%d.pnd", install, uniqueid);
+         snprintf(tmp, PNDMAN_PATH-1, "%s_%d.pnd", relative, uniqueid);
       }
-      strcpy(install, tmp);
+      strcpy(relative, tmp);
    } else {
       /* join filename to install path */
-      strncat(install, "/", PATH_MAX-1);
-      strncat(install, filename, PATH_MAX-1);
+      strncat(relative, "/", PNDMAN_PATH-1);
+      strncat(relative, filename, PNDMAN_PATH-1);
    }
 
    /* backup? */
@@ -332,8 +355,10 @@ static int _pndman_package_handle_install(pndman_package_handle *object,
       _pndman_backup(oldp, object->device);
    else
    /* remove old pnd if no backup specified and path differs */
-   if (oldp && strcmp(oldp->path, install))
-      unlink(oldp->path);
+   if (oldp && strcmp(oldp->path, relative)) {
+      _pndman_pnd_get_path(oldp, tmp);
+      unlink(tmp);
+   }
 
    /* remove old pnd from repo */
    if (object->pnd->update)
@@ -342,9 +367,15 @@ static int _pndman_package_handle_install(pndman_package_handle *object,
 
    /* Copy the pnd object to local database
     * path should be always "" when installing from remote repository */
-   pnd = _pndman_repository_new_pnd_check(object->pnd->id, install, &object->pnd->version, local);
+   pnd = _pndman_repository_new_pnd_check(object->pnd, relative,
+         object->device->mount, local);
    if (!pnd) goto fail;
    _pndman_copy_pnd(pnd, object->pnd);
+
+   /* complete install path */
+   strncpy(install, object->device->mount, PNDMAN_PATH-1);
+   strncat(install, "/", PNDMAN_PATH-1);
+   strncat(install, relative, PNDMAN_PATH-1);
 
    DEBUG(PNDMAN_LEVEL_CRAP, "install: %s", install);
    DEBUG(PNDMAN_LEVEL_CRAP, "from: %s", handle->path);
@@ -353,7 +384,7 @@ static int _pndman_package_handle_install(pndman_package_handle *object,
 
    /* mark installed */
    DEBUG(PNDMAN_LEVEL_CRAP, "install mark");
-   strcpy(pnd->path, install);
+   strcpy(pnd->path, relative);
    strcpy(pnd->mount, object->device->mount);
    return RETURN_OK;
 
@@ -377,15 +408,20 @@ fail:
 static int _pndman_package_handle_remove(pndman_package_handle *object, pndman_repository *local)
 {
    FILE *f;
+   char path[PNDMAN_PATH];
+   assert(object && local);
+
+   /* get full path to pnd */
+   _pndman_pnd_get_path(object->pnd, path);
 
    /* sanity checks */
-   if (!(f = fopen(object->pnd->path, "rb")))
+   if (!(f = fopen(path, "rb")))
       goto read_fail;
    fclose(f);
 
    /* remove */
-   DEBUG(PNDMAN_LEVEL_CRAP, "remove: %s", object->pnd->path);
-   if (unlink(object->pnd->path) != 0) goto fail;
+   DEBUG(PNDMAN_LEVEL_CRAP, "remove: %s", path);
+   if (unlink(path) != 0) goto fail;
 
    /* this can't be updated anymore */
    if (object->pnd->update)
@@ -396,7 +432,7 @@ static int _pndman_package_handle_remove(pndman_package_handle *object, pndman_r
    return _pndman_repository_free_pnd(object->pnd, local);
 
 read_fail:
-   DEBFAIL(READ_FAIL, object->pnd->path);
+   DEBFAIL(READ_FAIL, path);
 fail:
    return RETURN_FAIL;
 }

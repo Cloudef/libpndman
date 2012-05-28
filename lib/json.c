@@ -229,27 +229,25 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       pndman_device *device)
 {
    json_t         *package;
-   pndman_package *pnd;
+   pndman_package *pnd, tmp;
    unsigned int p;
-   char id[PNDMAN_ID];
-   char path[PNDMAN_PATH];
    assert(packages && repo);
-
-   memset(id,   0, PNDMAN_ID);
-   memset(path, 0, PNDMAN_PATH);
 
    p = 0;
    for (; p != json_array_size(packages); ++p) {
       package = json_array_get(packages, p);
       if (!json_is_object(package)) continue;
 
+      /* init temporary pnd */
+      memset(&tmp, 0, sizeof(pndman_package));
+
       /* these are needed for checking duplicate pnd's */
-      _json_set_string(id,   json_object_get(package,"id"),    PNDMAN_ID);
-      _json_set_string(path, json_object_get(package, "path"), PNDMAN_PATH);
+      _json_set_string(tmp.id,         json_object_get(package,"id"),    PNDMAN_ID);
+      _json_set_string(tmp.path,       json_object_get(package, "path"), PNDMAN_PATH);
+      _json_set_version(&tmp.version,  json_object_get(package,"version"));
+      _strip_slash(tmp.path);
 
-      _strip_slash(path);
-
-      pnd = _pndman_repository_new_pnd_check(id, path, NULL, repo);
+      pnd = _pndman_repository_new_pnd_check(&tmp, tmp.path, device->mount, repo);
       if (!pnd) return RETURN_FAIL;
 
       /* free old titles and descriptions (if instance or old) */
@@ -259,12 +257,12 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       _pndman_package_free_licenses(pnd);
       _pndman_package_free_categories(pnd);
 
-      memcpy(pnd->id,     id,  PNDMAN_ID);
-      memcpy(pnd->path, path,  PNDMAN_PATH);
+      memcpy(pnd->id,      tmp.id,  PNDMAN_ID);
+      memcpy(pnd->path,    tmp.path,  PNDMAN_PATH);
+      memcpy(&pnd->version, &tmp.version, sizeof(pndman_version));
       _json_set_string(pnd->repository,   json_object_get(package,"repository"), PNDMAN_STR);
       _json_set_string(pnd->md5,          json_object_get(package,"md5"),     PNDMAN_MD5);
       _json_set_string(pnd->url,          json_object_get(package,"uri"),     PNDMAN_STR);
-      _json_set_version(&pnd->version,    json_object_get(package,"version"));
       _json_set_localization(pnd,         json_object_get(package,"localizations"));
       _json_set_string(pnd->info,         json_object_get(package,"info"),    PNDMAN_STR);
       _json_set_number(&pnd->size,        json_object_get(package, "size"),            size_t);
