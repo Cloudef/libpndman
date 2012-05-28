@@ -210,6 +210,10 @@ static int _pndman_json_repo_header(json_t *repo_header, pndman_repository *repo
    _json_set_string(repo->api.root, json_object_get(repo_header, "client_api"), PNDMAN_URL);
    _json_set_string(repo->api.username, json_object_get(repo_header, "username"), PNDMAN_SHRT_STR);
    _json_set_string(repo->api.key, json_object_get(repo_header, "api_key"), PNDMAN_STR);
+
+   _strip_slash(repo->updates);
+   _strip_slash(repo->api.root);
+
    if ((element = json_object_get(repo_header, "version")))
       if (json_is_string(element))
          strncpy(repo->version, json_string_value(element), PNDMAN_VERSION);
@@ -241,6 +245,9 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       /* these are needed for checking duplicate pnd's */
       _json_set_string(id,   json_object_get(package,"id"),    PNDMAN_ID);
       _json_set_string(path, json_object_get(package, "path"), PNDMAN_PATH);
+
+      _strip_slash(path);
+
       pnd = _pndman_repository_new_pnd_check(id, path, NULL, repo);
       if (!pnd) return RETURN_FAIL;
 
@@ -271,6 +278,10 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       _json_set_sources(pnd,              json_object_get(package,"source"));
       _json_set_categories(pnd,           json_object_get(package,"categories"));
       _json_set_number(&pnd->commercial,  json_object_get(package,"commercial"), int);
+
+      _strip_slash(pnd->mount);
+      _strip_slash(pnd->url);
+      _strip_slash(pnd->icon);
    }
    return RETURN_OK;
 }
