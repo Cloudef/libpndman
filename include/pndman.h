@@ -315,6 +315,10 @@ typedef void (*pndman_api_comment_callback)(
 typedef void (*pndman_api_history_callback)(
       const char *id, pndman_version *version, time_t download_date);
 
+/* \brief callback for archived pnd's */
+typedef void (*pndman_api_archived_callback)(
+      pndman_package *pnd);
+
 /* \brief get git head */
 PNDMANAPI const char* pndman_git_head(void);
 
@@ -502,6 +506,12 @@ PNDMANAPI int pndman_api_rate_pnd(pndman_package *pnd,
  * returns 0 on success, -1 on failure */
 PNDMANAPI int pndman_api_download_history(
       pndman_repository *repository, pndman_api_history_callback callback);
+
+/* \brief get archived pnds
+ * archived pnd's are store in next_installed of pnd
+ * returns 0 on success, -1 on failure */
+PNDMANAPI int pndman_api_archived_pnd(pndman_package *pnd,
+      pndman_repository *repository, pndman_api_archived_callback callback);
 
 /* \brief perform curl operation
  * returns number of curl operations pending

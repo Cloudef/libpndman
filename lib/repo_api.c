@@ -9,6 +9,7 @@
 #define API_RATE              "rate"
 #define API_COMMENT           "comment"
 #define API_DOWNLOAD_HISTORY  "history"
+#define API_ARCHIVED          "archived"
 #define NONCE_LEN 33
 
 /* forward declaration */
@@ -54,6 +55,13 @@ typedef struct pndman_history_packet
    pndman_repository *repository;
    pndman_api_history_callback callback;
 } pndman_history_packet;
+
+/* \brief archived pnd packet */
+typedef struct pndman_archived_packet
+{
+   pndman_package *pnd;
+   pndman_api_archived_callback callback;
+} pndman_archived_packet;
 
 /* \brief download packet */
 typedef struct pndman_download_packet
@@ -569,6 +577,13 @@ fail:
    return RETURN_FAIL;
 }
 
+/* \brief get archived pnds */
+static int _pndman_api_archived_pnd(pndman_package *pnd,
+      pndman_repository *repository, pndman_api_archived_callback callback)
+{
+   return RETURN_FAIL;
+}
+
 /* INTERNAL API */
 
 /* \brief handshake for commercial download */
@@ -577,6 +592,11 @@ int _pndman_api_commercial_download(pndman_curl_handle *handle,
 {
    pndman_download_packet *packet;
    assert(package->repository);
+
+   if (!package->repository->prev) {
+      BADUSE("repository is local repository");
+      return RETURN_FAIL;
+   }
 
    if (!(packet = _pndman_api_download_packet(package)))
       goto fail;
@@ -597,6 +617,10 @@ PNDMANAPI int pndman_api_comment_pnd(pndman_package *pnd,
    CHECKUSE(pnd);
    CHECKUSE(repository);
    CHECKUSE(comment);
+   if (!repository->prev) {
+      BADUSE("repository is local repository");
+      return RETURN_FAIL;
+   }
 
    return _pndman_api_comment_pnd(pnd,
          repository, comment);
@@ -609,6 +633,10 @@ PNDMANAPI int pndman_api_comment_pnd_pull(pndman_package *pnd,
    CHECKUSE(pnd);
    CHECKUSE(repository);
    CHECKUSE(callback);
+   if (!repository->prev) {
+      BADUSE("repository is local repository");
+      return RETURN_FAIL;
+   }
 
    return _pndman_api_comment_pnd_pull(pnd,
          repository, callback);
@@ -620,6 +648,10 @@ PNDMANAPI int pndman_api_rate_pnd(pndman_package *pnd,
 {
    CHECKUSE(pnd);
    CHECKUSE(repository);
+   if (!repository->prev) {
+      BADUSE("repository is local repository");
+      return RETURN_FAIL;
+   }
 
    return _pndman_api_rate_pnd(pnd, repository, rate);
 }
@@ -630,6 +662,23 @@ PNDMANAPI int pndman_api_download_history(
 {
    CHECKUSE(repository);
    CHECKUSE(callback);
+   if (!repository->prev) {
+      BADUSE("repository is local repository");
+      return RETURN_FAIL;
+   }
 
    return _pndman_api_download_history(repository, callback);
+}
+
+/* \brief get archived pnds
+ * archived pnd's are store in next_installed */
+PNDMANAPI int pndman_api_archived_pnd(pndman_package *pnd,
+      pndman_repository *repository, pndman_api_archived_callback callback)
+{
+   if (!repository->prev) {
+      BADUSE("repository is local repository");
+      return RETURN_FAIL;
+   }
+
+   return _pndman_api_archived_pnd(pnd, repository, callback);
 }
