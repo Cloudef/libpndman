@@ -1006,7 +1006,7 @@ static int _pndman_crawl_process(const char *path,
    _pxml_pnd_post_process(data->pnd);
 
    /* add size to the pnd */
-   if ((f = fopen(full_path, "r"))) {
+   if ((f = fopen(full_path, "rb"))) {
       fseek(f, 0, SEEK_END);
       data->pnd->size = ftell(f);
       fclose(f);
@@ -1048,9 +1048,6 @@ static int _pndman_crawl_dir(const char *path,
    memset(relav, 0, PNDMAN_PATH);
    memset(tmp, 0, PNDMAN_PATH);
 
-   /* copy relative */
-   strncpy(relav, relative, PNDMAN_PATH-1);
-
    /* copy full */
    strncpy(tmp, path, PNDMAN_PATH-1);
    strncat(tmp, "/", PNDMAN_PATH-1);
@@ -1060,7 +1057,7 @@ static int _pndman_crawl_dir(const char *path,
    if (strlen(list->id)) for (p = list; p && p->next; p = p->next);
 
 #ifndef __WIN32__ /* POSIX */
-   dp = opendir(path);
+   dp = opendir(tmp);
    if (!dp) return 0;
 
    while (ep = readdir(dp)) {
@@ -1070,7 +1067,7 @@ static int _pndman_crawl_dir(const char *path,
          strncpy(relav, relative, PNDMAN_PATH-1);
          strncat(relav, "/", PNDMAN_PATH-1);
          strncat(relav, ep->d_name, PNDMAN_PATH-1);
-         ret += _pndman_crawl_dir(tmp, relav, list);
+         ret += _pndman_crawl_dir(path, relav, list);
          continue;
       }
       if (ep->d_type != DT_REG) continue;                /* we only want regular files */
@@ -1090,7 +1087,7 @@ static int _pndman_crawl_dir(const char *path,
       data.bckward_title = 1; /* backwards compatibility with PXML titles */
       data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
       data.state = PXML_PARSE_DEFAULT;
-      if (_pndman_crawl_process(tmp, relav, &data) != RETURN_OK) {
+      if (_pndman_crawl_process(path, relav, &data) != RETURN_OK) {
          while ((pnd = _pndman_free_pnd(pnd)));
          continue;
       }
@@ -1126,7 +1123,7 @@ static int _pndman_crawl_dir(const char *path,
          strncpy(relav, relative, PNDMAN_PATH-1);
          strncat(relav, "/", PNDMAN_PATH-1);
          strncat(relav, dp.cFileName, PNDMAN_PATH-1);
-         ret += _pndman_crawl_dir(tmp, relav, list);
+         ret += _pndman_crawl_dir(path, relav, list);
          continue;
       }
       if (!_strupstr(dp.cFileName, ".pnd")) continue; /* we only want .pnd files */
@@ -1145,7 +1142,7 @@ static int _pndman_crawl_dir(const char *path,
       data.bckward_title = 1; /* backwards compatibility with PXML titles */
       data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
       data.state = PXML_PARSE_DEFAULT;
-      if (_pndman_crawl_process(tmp, relav, &data) != RETURN_OK) {
+      if (_pndman_crawl_process(path, relav, &data) != RETURN_OK) {
          while ((pnd = _pndman_free_pnd(pnd)));
          continue;
       }
