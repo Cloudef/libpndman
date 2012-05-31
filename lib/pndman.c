@@ -56,7 +56,7 @@ void* _pndman_get_tmp_file()
 {
    FILE *tmp;
 
-#ifndef __WIN32__
+#ifndef _WIN32
    /* why won't this work on windows 7 correctly :/ */
    if (!(tmp = tmpfile()))
       goto fail;
@@ -73,7 +73,7 @@ void* _pndman_get_tmp_file()
 
 fail:
    DEBFAIL(PNDMAN_TMP_FILE_FAIL);
-#ifdef __WIN32__
+#ifdef _WIN32
    IFREE(name);
 #endif
    return NULL;

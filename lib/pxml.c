@@ -7,7 +7,7 @@
 #include <ctype.h>
 #include <sys/stat.h>
 
-#ifndef __WIN32__
+#ifndef _WIN32
 #  include <sys/stat.h>
 #  include <dirent.h>
 #endif
@@ -1035,7 +1035,7 @@ static int _pndman_crawl_dir(const char *path,
 #ifdef __linux__
    DIR *dp;
    struct dirent *ep;
-#elif __WIN32__
+#elif _WIN32
    WIN32_FIND_DATA dp;
    HANDLE hFind;
 #endif
@@ -1057,7 +1057,7 @@ static int _pndman_crawl_dir(const char *path,
    /* jump to end of list */
    if (strlen(list->id)) for (p = list; p && p->next; p = p->next);
 
-#ifndef __WIN32__ /* POSIX */
+#ifndef _WIN32 /* POSIX */
    dp = opendir(tmp);
    if (!dp) return 0;
 

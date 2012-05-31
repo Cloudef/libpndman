@@ -6,7 +6,7 @@
 #ifndef __common_h__
 #define __common_h__
 
-#ifdef __WIN32__
+#ifdef _WIN32
 #  define getcwd _getcwd
 #elif __linux__
 #  include <sys/stat.h>
@@ -38,7 +38,7 @@ static char* common_get_path_to_fake_device()
    getcwd(cwd, PATH_MAX);
    strncat(cwd, "/SD", PATH_MAX-1);
    if (access(cwd, F_OK) != 0)
-#ifdef __WIN32__
+#ifdef _WIN32
       if (mkdir(cwd) == -1) {
 #else
       if (mkdir(cwd, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1) {

@@ -49,7 +49,7 @@ static int _get_backup_dir(char *buffer, pndman_device *device)
    if (access(buffer, F_OK) != 0) {
       if (errno == EACCES)
          return RETURN_FAIL;
-#ifdef __WIN32__
+#ifdef _WIN32
       if (mkdir(buffer) == -1)
 #else
       if (mkdir(buffer, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)

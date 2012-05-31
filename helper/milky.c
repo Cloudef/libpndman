@@ -172,7 +172,7 @@ static void init_usrdata(_USR_DATA *data)
 static void _R(void)
 {
    if (!_USE_COLORS) return;
-#ifndef __WIN32__
+#ifndef _WIN32
    printf("\33[31m");
 #else
    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -185,7 +185,7 @@ static void _R(void)
 static void _G(void)
 {
    if (!_USE_COLORS) return;
-#ifndef __WIN32__
+#ifndef _WIN32
    printf("\33[32m");
 #else
    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -198,7 +198,7 @@ static void _G(void)
 static void _Y(void)
 {
    if (!_USE_COLORS) return;
-#ifndef __WIN32__
+#ifndef _WIN32
    printf("\33[33m");
 #else
    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -211,7 +211,7 @@ static void _Y(void)
 static void _B(void)
 {
    if (!_USE_COLORS) return;
-#ifndef __WIN32__
+#ifndef _WIN32
    printf("\33[34m");
 #else
    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -224,7 +224,7 @@ static void _B(void)
 static void _W(void)
 {
    if (!_USE_COLORS) return;
-#ifndef __WIN32__
+#ifndef _WIN32
    printf("\33[37m");
 #else
    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -237,7 +237,7 @@ static void _W(void)
 static void _N(void)
 {
    if (!_USE_COLORS) return;
-#ifndef __WIN32__
+#ifndef _WIN32
    printf("\33[0m");
 #else
    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -348,7 +348,7 @@ static int mkdirexist(const char *path)
 {
    if (access(path, F_OK) != 0) {
       if (errno == EACCES) return RETURN_FAIL;
-#ifdef __WIN32__
+#ifdef _WIN32
       if (mkdir(path) == -1) return RETURN_FAIL;
 #else  /* _WIN32_ */
       if (mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
@@ -362,7 +362,7 @@ static int mkdirexist(const char *path)
 static int getcfgpath(char *path)
 {
 /* just dump to cwd on porndora and win32 (on pandora stuff appears in appdata) */
-#if !defined(PANDORA) && !defined(__WIN32__)
+#if !defined(PANDORA) && !defined(_WIN32)
    const char* xdg_home;
    struct passwd *pw;
    if (!(xdg_home = getenv("XDG_CONFIG_HOME"))) {
@@ -382,7 +382,7 @@ static int getcfgpath(char *path)
    strncat(path, "/",     PATH_MAX-1);
    strncat(path, CFG_DIR, PATH_MAX-1); /* $XDG_CONFIG_HOME/$CFG_DIR */
    return mkdirexist(path);
-#endif /* !PANDORA && !__WIN32__ */
+#endif /* !PANDORA && !_WIN32 */
    return RETURN_OK;
 }
 
@@ -2175,7 +2175,7 @@ static void sigint(int sig)
    _R(); printf("Caught %s, exiting...\n",
          sig == SIGINT  ? "SIGINT"  :
          sig == SIGTERM ? "SIGTERM" : "SIGSEGV"); _N();
-#ifdef __WIN32__
+#ifdef _WIN32
    _fcloseall();
 #endif
    exit(sig);

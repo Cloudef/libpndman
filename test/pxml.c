@@ -40,7 +40,7 @@ int main(int argc, char **argv)
    }
 
    closedir(dp);
-#elif __WIN32__
+#elif _WIN32
    sprintf(path1, "%s/pandora/menu/*.pnd", cwd);
 
    if ((hFind = FindFirstFile(path1, &dp)) == INVALID_HANDLE_VALUE)

@@ -64,7 +64,7 @@ static int blockfile(char *path)
    /* block until lock doesn't exist */
    while ((f = fopen(path, "r"))) {
       fclose(f);
-#ifdef __WIN32__
+#ifdef _WIN32
       Sleep(1000);
 #else
       sleep(1);

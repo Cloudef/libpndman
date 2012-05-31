@@ -53,7 +53,7 @@ static void _pndman_remove_tmp_files(pndman_device *device)
 {
    char tmp[PNDMAN_PATH];
    char tmp2[PNDMAN_PATH];
-#ifndef __WIN32__
+#ifndef _WIN32
    DIR *dp;
    struct dirent *ep;
 #else
@@ -67,7 +67,7 @@ static void _pndman_remove_tmp_files(pndman_device *device)
    _pndman_device_get_appdata_no_create(tmp, device);
    if (!strlen(tmp)) return;
 
-#ifndef __WIN32__
+#ifndef _WIN32
    dp = opendir(tmp);
    if (!dp) return;
    while (ep = readdir(dp)) {
@@ -101,7 +101,7 @@ static int _check_create_tree_dir(char *path)
    if (access(path, F_OK) != 0) {
       if (errno == EACCES)
          return RETURN_FAIL;
-#ifdef __WIN32__
+#ifdef _WIN32
       if (mkdir(path) == -1)
 #else
       if (mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
@@ -184,7 +184,7 @@ static pndman_device* _pndman_device_new_if_exist(pndman_device **device, const 
    if (check_existing) {
       d = _pndman_device_first(*device);
       for(; d; d = d->next)
-#ifdef __WIN32__ /* windows is incasesensitive */
+#ifdef _WIN32 /* windows is incasesensitive */
          if (!_strupcmp(d->mount, check_existing)) {
 #else
          if (!strcmp(d->mount, check_existing)) {
@@ -333,7 +333,7 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
    device->available = fs.f_bavail * fs.f_bsize;
    _strip_slash(device->device);
    _strip_slash(device->mount);
-#elif __WIN32__
+#elif _WIN32
    char szName[PNDMAN_PATH];
    char szDrive[3] = { ' ', ':', '\0' };
    szDrive[0] = path[0];
@@ -426,7 +426,7 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
       m = NULL;
    }
    endmntent(mtab);
-#elif __WIN32__
+#elif _WIN32
    char szTemp[512], szName[PNDMAN_PATH-1];
    char szDrive[3] = { ' ', ':', '\0' };
    char pandoradir[PNDMAN_PATH], *p;
