@@ -60,6 +60,7 @@ typedef struct pndman_history_packet
 typedef struct pndman_archived_packet
 {
    pndman_package *pnd;
+   pndman_repository *repository;
    pndman_api_archived_callback callback;
 } pndman_archived_packet;
 
@@ -112,10 +113,20 @@ static void _pndman_api_request_free(
 static void _pndman_api_common_cb(pndman_curl_code code, void *data,
       const char *info, pndman_curl_handle *chandle)
 {
-   if (code == PNDMAN_CURL_FAIL)
-      DEBFAIL("api request fail: %s", info);
-   else if (code == PNDMAN_CURL_DONE)
-      DEBUG(PNDMAN_LEVEL_CRAP, "%s was success!", (char*)data);
+   pndman_api_status status;
+
+   if (code != PNDMAN_CURL_DONE &&
+       code != PNDMAN_CURL_FAIL)
+      return;
+
+   /* get status */
+   if ((_pndman_json_client_api_return(chandle->file,
+               &status) != RETURN_OK) && strlen(status.text)) {
+      DEBFAIL(API_FAIL, status.number, status.text);
+   } else {
+      DEBUG(PNDMAN_LEVEL_CRAP, "%s: %s", (char*)data,
+            code ==PNDMAN_CURL_DONE?"OK":info);
+   }
 
    /* free curl handle */
    _pndman_curl_handle_free(chandle);
@@ -125,15 +136,22 @@ static void _pndman_api_common_cb(pndman_curl_code code, void *data,
 static void _pndman_api_comment_pull_cb(pndman_curl_code code,
       void *data, const char *info, pndman_curl_handle *chandle)
 {
+   pndman_api_status status;
    pndman_comment_packet *packet = (pndman_comment_packet*)data;
 
    if (code != PNDMAN_CURL_DONE &&
        code != PNDMAN_CURL_FAIL)
       return;
 
-   _pndman_json_comment_pull(packet->callback, packet->pnd, chandle->file);
-   DEBUG(PNDMAN_LEVEL_CRAP, "comment pull: %s",
-         code==PNDMAN_CURL_DONE?"OK":info);
+   /* get status */
+   if ((_pndman_json_client_api_return(chandle->file,
+               &status) != RETURN_OK) && strlen(status.text)) {
+      DEBFAIL(API_FAIL, status.number, status.text);
+   } else {
+      _pndman_json_comment_pull(packet->callback, packet->pnd, chandle->file);
+      DEBUG(PNDMAN_LEVEL_CRAP, "comment pull: %s",
+            code==PNDMAN_CURL_DONE?"OK":info);
+   }
 
    free(packet);
    _pndman_curl_handle_free(chandle);
@@ -143,15 +161,48 @@ static void _pndman_api_comment_pull_cb(pndman_curl_code code,
 static void _pndman_api_download_history_cb(pndman_curl_code code,
       void *data, const char *info, pndman_curl_handle *chandle)
 {
+   pndman_api_status status;
    pndman_history_packet *packet = (pndman_history_packet*)data;
 
    if (code != PNDMAN_CURL_DONE &&
        code != PNDMAN_CURL_FAIL)
       return;
 
-   _pndman_json_download_history(packet->callback, chandle->file);
-   DEBUG(PNDMAN_LEVEL_CRAP, "download history: %s",
-         code==PNDMAN_CURL_DONE?"OK":info);
+   /* get status */
+   if ((_pndman_json_client_api_return(chandle->file,
+               &status) != RETURN_OK) && strlen(status.text)) {
+      DEBFAIL(API_FAIL, status.number, status.text);
+   } else {
+      _pndman_json_download_history(packet->callback, chandle->file);
+      DEBUG(PNDMAN_LEVEL_CRAP, "download history: %s",
+            code==PNDMAN_CURL_DONE?"OK":info);
+   }
+
+   free(packet);
+   _pndman_curl_handle_free(chandle);
+}
+
+/* \brief archived PND callback */
+static void _pndman_api_archived_cb(pndman_curl_code code,
+      void *data, const char *info, pndman_curl_handle *chandle)
+{
+   pndman_api_status status;
+   pndman_archived_packet *packet = (pndman_archived_packet*)data;
+
+   if (code != PNDMAN_CURL_DONE &&
+       code != PNDMAN_CURL_FAIL)
+      return;
+
+   /* get status */
+   if ((_pndman_json_client_api_return(chandle->file,
+               &status) != RETURN_OK) && strlen(status.text)) {
+      DEBFAIL(API_FAIL, status.number, status.text);
+   } else {
+      _pndman_json_archived_pnd(packet->pnd, chandle->file);
+      packet->callback(packet->pnd);
+      DEBUG(PNDMAN_LEVEL_CRAP, "pnd archive: %s",
+            code==PNDMAN_CURL_DONE?"OK":info);
+   }
 
    free(packet);
    _pndman_curl_handle_free(chandle);
@@ -310,6 +361,24 @@ static pndman_history_packet* _pndman_api_history_packet(
 
 fail:
    DEBFAIL(PNDMAN_ALLOC_FAIL, "pndman_history_packet");
+   return NULL;
+}
+
+/* \brief create new archived packet */
+static pndman_archived_packet* _pndman_api_archived_packet(
+      pndman_repository *repo, pndman_package *pnd)
+{
+   pndman_archived_packet *packet;
+   if (!(packet = malloc(sizeof(pndman_archived_packet))))
+      goto fail;
+   memset(packet, 0, sizeof(pndman_archived_packet));
+   packet->pnd = pnd;
+   packet->repository = repo;
+
+   return packet;
+
+fail:
+   DEBFAIL(PNDMAN_ALLOC_FAIL, "pndman_archived_packet");
    return NULL;
 }
 
@@ -581,6 +650,29 @@ fail:
 static int _pndman_api_archived_pnd(pndman_package *pnd,
       pndman_repository *repository, pndman_api_archived_callback callback)
 {
+   char url[PNDMAN_URL];
+   char buffer[PNDMAN_POST];
+   pndman_archived_packet *packet = NULL;
+   pndman_curl_handle *handle;
+
+   if (!(handle = _pndman_curl_handle_new(NULL, NULL,
+               _pndman_api_archived_cb, NULL)))
+      goto fail;
+
+   if (!(packet = _pndman_api_archived_packet(repository, pnd)))
+      goto fail;
+
+   snprintf(url, PNDMAN_URL-1, "%s/%s", repository->api.root, API_ARCHIVED);
+   snprintf(buffer, sizeof(buffer)-1, "id=%s", pnd->id);
+
+   handle->data = packet;
+   packet->callback = callback;
+   _pndman_curl_handle_set_url(handle, url);
+   _pndman_curl_handle_set_post(handle, buffer);
+   return _pndman_curl_handle_perform(handle);
+
+fail:
+   IFDO(_pndman_curl_handle_free, handle);
    return RETURN_FAIL;
 }
 

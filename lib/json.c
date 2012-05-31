@@ -437,6 +437,28 @@ bad_json:
    return RETURN_FAIL;
 }
 
+/* \brief process archived pnd json data */
+int _pndman_json_archived_pnd(
+      pndman_package *pnd, void *file) {
+   json_t *root;
+   json_error_t error;
+   assert(pnd && file);
+
+   /* flush and reset to beginning */
+   fflush(file);
+   fseek(file, 0L, SEEK_SET);
+   if (!(root = json_loadf(file, 0, &error)))
+      goto bad_json;
+
+   json_decref(root);
+   return RETURN_OK;
+
+bad_json:
+   DEBFAIL(JSON_BAD_JSON, "archieved pnd");
+   IFDO(json_decref, root);
+   return RETURN_FAIL;
+}
+
 /* undef macros for above functions */
 #undef json_fast_number
 #undef json_fast_string
