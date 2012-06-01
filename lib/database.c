@@ -19,7 +19,7 @@ static char *str_replace(const char *s, const char *old, const char *new)
       if (!strncmp(s, old, strlen(old))) {
          p  -= (intptr_t)cout;
          cout= realloc(cout, slen += strlen(new)-strlen(old) );
-         tmp = strncpy(p=cout+(intptr_t)p, new, slen-1);
+         tmp = strcpy(p=cout+(intptr_t)p, new);
          p  += strlen(tmp);
          s  += strlen(old);
       } else *p++=*s++;
