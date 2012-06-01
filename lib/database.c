@@ -442,6 +442,11 @@ static int _pndman_sync_handle_perform(pndman_sync_handle *object)
    pndman_curl_handle *handle;
    assert(object && object->repository);
 
+   /* this is local repository,
+    * let's fail and inform developer */
+   if (!object->repository->prev)
+      goto local_repo_fail;
+
    /* check wether, to do merging or full sync */
    if (strlen(object->repository->updates) &&
          object->repository->timestamp &&
@@ -465,6 +470,9 @@ static int _pndman_sync_handle_perform(pndman_sync_handle *object)
    /* do it */
    return _pndman_curl_handle_perform(handle);
 
+local_repo_fail:
+   DEBFAIL(DATABASE_CANT_SYNC_LOCAL);
+   goto fail;
 url_cpy_fail:
    DEBFAIL(DATABASE_URL_COPY_FAIL);
 fail:

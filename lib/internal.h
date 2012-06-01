@@ -46,6 +46,7 @@
 #define DATABASE_URL_COPY_FAIL   "Failed to copy url from repository."
 #define DATABASE_BAD_URL         "Repository has empty url, or it is a local repository."
 #define DATABASE_LOCK_TIMEOUT    "%s blocking for IO operation timed out."
+#define DATABASE_CANT_SYNC_LOCAL "You are trying to synchorize local repository, this will fail!\nRemember that local repository is always the first item in the repository list."
 #define WRITE_FAIL               "Failed to open %s, for writing."
 #define READ_FAIL                "Failed to open %s, for reading."
 #define ACCESS_FAIL              "Can't access: %s"
