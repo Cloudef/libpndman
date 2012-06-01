@@ -315,7 +315,7 @@ typedef struct pndman_sync_handle
 
 /* \brief callback for comment pull */
 typedef void (*pndman_api_comment_callback)(
-      pndman_package *pnd, const char *version,
+      pndman_package *pnd, pndman_version *version,
       time_t date, const char *username, const char *comment);
 
 /* \brief callback for download history */

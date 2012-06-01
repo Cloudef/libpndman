@@ -359,7 +359,8 @@ int _pndman_json_comment_pull(
       pndman_package *pnd, void *file)
 {
    time_t date;
-   const char *version, *comment, *username;
+   const char *comment, *username;
+   pndman_version version;
    json_t *root, *versions, *varray, *comments, *carray;
    json_error_t error;
    size_t v = 0, c = 0;
@@ -374,14 +375,15 @@ int _pndman_json_comment_pull(
    versions = json_object_get(root, "versions");
    if (json_is_array(versions)) {
       while ((varray = json_array_get(versions, v++))) {
-         json_fast_string(json_object_get(varray, "version"), version);
+         memset(&version, 0, sizeof(pndman_version));
+         _json_set_version(&version, json_object_get(varray,"version"));
          comments = json_object_get(varray, "comments");
          if (!json_is_array(comments)) continue; c = 0;
          while ((carray = json_array_get(comments, c++))) {
             json_fast_number(json_object_get(carray, "date"), date, time_t);
             json_fast_string(json_object_get(carray, "username"), username);
             json_fast_string(json_object_get(carray, "comment"), comment);
-            callback(pnd, version, date, username, comment);
+            callback(pnd, &version, date, username, comment);
          }
       }
    } else DEBUG(PNDMAN_LEVEL_WARN, JSON_NO_V_ARRAY, "comment pull");
