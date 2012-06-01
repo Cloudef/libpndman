@@ -65,7 +65,7 @@ static void common_read_repositories_from_device(
 
 /* create and perform sync handles */
 static void common_create_sync_handles(pndman_sync_handle *handle,
-      size_t num, pndman_repository *list, pndman_callback cb,
+      size_t num, pndman_repository *list, pndman_sync_handle_callback cb,
       unsigned int flags)
 {
    size_t i;
@@ -83,7 +83,7 @@ static void common_create_sync_handles(pndman_sync_handle *handle,
 
 /* create package handles */
 static void common_create_package_handles(pndman_package_handle *handle,
-      size_t num, pndman_device *device, pndman_repository *repo, pndman_callback cb)
+      size_t num, pndman_device *device, pndman_repository *repo, pndman_package_handle_callback cb)
 {
    size_t i;
    for (i = 0; i != num; ++i) {
@@ -116,10 +116,8 @@ static void common_commit_repositories_to_device(
 }
 
 /* common sync callback */
-static void common_sync_cb(pndman_curl_code code, void *data)
+static void common_sync_cb(pndman_curl_code code, pndman_sync_handle *handle)
 {
-   pndman_sync_handle *handle = (pndman_sync_handle*)data;
-
    if (code == PNDMAN_CURL_DONE ||
        code == PNDMAN_CURL_FAIL) {
       printf("%s : %s!\n", handle->repository->name,
@@ -133,10 +131,8 @@ static void common_sync_cb(pndman_curl_code code, void *data)
 }
 
 /* common package callback */
-static void common_package_cb(pndman_curl_code code, void *data)
+static void common_package_cb(pndman_curl_code code, pndman_package_handle *handle)
 {
-   pndman_package_handle *handle = (pndman_package_handle*)data;
-
    if (code == PNDMAN_CURL_DONE ||
        code == PNDMAN_CURL_FAIL) {
       printf("%s : %s!\n", handle->pnd->id,

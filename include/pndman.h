@@ -274,8 +274,15 @@ typedef struct pndman_curl_progress
    char done;
 } pndman_curl_progress;
 
-/* \brief callback function definition to handle */
-typedef void (*pndman_callback)(pndman_curl_code code, void *data);
+/* forward declarations */
+struct pndman_package_handle;
+struct pndman_sync_handle;
+
+/* \brief callback function definition to sync handle */
+typedef void (*pndman_package_handle_callback)(pndman_curl_code code,
+      struct pndman_package_handle *handle);
+typedef void (*pndman_sync_handle_callback)(pndman_curl_code code,
+      struct pndman_sync_handle *handle);
 
 /*! \brief Struct for PND transaction */
 typedef struct pndman_package_handle
@@ -287,7 +294,7 @@ typedef struct pndman_package_handle
    pndman_repository *repository;
    unsigned int flags;
    pndman_curl_progress progress;
-   pndman_callback callback;
+   pndman_package_handle_callback callback;
 
    /* internal request data */
    void *data;
@@ -300,7 +307,7 @@ typedef struct pndman_sync_handle
    pndman_repository *repository;
    unsigned int flags;
    pndman_curl_progress progress;
-   pndman_callback callback;
+   pndman_sync_handle_callback callback;
 
    /* internal request data */
    void *data;
