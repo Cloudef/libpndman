@@ -440,8 +440,12 @@ bad_json:
 /* \brief process archived pnd json data */
 int _pndman_json_archived_pnd(
       pndman_package *pnd, void *file) {
-   json_t *root;
+   time_t date;
+   pndman_version version;
+   pndman_package *p;
+   json_t *root, *archived, *versions, *varray;
    json_error_t error;
+   size_t v = 0;
    assert(pnd && file);
 
    /* flush and reset to beginning */
@@ -449,6 +453,28 @@ int _pndman_json_archived_pnd(
    fseek(file, 0L, SEEK_SET);
    if (!(root = json_loadf(file, 0, &error)))
       goto bad_json;
+
+   /* free old history */
+   if ((p = pnd->next_installed))
+      while ((p = _pndman_free_pnd(p->next_installed)));
+   p = pnd;
+
+   archived = json_object_get(root, "archived");
+   if (json_is_object(archived)) {
+      versions = json_object_get(archived, "versions");
+      if (json_is_array(versions)) {
+         while ((varray = json_array_get(versions, v++))) {
+            if (!(p->next_installed = _pndman_new_pnd())) continue;
+            _pndman_copy_pnd(p->next_installed, pnd);
+            memset(&version, 0, sizeof(pndman_version));
+            _json_set_version(&version, json_object_get(varray,"version"));
+            json_fast_number(json_object_get(varray, "date"), date, time_t);
+            p->next_installed->modified_time = date;
+            memcpy(&p->next_installed->version, &version, sizeof(pndman_version));
+            p = p->next_installed;
+         }
+      } else DEBUG(PNDMAN_LEVEL_WARN, JSON_NO_V_ARRAY, "archived pnd");
+   }
 
    json_decref(root);
    return RETURN_OK;
