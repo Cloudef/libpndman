@@ -37,9 +37,6 @@
 /* max length of descriptions */
 #define DESCRIPTION_LENGTH 74
 
-/* use colors? */
-char _USE_COLORS  = 1;
-
 /* verbose level? */
 char _VERBOSE     = 0;
 
@@ -59,6 +56,7 @@ typedef struct _USR_TARGET
 {
    char                 id[PND_ID];
    pndman_package       *pnd;
+   pndman_repository    *repository;
    struct _USR_TARGET   *next;
    struct _USR_TARGET   *prev;
 } _USR_TARGET;
@@ -103,149 +101,72 @@ static void init_usrdata(_USR_DATA *data)
 /* all strings expect HELP and VERSION strings are listed here
  * (* strings that are not considered in final product,
  * aren't here either)
- * maybe in future: custom printf function that handles color
- *                  escapes and resets the colors at the end
- *                  automatically. with this we could get rid of
- *                  all those _R(); _N(); etc.. color functions.
- *                  Plus it would allow colors to be customized
- *                  more easily! */
-#define _DEVICE_CLEANED          "Cleaned libpndman database from %s!\n"
-#define _PNDS_CRAWLED            "%d PND's were succesfully crawled.\n"
-#define _REPO_WONT_DO_ANYTHING   "There is only local repository available, %s operations won't do anything.\n"
-#define _NO_SYNCED_REPO          "None of repositories is synced. Sync the repositories first.\n"
-#define _REPO_SYNCED             "%s, synchorized succesfully.\n"
-#define _REPO_SYNCED_NOT         "%s, failed to synchorize.\n"
-#define _PND_NOT_FOUND           "Warning: no such package %s\n"
-#define _PND_NO_UPDATE           "Warning: %s, has no update.\n"
-#define _PND_HAS_UPDATE          "%s has a update.\n"
-#define _UPGRADE_DONE            "Upgraded %s\n"
-#define _UPGRADE_FAIL            "Failed to upgrade %s\n"
-#define _INSTALL_DONE            "Installed %s\n"
-#define _INSTALL_FAIL            "Failed to install %s\n"
-#define _REMOVE_DONE             "Removed %s\n"
-#define _REMOVE_FAIL             "Failed to remove %s\n"
-#define _CLEANING_DB             "Cleaning database files: %s\n"
-#define _UNKNOWN_OPERATION       "unknown operation: %s"
-#define _NO_X_SPECIFIED          "No %s specified.\n"
-#define _BAD_DEVICE_SELECTED     "Bad device selected, exiting..\n"
-#define _PND_IGNORED_FORCE       "Package %s is being ignored. Do you want to force?"
-#define _PND_REINSTALL           "Package %s is already installed, reinstall?"
-#define _NO_ROOT_YET             "Sir! You haven't selected your mount where to store PND's yet.\n"
-#define _WARNING_SKIPPING        "Warning: skipping %s\n"
-#define _WARNING_UPDATE          "Warning: %s is up-to-date, skipping.\n"
-#define _NOTHING_TO_DO           "There is nothing to do"
-#define _FAILED_TO_DEVICES       "Failed to detect devices.\n"
-#define _FAILED_TO_REPOS         "Failed to initialize local repository..\n"
-#define _COMMIT_FAIL             "Warning: failed to commit repositories to %s\n"
-#define _ROOT_FAIL               "Warning: failed to store your current root device.\n"
-#define _ROOT_SET_FAIL           "Failed to set root."
-#define _ROOT_SET                "Root was set."
-#define _MKCONFIG                "Creating default configuration file in %s\n"
-#define _CONFIG_READ_FAIL        "Warning: failed to read configuration from %s\n"
-#define _YAOURT_DIALOG           "Enter number of packages to be installed (ex: 1 2 3)"
-#define _TARGET_MEDIA            "Target media "
-#define _TARGET_PATH             "Target path  "
-#define _DOWNLOAD_SIZE           "Download size"
-#define _REMOVE_SIZE             "Removal size "
-#define _CONTINUE_INSTALL        "Continue install?"
-#define _CONTINUE_UPGRADE        "Continue upgrade?"
-#define _CONTINUE_UNINSTALL      "Continue uninstall?"
-#define _TARGET_LINE             "Targets"
-#define _UNIT_KIB                "KiB"
-#define _UNIT_MIB                "MiB"
-#define _UNIT_BYTE               "B"
+ */
+#define _D                       "\5-\2!\5- "
+#define _DEVICE_CLEANED          _D"\2Cleaned libpndman database from: \5%s"
+#define _PNDS_CRAWLED            _D"\4%d \2Packages were succesfully crawled."
+#define _REPO_WONT_DO_ANYTHING   _D"\1There is only local repository available, \4%s \1operations won't do anything."
+#define _NO_SYNCED_REPO          _D"\1None of repositories is synchorized. Synchorize the repositories first."
+#define _REPO_SYNCED             _D"\2Synchorized repository: \4%s"
+#define _REPO_SYNCED_NOT         _D"\1Failed to synchorize repository: \4%s"
+#define _PND_NOT_FOUND           _D"\1Warning: No such package \4%s"
+#define _PND_NO_UPDATE           _D"\1Warning: Package \4%s, has no update."
+#define _PND_HAS_UPDATE          _D"\1Package \4%s \1has a update."
+#define _UPGRADE_DONE            _D"\2Upgraded package:\4%s"
+#define _UPGRADE_FAIL            _D"\1Failed to upgrade \4%s"
+#define _INSTALL_DONE            _D"\2Installed package: \4%s"
+#define _INSTALL_FAIL            _D"\1Failed to install package: \4%s"
+#define _REMOVE_DONE             _D"\2Removed package: \4%s"
+#define _REMOVE_FAIL             _D"\1Failed to remove package: \4%s"
+#define _CLEANING_DB             _D"\3Cleaning database files: \5%s"
+#define _UNKNOWN_OPERATION       _D"\1unknown operation: \5%s"
+#define _NO_X_SPECIFIED          _D"\1No \4%s \1specified."
+#define _BAD_DEVICE_SELECTED     _D"\1Bad device selected, exiting.."
+#define _PND_IGNORED_FORCE       _D"\3Package \4%s \3is being ignored. Do you want to force?"
+#define _PND_REINSTALL           _D"\3Package \4%s \3is already installed, reinstall?"
+#define _NO_ROOT_YET             _D"\3Sir! You haven't selected your mount where to store packages yet."
+#define _WARNING_SKIPPING        _D"\1Warning: Skipping package \4%s"
+#define _WARNING_UPDATE          _D"\1Warning: \4%s \1is up-to-date, skipping."
+#define _NOTHING_TO_DO           _D"\4There is nothing to do."
+#define _FAILED_TO_DEVICES       _D"\1Failed to detect devices."
+#define _FAILED_TO_REPOS         _D"\1Failed to initialize local repository.."
+#define _COMMIT_FAIL             _D"\1Warning: Failed to commit repositories to \5%s"
+#define _ROOT_FAIL               _D"\1Warning: Failed to store your current root device."
+#define _ROOT_SET_FAIL           _D"\1Failed to set root."
+#define _ROOT_SET                _D"\2Root was set."
+#define _MKCONFIG                _D"\3Creating default configuration file in \5%s"
+#define _CONFIG_READ_FAIL        _D"\1Warning: failed to read configuration from \5%s"
+#define _YAOURT_DIALOG           "\4Enter number of packages to be installed \5(\2ex: 1 2 3\5)"
+#define _TARGET_MEDIA            "\4Target media  \5: %s"
+#define _TARGET_PATH             "\4Target path   \5: %s"
+#define _DOWNLOAD_SIZE           "\1Download size \5: %2.f %s"
+#define _REMOVE_SIZE             "\1Removal size  \5: %2.f %s"
+#define _CONTINUE_INSTALL        "\3Continue install?"
+#define _CONTINUE_UPGRADE        "\3Continue upgrade?"
+#define _CONTINUE_UNINSTALL      "\3Continue uninstall?"
+#define _TARGET_LINE             "\2Targets \5(\4%d\5)   : "
+#define _UNIT_KIB                "\5KiB"
+#define _UNIT_MIB                "\5MiB"
+#define _UNIT_BYTE               "\5B"
 #define _INPUT_LINE              "> "
-#define _YESNO                   "[Y/n]"
-#define _NOYES                   "[y/N]"
+#define _YESNO                   "\5[\2Y\5/\1n\5]"
+#define _NOYES                   "\5[\2y\5/\1N\5]"
 
 /* other customizable */
 #define NEWLINE()                puts("");
 
-/*   ____ ___  _     ___  ____  ____
- *  / ___/ _ \| |   / _ \|  _ \/ ___|
- * | |  | | | | |  | | | | |_) \___ \
- * | |__| |_| | |__| |_| |  _ < ___) |
- *  \____\___/|_____\___/|_| \_\____/
- */
-
-/* red */
-static void _R(void)
+/* printf alike wrapper for pndman_puts */
+static void _printf(const char *fmt, ...)
 {
-   if (!_USE_COLORS) return;
-#ifndef _WIN32
-   printf("\33[31m");
-#else
-   HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-   SetConsoleTextAttribute(hStdout, FOREGROUND_RED
-   |FOREGROUND_INTENSITY);
-#endif
-}
+   char buffer[LINE_MAX];
+   va_list args;
 
-/* green */
-static void _G(void)
-{
-   if (!_USE_COLORS) return;
-#ifndef _WIN32
-   printf("\33[32m");
-#else
-   HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-   SetConsoleTextAttribute(hStdout, FOREGROUND_GREEN
-   |FOREGROUND_INTENSITY);
-#endif
-}
+   memset(buffer, 0, LINE_MAX);
+   va_start(args, fmt);
+   vsnprintf(buffer, LINE_MAX-1, fmt, args);
+   va_end(args);
 
-/* yellow */
-static void _Y(void)
-{
-   if (!_USE_COLORS) return;
-#ifndef _WIN32
-   printf("\33[33m");
-#else
-   HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-   SetConsoleTextAttribute(hStdout, FOREGROUND_GREEN
-   |FOREGROUND_RED|FOREGROUND_INTENSITY);
-#endif
-}
-
-/* blue */
-static void _B(void)
-{
-   if (!_USE_COLORS) return;
-#ifndef _WIN32
-   printf("\33[34m");
-#else
-   HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-   SetConsoleTextAttribute(hStdout, FOREGROUND_BLUE
-   |FOREGROUND_GREEN|FOREGROUND_INTENSITY);
-#endif
-}
-
-/* white */
-static void _W(void)
-{
-   if (!_USE_COLORS) return;
-#ifndef _WIN32
-   printf("\33[37m");
-#else
-   HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-   SetConsoleTextAttribute(hStdout, FOREGROUND_RED
-   |FOREGROUND_GREEN|FOREGROUND_BLUE);
-#endif
-}
-
-/* normal */
-static void _N(void)
-{
-   if (!_USE_COLORS) return;
-#ifndef _WIN32
-   printf("\33[0m");
-#else
-   HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-   SetConsoleTextAttribute(hStdout, FOREGROUND_RED
-   |FOREGROUND_GREEN|FOREGROUND_BLUE);
-#endif
-   fflush(stdout); /* make sure _N(); is flushed, prevent
-                    * bad colors in terminal if crash occurs */
+   pndman_puts(buffer);
 }
 
 /*  _   _ _____ ___ _
@@ -661,7 +582,7 @@ static _HELPER_FLAGS getglob(char c, char *arg, int *skipn, _USR_DATA *data)
 {
    if (c == 'v')        ++_VERBOSE;
    else if (c == 'f')   return GB_FORCE;
-   else if (c == 't')   _USE_COLORS = 0;
+   else if (c == 't')   pndman_set_color(0);
    else if (c == 'r')   _setroot(NULL, data);
    return 0;
 }
@@ -912,7 +833,7 @@ static int mkconfig(const char *path)
 {
    FILE *f;
    if (!(f = fopen(path, "w"))) return RETURN_FAIL;
-   _B(); printf(_MKCONFIG, path); _N();
+   _printf(_MKCONFIG, path);
    fputs("#\n", f);
    fputs("# Configuration file for milkyhelper.\n", f);
    fputs("# 'Keys' can be listed multiple times, and they will be read just fine\n", f);
@@ -1041,12 +962,24 @@ static char* getmodified(pndman_package *pnd)
    return str;
 }
 
+/* fill default title style */
+static void filltitle(pndman_package *pnd, char *buffer)
+{
+   memset(buffer, 0, LINE_MAX-1);
+   snprintf(buffer, LINE_MAX-1, "\4%s\5/\2%s\7",
+         pnd->category ? strlen(pnd->category->sub) ?
+         pnd->category->sub : pnd->category->main : "nogroup",
+         pnd->id);
+}
+
 /* pndinfo */
-static void pndinfo(pndman_package *pnd, _USR_DATA *data)
+static void pndinfo(pndman_package *pnd, _USR_DATA *data, size_t longest_title)
 {
    pndman_category *c;
    pndman_license  *l;
    char *title, *desc, *info, *time;
+   char buffer[LINE_MAX];
+   size_t i;
    assert(pnd);
 
    /* get description */
@@ -1063,103 +996,77 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data)
 
    /* info style */
    if (data->flags & A_INFO) {
-      _G(); printf("ID            ");
-      _W(); printf(": %s\n", pnd->id);
-      _G(); printf("Installed     ");
-      _W(); printf(": %s\n", pndinstalled(pnd, data)?"Yes":"No");
+      _printf("\2ID            \5: %s", pnd->id);
+      _printf("\2Installed     \5: %s", pndinstalled(pnd, data)?"Yes":"No");
       if ((data->flags & OP_QUERY)) {
-         _G(); printf("Path          ");
-         _W(); printf(": %s\n", pnd->path);
+         _printf("\2Path          \5: %s", pnd->path);
       }
-      _G(); printf("Repository    ");
-      _W(); printf(": %s\n", strlen(pnd->repository)?pnd->repository:"Foreign");
-      _G(); printf("Update        ");
-      _W(); printf(": %s\n", pnd->update?"Yes":"No");
+      _printf("\2Repository    \5: %s", strlen(pnd->repository)?pnd->repository:"Foreign");
+      _printf("\2Update        \5: %s", pnd->update?"Yes":"No");
       if ((time = getmodified(pnd))) {
-         _G(); printf("Modified      ");
-         _W(); printf(": %s ago\n", time);
+         _printf("\2Modified      \5: %s ago", time);
          free(time);
       }
       if (pnd->category) {
-         _G(); printf("Categories    ");
-         _W(); printf(": ");
+         _printf("\2Categories    \5: \7");
          for (c = pnd->category; c; c = c->next)
             printf("%s%s%s ", strlen(c->main)?c->main:"", strlen(c->sub)?" ":"", strlen(c->sub)?c->sub:"");
          puts("");
       }
       if (pnd->license) {
-         _G(); printf("Licenses      ");
-         _W(); printf(": ");
+         _printf("\2Licenses      \5: \7");
          for (l = pnd->license; l; l = l->next)
             printf("%s ", strlen(l->name)?l->name:"");
          puts("");
       }
       if ((title = strstrip((char*)pndtitle(pnd, "en_US")))) {
-         _G(); printf("Title         ");
-         _W(); printf(": %s\n", title?title:pnd->id);
+         _printf("\2Title         \5: %s", title?title:pnd->id);
          free(title);
       }
-      _G(); printf("Size          ");
-      _W(); printf(": %.2f MiB\n", (float)pnd->size/1048576);
-      _G(); printf("Version       ");
-      _W(); printf(": %s.%s.%s.%s %s\n",
+      _printf("\2Size          \5: %.2f MiB", (float)pnd->size/1048576);
+      _printf("\2Version       \5: %s.%s.%s.%s %s",
             pnd->version.major,
             pnd->version.minor,
             pnd->version.release,
             pnd->version.build,
             pnd->version.type==PND_VERSION_BETA?"Beta":
             pnd->version.type==PND_VERSION_ALPHA?"Alpha":"Release");
-      _G(); printf("Rating        ");
-      _W(); printf(": %d\n", pnd->rating);
-      _G(); printf("URL           ");
-      _W(); printf(": %s\n", pnd->url);
-      _G(); printf("MD5           ");
-      _W(); printf(": %s\n", pnd->md5);
-      _G(); printf("Author        ");
-      _W(); printf(": %s\n", pnd->author.name);
-      _G(); printf("Author page   ");
-      _W(); printf(": %s\n", pnd->author.website);
-      _G(); printf("Vendor        ");
-      _W(); printf(": %s\n", pnd->vendor);
-      _G(); printf("Icon          ");
-      _W(); printf(": %s\n", pnd->icon);
+      _printf("\2Rating        \5: %d", pnd->rating);
+      _printf("\2URL           \5: %s", pnd->url);
+      _printf("\2MD5           \5: %s", pnd->md5);
+      _printf("\2Author        \5: %s", pnd->author.name);
+      _printf("\2Author page   \5: %s", pnd->author.website);
+      _printf("\2Vendor        \5: %s", pnd->vendor);
+      _printf("\2Icon          \5: %s", pnd->icon);
       if (desc) {
          NEWLINE();
-         _B(); printf("Description   ");
-         _W(); printf(":\n%s\n", desc);
+         _printf("\3Description   \5:\n%s", desc);
       }
       if ((info = strstrip((char*)pnd->info))) {
          NEWLINE();
-         _B(); printf("Information   ");
-         _W(); printf(":\n%s\n", info);
+         _printf("\3Information   \5:\n%s", info);
          free(info);
-      }
+        }
    } else if ((data->flags & A_SEARCH) || (data->flags & OP_YAOURT)) {
       /* default style */
-      _Y(); printf("%s", pnd->category ? strlen(pnd->category->sub) ?
-                         pnd->category->sub : pnd->category->main : "nogroup");
-      _W(); printf("/");
-      _G(); printf("%s", pnd->id);
-      _W(); printf(" [");
-      _Y(); printf("%s.%s.%s.%s%s",
-            pnd->version.major,   pnd->version.minor,
-            pnd->version.release, pnd->version.build,
-            pnd->version.type==PND_VERSION_BETA?" beta":
-            pnd->version.type==PND_VERSION_ALPHA?" alpha":"");
-      _W(); printf("] ");
-      _W(); printf("["); _Y(); printf("%d", pnd->rating); _W(); printf("] ");
-      _B(); printf("%s", pndinstalled(pnd, data)?"[installed] ":"");
-      _W(); printf("%s\n", pnd->update?"--UPDATE-- ":"");
-      _W(); printf("    %s", desc?desc:"...");
+      filltitle(pnd, buffer);
+      _printf(buffer);
+      for (i = longest_title; i > strlen(buffer); --i) printf(" ");
+      _printf("\t\5[\3%.3d\5] \5[\4%s.%s.%s.%s%s\5]%s%s", pnd->rating,
+                      pnd->version.major,   pnd->version.minor,
+                      pnd->version.release, pnd->version.build,
+                      pnd->version.type==PND_VERSION_BETA?" beta":
+                      pnd->version.type==PND_VERSION_ALPHA?" alpha":"",
+                      pndinstalled(pnd, data)?" \5[\2I\5]":"",
+                      pnd->update?" \5[\1U\5]":"");
+      _printf("    \5%s\7", desc?desc:"...");
    } else {
-      _G(); printf("%s ", pnd->id);
-      _Y(); printf("%s.%s.%s.%s%s",
+      _printf("\2%s \4%s.%s.%s.%s%s\7", pnd->id,
             pnd->version.major,   pnd->version.minor,
             pnd->version.release, pnd->version.build,
             pnd->version.type==PND_VERSION_BETA?" beta":
             pnd->version.type==PND_VERSION_ALPHA?" alpha":"");
-   }  _N();
-
+   }
    if (desc)  free(desc);
 }
 
@@ -1174,9 +1081,9 @@ static int rootdialog(_USR_DATA *data)
    i = 0;
    fflush(stdout);
    NEWLINE();
-   _Y(); printf(_NO_ROOT_YET); _N();
-   _B(); for (d = data->dlist; d; d = d->next) printf("%d. %s\n", ++i, d->mount); _N();
-   _Y(); printf(_INPUT_LINE); _N();
+   printf(_NO_ROOT_YET);
+   for (d = data->dlist; d; d = d->next) printf("%d. %s\n", ++i, d->mount);
+   printf(_INPUT_LINE"\7");
    fflush(stdout);
 
    if (!fgets(response, sizeof(response), stdin))
@@ -1197,25 +1104,55 @@ static int rootdialog(_USR_DATA *data)
    return RETURN_FAIL;
 }
 
+static size_t getlongtarget(_USR_DATA *data, pndman_repository *rs)
+{
+   _USR_TARGET *t;
+   pndman_repository *r;
+   pndman_package *p;
+   char buffer[LINE_MAX];
+   size_t longest_title = 0, len;
+   if (!data->tlist && rs) {
+      for (r = rs; r; r = r->next) {
+         for (p = r->pnd; p; p = p->next) {
+            filltitle(p, buffer);
+            if ((len = strlen(buffer)) > longest_title)
+               longest_title = len;
+         }
+         if (!r->prev) break;
+      }
+      return longest_title;
+   }
+   for (t = data->tlist; t; t = t->next) {
+      filltitle(t->pnd, buffer);
+      if ((len = strlen(buffer)) > longest_title)
+         longest_title = len;
+   }
+   return longest_title;
+}
+
 /* yaourt mode dialog */
 static int yaourtdialog(_USR_DATA *data)
 {
    char response[1024], num[5];
    unsigned int i, c, match;
+   size_t longest_title;
    _USR_TARGET *t, *nt, *nlist = NULL;
 
    if (!data->tlist) return RETURN_FALSE;
 
+   /* get longest title */
+   longest_title = getlongtarget(data, NULL);
+
    /* output query */
    for (i = 0, t = data->tlist; t; t = t->next) {
-      _W(); printf("%d. ", ++i);
-      pndinfo(t->pnd, data);
+      _printf("\5%3d. \7", ++i);
+      pndinfo(t->pnd, data, longest_title);
       NEWLINE();
    }
 
    /* output question */
-   _Y(); puts(_YAOURT_DIALOG);
-   _Y(); printf(_INPUT_LINE); _N();
+   _printf(_YAOURT_DIALOG);
+   _printf(_INPUT_LINE"\7");
    fflush(stdout);
 
    /* get number */
@@ -1257,11 +1194,13 @@ static int yaourtdialog(_USR_DATA *data)
 /* Yes/No question dialog */
 static int _yesno_dialog(int noconfirm, char yn, char *fmt, va_list args)
 {
+   char buffer[LINE_MAX];
    char response[32];
 
    fflush(stdout);
-   _B(); vprintf(fmt, args); _W();
-   printf(" %s %s", yn?_YESNO:_NOYES, noconfirm?"\n":""); _N();
+   memset(buffer, 0, LINE_MAX);
+   vsnprintf(buffer, LINE_MAX-1, fmt, args);
+   _printf("%s %s %s\7", buffer, yn?_YESNO:_NOYES, noconfirm?"\n":"");
    if (noconfirm) return yn;
 
    fflush(stdout);
@@ -1295,7 +1234,8 @@ static void progressbar(float downloaded, float total_to_download)
 
    pwdt = 40; /* width */
    if (!total_to_download) {
-      _Y(); for (i = 0; i != ((unsigned int)downloaded / 1024) % pwdt; ++i) printf("."); _N();
+      for (i = 0; i != ((unsigned int)downloaded / 1024) % pwdt; ++i)
+         _printf("\4.\7");
       printf("\r");
       fflush(stdout);
       return;
@@ -1303,12 +1243,11 @@ static void progressbar(float downloaded, float total_to_download)
    fraction = (float)downloaded / (float)total_to_download;
    dots     = round(fraction * pwdt);
 
-   _Y(); printf("%3.0f%% ", fraction * 100); _W();
-   printf("["); _R();
-   for (i = 0; i != dots; ++i) printf("=");
+   _printf("\4%3.0f%% \5[\7", fraction * 100);
+   for (i = 0; i != dots; ++i) _printf("\1=\7");
    for (     ; i != pwdt; ++i) printf(" ");
-   _W(); printf("] "); _B();
-   printf("%4.2f MiB / %4.2f MiB\r", downloaded/1048576, total_to_download/1048567); _N();
+   _printf("\5] \1%-6.2f \5MiB / \2%-6.2f \5MiB\r\7",
+         downloaded/1048576, total_to_download/1048567);
    fflush(stdout);
 }
 
@@ -1327,7 +1266,7 @@ static int pre_op_dialog(_USR_DATA *data)
       if (!pndinstalled(t->pnd, data)) {
          if (checkignore(t->pnd->id, data))
             if (!yesno(data, _PND_IGNORED_FORCE, t->pnd->id)) {
-               _R(); printf(_WARNING_SKIPPING, t->pnd->id); _N();
+               _printf(_WARNING_SKIPPING, t->pnd->id);
                data->tlist = freetarget(t);
                --count; gotdialog = 1;
             }
@@ -1337,7 +1276,7 @@ static int pre_op_dialog(_USR_DATA *data)
              !(data->flags & OP_REMOVE) && !t->pnd->update &&
              !yesno(data, _PND_REINSTALL, t->pnd->id)) {
             if ((data->flags & GB_NEEDED)) {
-               _R(); printf(_WARNING_UPDATE, t->pnd->id); _N();
+               _printf(_WARNING_UPDATE, t->pnd->id);
             }
             data->tlist = freetarget(t);
             --count; gotdialog = 1;
@@ -1347,7 +1286,7 @@ static int pre_op_dialog(_USR_DATA *data)
 
    /* nothing to perform action on */
    if (!count) {
-      _Y(); puts(_NOTHING_TO_DO); _N();
+      _printf(_NOTHING_TO_DO);;
       return RETURN_FALSE;
    }
 
@@ -1355,11 +1294,10 @@ static int pre_op_dialog(_USR_DATA *data)
    if (gotdialog) NEWLINE();
 
    /* show target line */
-   _G(); printf(_TARGET_LINE); _W(); printf(" (");
-   _Y(); printf("%d", count);  _W(); printf(")  : ");
+   _printf(_TARGET_LINE"\7", count);
    for (size = 0, t = data->tlist; t; t = t->next) {
-      _Y(); printf("%s", t->pnd->id);
-      if (t->next) { _W(); printf(", "); }
+      _printf("\4%s\7", t->pnd->id);
+      if (t->next) _printf("\5, \7");
       size += t->pnd->size;
    }
    NEWLINE();
@@ -1378,19 +1316,14 @@ static int pre_op_dialog(_USR_DATA *data)
    /* print action target paths */
    if ((data->flags & OP_SYNC) && !(data->flags & A_UPGRADE))
    {
-      _Y(); printf(_TARGET_MEDIA);
-      _W(); printf(": %s\n", data->root->mount);
-      _Y(); printf(_TARGET_PATH);
-      _W(); printf(": %s\n", (data->flags & A_APPS)?"/apps":
-                             (data->flags & A_DESKTOP)?"/desktop":"/menu");
+      _printf(_TARGET_MEDIA, data->root->mount);
+      _printf(_TARGET_PATH, (data->flags & A_APPS)?"/apps":
+                            (data->flags & A_DESKTOP)?"/desktop":"/menu");
    }
    NEWLINE();
 
    /* print action size */
-   _B(); printf("%s", (data->flags & OP_REMOVE)?_REMOVE_SIZE:_DOWNLOAD_SIZE);
-   _W(); printf(": %.2f %s\n", size, unit); _N();
-
-   NEWLINE();
+   _printf((data->flags & OP_REMOVE)?_REMOVE_SIZE:_DOWNLOAD_SIZE, size, unit);
    if (!yesno(data, (data->flags & OP_REMOVE)?_CONTINUE_UNINSTALL:
                     (data->flags & A_UPGRADE)||(data->flags & OP_UPGRADE)?
                     _CONTINUE_UPGRADE:_CONTINUE_INSTALL))
@@ -1417,19 +1350,22 @@ static void syncrepos(pndman_repository *rs, _USR_DATA *data)
 
    for (r = rs; r; r = r->next) ++c;
    pndman_sync_handle handle[c]; r = rs;
-   for (c = 0; r; r = r->next) pndman_sync_request(&handle[c++],
-               (data->flags & GB_NOMERGE)?PNDMAN_SYNC_FULL:0, r);
+   for (c = 0; r; r = r->next) {
+      pndman_sync_handle_init(&handle[c]);
+      handle[c].flags        = (data->flags & GB_NOMERGE)?PNDMAN_SYNC_FULL:0;
+      handle[c].repository = r;
+      pndman_sync_handle_perform(&handle[c++]);
+   }
 
    tdl = 0; ttdl = 0;
-   while ((ret = pndman_sync() > 0)) {
+   while ((ret = pndman_curl_process() > 0)) {
       if (!(data->flags & GB_NOBAR)) progressbar(tdl, ttdl);
       r = rs; tdl = 0; ttdl = 0;
       for (c = 0; r; r = r->next) {
          tdl   += (float)handle[c].progress.download;
          ttdl  += (float)handle[c].progress.total_to_download;
-         if (handle[c].progress.done) {
-            _G(); printf(_REPO_SYNCED, handle[c].repository->name); _N();
-         }
+         if (handle[c].progress.done)
+            _printf(_REPO_SYNCED, handle[c].repository->name);
          ++c;
       }
       usleep(1000);
@@ -1437,14 +1373,12 @@ static void syncrepos(pndman_repository *rs, _USR_DATA *data)
 
    for (r = rs, c = 0; r; r = r->next) {
       if (!handle[c].progress.done) {
-         _R();
-         printf(_REPO_SYNCED_NOT, strlen(handle[c].repository->name) ?
+         _printf(_REPO_SYNCED_NOT, strlen(handle[c].repository->name) ?
                 handle[c].repository->name : handle[c].repository->url);
          if (strlen(handle[c].error))
-            puts(handle[c].error);
-         _N();
+            _printf(handle[c].error);
       }
-      pndman_sync_request_free(&handle[c]);
+      pndman_sync_handle_free(&handle[c]);
       ++c;
    }
 }
@@ -1474,7 +1408,7 @@ static int matchquery(pndman_package *p, _USR_TARGET *t, _USR_DATA *data)
 }
 
 /* search repository */
-static int searchrepo(pndman_repository *r, _USR_DATA *data)
+static int searchrepo(pndman_repository *r, _USR_DATA *data, size_t longest_title)
 {
    pndman_package *p;
    _USR_TARGET *t;
@@ -1486,7 +1420,7 @@ static int searchrepo(pndman_repository *r, _USR_DATA *data)
       for (p = r->pnd; p; p = p->next) {
          if ((data->flags & A_UPGRADE) && !p->update)
             continue;
-         pndinfo(p, data);
+         pndinfo(p, data, longest_title);
          if (p->next) NEWLINE();
       }
    else
@@ -1496,7 +1430,7 @@ static int searchrepo(pndman_repository *r, _USR_DATA *data)
                continue;
             if (matchquery(p, t, data)) {
                if (donl) NEWLINE();
-               pndinfo(p, data);
+               pndinfo(p, data, longest_title);
                donl = 1;
             }
          }
@@ -1524,15 +1458,18 @@ static int targetpnd(pndman_repository *rs, _USR_DATA *data, int up)
                if (t->pnd && (tn = addtarget(p->id, &data->tlist))) {
                   if (!ts) ts = tn;
                   tn->pnd = p;
-               } else if (!t->pnd)
+                  tn->repository = r;
+               } else if (!t->pnd) {
                   t->pnd = p;
+                  t->repository = r;
+               }
                if (!(data->flags & OP_YAOURT)) break;
             }
          if (rs == data->rlist) break; /* we only want local repository */
       }
    }
 
-   /* then strstr first */
+   /* then strstr */
    for (t = data->tlist; t && t != ts; t = t->next) {
       if (!(data->flags & OP_YAOURT) && t->pnd) continue;
       for (r = rs; r; r = r->next) {
@@ -1542,8 +1479,11 @@ static int targetpnd(pndman_repository *rs, _USR_DATA *data, int up)
                if (t->pnd && (tn = addtarget(p->id, &data->tlist))) {
                   if (!ts) ts = tn;
                   tn->pnd = p;
-               } else if (!t->pnd)
+                  tn->repository = r;
+               } else if (!t->pnd) {
                   t->pnd = p;
+                  t->repository = r;
+               }
                if (!(data->flags & OP_YAOURT)) break;
             }
          if (rs == data->rlist) break; /* we only want local repository */
@@ -1554,12 +1494,12 @@ static int targetpnd(pndman_repository *rs, _USR_DATA *data, int up)
    for (t = data->tlist; t && t != ts; t = tn) {
       tn = t->next;
       if (!t->pnd) {
-         _R(); printf(_PND_NOT_FOUND, t->id); _N();
+         _printf(_PND_NOT_FOUND, t->id);
          data->tlist = freetarget(t);
          continue;
       }
       if (up && !t->pnd->update) {
-         _R(); printf(_PND_NO_UPDATE, t->id); _N();
+         _printf(_PND_NO_UPDATE, t->id);
          data->tlist = freetarget(t);
          continue;
       }
@@ -1588,26 +1528,26 @@ static void listupdate(_USR_DATA *data)
    pndman_package *p;
    assert(data);
    for (p = data->rlist->pnd; p; p = p->next)
-      if (p->update) { _B(); printf(_PND_HAS_UPDATE, p->id); _N(); }
+      if (p->update) _printf(_PND_HAS_UPDATE, p->id);
 }
 
 /* get handle flags from milkyhelper's flags */
 static unsigned int handleflagsfromflags(unsigned int flags)
 {
    unsigned int hflags = 0;
-   if ((flags & OP_SYNC))           hflags |= PNDMAN_HANDLE_INSTALL;
-   else if ((flags & OP_REMOVE))    hflags |= PNDMAN_HANDLE_REMOVE;
-   if ((flags & GB_FORCE))          hflags |= PNDMAN_HANDLE_FORCE;
+   if ((flags & OP_SYNC))           hflags |= PNDMAN_PACKAGE_INSTALL;
+   else if ((flags & OP_REMOVE))    hflags |= PNDMAN_PACKAGE_REMOVE;
+   if ((flags & GB_FORCE))          hflags |= PNDMAN_PACKAGE_FORCE;
 
    /* don't assing destination on upgrade */
    if (!(flags & OP_UPGRADE) && !(flags & A_UPGRADE)) {
-      if ((flags & A_DESKTOP))         hflags |= PNDMAN_HANDLE_INSTALL_DESKTOP;
-      else if ((flags & A_APPS))       hflags |= PNDMAN_HANDLE_INSTALL_APPS;
-      else                             hflags |= PNDMAN_HANDLE_INSTALL_MENU; /* default to menu */
+      if ((flags & A_DESKTOP))         hflags |= PNDMAN_PACKAGE_INSTALL_DESKTOP;
+      else if ((flags & A_APPS))       hflags |= PNDMAN_PACKAGE_INSTALL_APPS;
+      else                             hflags |= PNDMAN_PACKAGE_INSTALL_MENU; /* default to menu */
    }
 
    /* create backup of old file */
-   if (flags & A_BACKUP) hflags |= PNDMAN_HANDLE_BACKUP;
+   if (flags & A_BACKUP) hflags |= PNDMAN_PACKAGE_BACKUP;
    return hflags;
 }
 
@@ -1622,18 +1562,16 @@ static const char* opstrfromflags(char done, unsigned int flags)
 }
 
 /* commit handle to repository */
-static void commithandle(_USR_DATA *data, pndman_handle *handle)
+static void commithandle(_USR_DATA *data, pndman_package_handle *handle)
 {
    assert(data && handle);
    if (!handle->progress.done && !(data->flags & OP_REMOVE)) {
-      _R(); printf(opstrfromflags(0,data->flags), handle->name);
-      if (strlen(handle->error)) puts(handle->error);
-      _N();
-   } else if (pndman_handle_commit(handle, data->rlist) != RETURN_OK) {
-      _R(); printf(opstrfromflags(0,data->flags), handle->name); _N();
-   } else {
-      _G(); printf(opstrfromflags(1,data->flags), handle->name); _N();
-   }
+      _printf(opstrfromflags(0,data->flags), handle->name);
+      if (strlen(handle->error)) _printf(handle->error);
+   } else if (pndman_package_handle_commit(handle, data->rlist) != RETURN_OK)
+      _printf(opstrfromflags(0,data->flags), handle->name);
+   else
+      _printf(opstrfromflags(1,data->flags), handle->name);
 }
 
 /* remove PND's appdata */
@@ -1655,7 +1593,8 @@ static void removeappdata(pndman_package *pnd, _USR_DATA *data)
 
    /* TODO: remove appdata */
    for (a = pnd->app; a; a = a->next) {
-      _W(); printf("%s appdata is: %s/pandora/appdata/%s, however this functionality is not yet added.\n", pnd->id, dev->mount, a->appdata); _N();
+      _printf("\5%s appdata is: %s/pandora/appdata/%s, however this functionality is not yet added.",
+            pnd->id, dev->mount, a->appdata);
    }
 }
 
@@ -1669,16 +1608,17 @@ static int targetperform(_USR_DATA *data)
    assert(data);
 
    for (t = data->tlist; t; t = t->next) ++c;
-   pndman_handle handle[c]; t = data->tlist; char done[c], start[c];
+   pndman_package_handle handle[c]; t = data->tlist; char done[c], start[c];
    for (c = 0; t; t = t->next) {
-      pndman_handle_init(strlen(t->pnd->id)?t->pnd->id:"notitle", &handle[c]);
-      handle[c].pnd     = t->pnd;
-      handle[c].device  = ((data->flags & OP_UPGRADE) || (data->flags & A_UPGRADE))?data->dlist:data->root;
-      handle[c].flags   = handleflagsfromflags(data->flags);
-      done[c]           = 0;
-      start[c]          = 0;
+      pndman_package_handle_init(strlen(t->pnd->id)?t->pnd->id:"notitle", &handle[c]);
+      handle[c].pnd        = t->pnd;
+      handle[c].device     = ((data->flags & OP_UPGRADE) || (data->flags & A_UPGRADE))?data->dlist:data->root;
+      handle[c].flags      = handleflagsfromflags(data->flags);
+      handle[c].repository = t->repository;
+      done[c]              = 0;
+      start[c]             = 0;
       if (c<_QUEUE) {
-         if (pndman_handle_perform(&handle[c]) != RETURN_OK)
+         if (pndman_package_handle_perform(&handle[c]) != RETURN_OK)
             handle[c].flags = 0;
          start[c] = 1;
       }
@@ -1687,7 +1627,7 @@ static int targetperform(_USR_DATA *data)
    }
 
    tdl = 0; /* ttdl = 0; */
-   while ((ret = pndman_download()) > 0) {
+   while ((ret = pndman_curl_process()) > 0) {
       if (!(data->flags & GB_NOBAR)) progressbar(tdl, ttdl);
       t = data->tlist; tdl = 0; /* ttdl = 0; */
       for (c = 0; t; t = t->next) {
@@ -1701,7 +1641,7 @@ static int targetperform(_USR_DATA *data)
             done[c] = 1;
          }
          if (count < _QUEUE && !start[c]) {
-            if (pndman_handle_perform(&handle[c]) != RETURN_OK)
+            if (pndman_package_handle_perform(&handle[c]) != RETURN_OK)
                handle[c].flags = 0;
             start[c] = 1;
          }
@@ -1716,11 +1656,11 @@ static int targetperform(_USR_DATA *data)
    for (c = 0; t; t = t->next) {
       /* this is for non download operations */
       if ((data->flags & OP_REMOVE)) {
-         pndman_crawl_pnd(1, handle[c].pnd);
+         pndman_package_crawl_single_package(1, handle[c].pnd);
          removeappdata(handle[c].pnd, data);
          commithandle(data, &handle[c]);
       }
-      pndman_handle_free(&handle[c]);
+      pndman_package_handle_free(&handle[c]);
       ++c;
    }
    return RETURN_OK;
@@ -1731,7 +1671,7 @@ static pndman_repository* checkremoterepo(const char *str, _USR_DATA *data)
 {
    assert(str && data);
    if (data->rlist->next) return data->rlist->next;
-   else { _R(); printf(_REPO_WONT_DO_ANYTHING, str); _N(); }
+   else _printf(_REPO_WONT_DO_ANYTHING, str);
    return NULL;
 }
 
@@ -1740,7 +1680,7 @@ static int checksyncedrepo(pndman_repository *r)
 {
    assert(r);
    for (; r && !r->timestamp; r = r->next);
-   if (!r) { _R(); printf(_NO_SYNCED_REPO); _N(); }
+   if (!r) _printf(_NO_SYNCED_REPO);
    else return RETURN_TRUE;
    return RETURN_FALSE;
 }
@@ -1774,6 +1714,7 @@ static int yaourtprocess(_USR_DATA *data)
 static int syncprocess(_USR_DATA *data)
 {
    pndman_repository *r, *rs;
+   size_t longest_title;
 
    /* check that we aren't using local repository */
    if (!(rs = checkremoterepo("sync", data)))
@@ -1782,14 +1723,15 @@ static int syncprocess(_USR_DATA *data)
    /* repository syncing is always the first operation */
    if (data->flags & A_REFRESH) {
       syncrepos(rs, data);
-      pndman_check_updates(data->rlist);
+      pndman_repository_check_updates(data->rlist);
       listupdate(data);
    }
 
    /* search */
    if (isquery(data->flags))  {
+      longest_title = getlongtarget(data, rs);
       for (r = rs; r && strlen(r->url); r = r->next)
-         searchrepo(r, data);
+         searchrepo(r, data, longest_title);
       return RETURN_OK;
    }
 
@@ -1848,8 +1790,9 @@ static int removeprocess(_USR_DATA *data)
 /* query operation logic */
 static int queryprocess(_USR_DATA *data)
 {
+   size_t longest_title = getlongtarget(data, data->rlist);
    /* lame query for now */
-   return searchrepo(data->rlist, data);
+   return searchrepo(data->rlist, data, longest_title);
 }
 
 /* crawl operation logic */
@@ -1860,11 +1803,11 @@ static int crawlprocess(_USR_DATA *data)
 
    /* crawl and count on success */
    for (d = data->dlist; d; d = d->next)
-      if ((ret = pndman_crawl(0, d, data->rlist)) != RETURN_FAIL) f += ret;
+      if ((ret = pndman_package_crawl(0, d, data->rlist)) != RETURN_FAIL) f += ret;
 
-   pndman_check_updates(data->rlist);
+   pndman_repository_check_updates(data->rlist);
    listupdate(data);
-   _G(); printf(_PNDS_CRAWLED,f); _N();
+   _printf(_PNDS_CRAWLED, f);
    return RETURN_OK;
 }
 
@@ -1879,7 +1822,7 @@ static int cleanprocess(_USR_DATA *data)
    for (d = data->dlist; d; d = d->next)
       if (strlen(d->appdata)) {
          strncpy(tmp, d->appdata, PATH_MAX-1);
-         _Y(); printf(_CLEANING_DB, tmp); _N();
+         _printf(_CLEANING_DB, tmp);
          strncat(tmp, "/local.db", PATH_MAX-1);
          if ((f = fopen(tmp,"r"))) {
             fclose(f);
@@ -1891,7 +1834,7 @@ static int cleanprocess(_USR_DATA *data)
             fclose(f);
             unlink(tmp);
          }
-         _G(); printf(_DEVICE_CLEANED, d->mount); _N();
+         _printf(_DEVICE_CLEANED, d->mount);
       }
    return RETURN_OK;
 }
@@ -1916,12 +1859,12 @@ printf(
 );
 puts("\n");
 
-   _Y(); printf("libpndman && milkyhelper\n\n");
-   _B(); printf("https://github.com/Cloudef/libpndman\n"); _W();
-   printf("~ %s\n", pndman_git_head());
-   printf("~ %s\n\n", pndman_git_commit());
-   _W(); printf("~ "); _R(); printf("Cloudef"); printf("\n");
-   _Y(); printf("<o/ "); _G(); printf("DISCO!\n"); _N();
+   _printf("\4libpndman && milkyhelper\n");
+   _printf("\3https://github.com/Cloudef/libpndman");
+   _printf("\5~ %s", pndman_git_head());
+   _printf("\5~ %s\n", pndman_git_commit());
+   _printf("\5~ \1Cloudef");
+   _printf("\4<o/ \2DISCO!");
    return RETURN_OK;
 }
 
@@ -1942,68 +1885,67 @@ static int help(_USR_DATA *data)
    data->flags &= ~OP_HELP;
    if (!hasop(data->flags)) {
       NEWLINE();
-      _G(); printf("~ Global arguments:\n");
-      _W(); printf("  -v : Verbose mode, combine to increase verbose level.\n");
-            printf("  -f : Force install even if MD5 checking fails.\n");
-            printf("  -t : Plain text mode, do not use colors.\n");
-            printf("  -r : Root device/directory.\n%s\n%s\n%s\n",
-                   "       All operations are going to be done under this device/directory.",
-                   "       You can leave argument empty, if you want to choose device from a list.",
-                   "       NOTE: Directory must be a absolute path!");
+      _printf("\2~ Global arguments:");
+      _printf("\5  -v : Verbose mode, combine to increase verbose level.");
+      _printf("\5  -f : Force install even if MD5 checking fails.");
+      _printf("\5  -t : Plain text mode, do not use colors.");
+      _printf("\5  -r : Root device/directory.\n%s\n%s\n%s",
+              "       All operations are going to be done under this device/directory.",
+              "       You can leave argument empty, if you want to choose device from a list.",
+              "       NOTE: Directory must be a absolute path!");
 
       NEWLINE();
-      _G(); printf("~ Operation arguments:\n");
-      _W(); printf("  -S : Sync/Search/Install operation.\n");
-      _W(); printf("  -U : Upgrade operation.\n");
-      _W(); printf("  -R : Removal operation.\n");
-      _W(); printf("  -Q : Local query operation.\n");
-      _W(); printf("  -P : Crawls PND's from media.\n");
-      _W(); printf("  -C : Cleans all database files.\n");
-      _W(); printf("  -V : Show version information.\n");
-      _W(); printf("  -h : Show help. Combine with operation to get more help.\n");
+      _printf("\2~ Operation arguments:");
+      _printf("\5  -S : Sync/Search/Install operation.");
+      _printf("\5  -U : Upgrade operation.");
+      _printf("\5  -R : Removal operation.");
+      _printf("\5  -Q : Local query operation.");
+      _printf("\5  -P : Crawls PND's from media.");
+      _printf("\5  -C : Cleans all database files.");
+      _printf("\5  -V : Show version information.");
+      _printf("\5  -h : Show help. Combine with operation to get more help.");
 
       NEWLINE();
-      _G(); printf("~ Other arguments:\n");
-      _W(); printf("  --root      : Alias for -r option.\n");
-      _W(); printf("  --help      : Alias for -h option.\n");
-      _W(); printf("  --version   : Alias for -V option.\n");
-      _W(); printf("  --noconfirm : Don't prompt questions.\n");
-      _W(); printf("  --nomerge   : Do full repository synchorization.\n");
-      _W(); printf("  --needed    : Don't reinstall up-to-date PND's.\n");
-      _W(); printf("  --nobar     : Don't show progress bar.\n");
-      _W(); printf("  --all       : Target everything.\n");
+      _printf("\2~ Other arguments:");
+      _printf("\5  --root      : Alias for -r option.");
+      _printf("\5  --help      : Alias for -h option.");
+      _printf("\5  --version   : Alias for -V option.");
+      _printf("\5  --noconfirm : Don't prompt questions.");
+      _printf("\5  --nomerge   : Do full repository synchorization.");
+      _printf("\5  --needed    : Don't reinstall up-to-date PND's.");
+      _printf("\5  --nobar     : Don't show progress bar.");
+      _printf("\5  --all       : Target everything.");
    } else if ((data->flags & OP_SYNC)) {
       NEWLINE();
-      _G(); printf("~ Sync arguments:\n");
-      _W(); printf("  -s : Search remote repositories, by matching id/title/description.\n");
-      _W(); printf("  -c : Search remote repositories, by matching category.\n");
-      _W(); printf("  -i : Show full information of matching PND.\n");
-      _W(); printf("  -l : List all remote PND's.\n");
-      _W(); printf("  -y : Synchorize remote repository with local database.\n");
-      _W(); printf("  -u : Upgrade PND's / Filter by upgrade status.\n");
-      _W(); printf("  -m : Use /menu as install target.\n");
-      _W(); printf("  -d : Use /desktop as install target.\n");
-      _W(); printf("  -a : Use /apps as install target.\n");
-      _W(); printf("  -b : Make backup of original file.\n");
+      _printf("\2~ Sync arguments:");
+      _printf("\5  -s : Search remote repositories, by matching id/title/description.");
+      _printf("\5  -c : Search remote repositories, by matching category.");
+      _printf("\5  -i : Show full information of matching PND.");
+      _printf("\5  -l : List all remote PND's.");
+      _printf("\5  -y : Synchorize remote repository with local database.");
+      _printf("\5  -u : Upgrade PND's / Filter by upgrade status.");
+      _printf("\5  -m : Use /menu as install target.");
+      _printf("\5  -d : Use /desktop as install target.");
+      _printf("\5  -a : Use /apps as install target.");
+      _printf("\5  -b : Make backup of original file.");
    } else if ((data->flags & OP_REMOVE)) {
       NEWLINE();
-      _G(); printf("~ Removal arguments:\n");
-      _W(); printf("  -n : Remove also appdata.\n");
+      _printf("\2~ Removal arguments:");
+      _printf("\5  -n : Remove also appdata.");
    } else if ((data->flags & OP_QUERY)) {
       NEWLINE();
-      _G(); printf("~ Query arguments:\n");
-      _W(); printf("  -s : Search local database, by matching id/title/description.\n");
-      _W(); printf("  -c : Search local database, by matching category.\n");
-      _W(); printf("  -i : Show full information of matching PND.\n");
-      _W(); printf("  -u : Filter query with upgrade status.\n");
+      _printf("\2~ Query arguments:");
+      _printf("\5  -s : Search local database, by matching id/title/description.");
+      _printf("\5  -c : Search local database, by matching category.");
+      _printf("\5  -i : Show full information of matching PND.");
+      _printf("\5  -u : Filter query with upgrade status.");
    } else if ((data->flags & OP_UPGRADE)) {
-      _G(); printf("~ Upgrade operation:\n");
-      _W(); printf("  This operation is just a alias for -Su.\n");
+      _printf("\2~ Upgrade operation:");
+      _printf("\5  This operation is just a alias for -Su.");
    } else {
-      _R(); printf("This operation has no arguments.\n");
+      _printf("\1This operation has no arguments.");
    }
 
-   _N();
    return RETURN_OK;
 }
 
@@ -2024,31 +1966,25 @@ static int sanitycheck(_USR_DATA *data)
    /* no root, ask for it */
    if (!data->no_action && !data->root)
       if (rootdialog(data) != RETURN_OK) {
-         _R(); NEWLINE(); printf(_BAD_DEVICE_SELECTED); _N();
+         NEWLINE(); _printf(_BAD_DEVICE_SELECTED);
          return RETURN_FAIL;
       }
 
    /* save root */
    if (saveroot(data) != RETURN_OK)
-   { _R(); printf(_ROOT_FAIL); _N(); }
+      _printf(_ROOT_FAIL);
 
    /* check target list, NOTE: OP_CLEAN && OP_QUERY can perform without targets */
    if (!data->tlist && needtarget(data->flags)) {
-      if (!data->no_action) {
-         _R(); printf(_NO_X_SPECIFIED, "targets"); _N();
-      } else {
-         _Y(); puts(data->no_action); _N();
-      }
+      if (!data->no_action) _printf(_NO_X_SPECIFIED, "targets");
+      else                  _printf(data->no_action);
       return RETURN_FAIL;
    } else if (!hasop(data->flags)) data->flags |= OP_YAOURT | OP_SYNC;
 
    /* check flags */
    if (!data->flags || !hasop(data->flags)) {
-      if (!data->no_action) {
-         _R(); printf(_NO_X_SPECIFIED, "operation"); _N();
-      } else {
-         _Y(); puts(data->no_action); _N();
-      }
+      if (!data->no_action) _printf(_NO_X_SPECIFIED, "operation");
+      else                  _printf(data->no_action);
       return RETURN_FAIL;
    }
 
@@ -2074,60 +2010,47 @@ static int processflags(_USR_DATA *data)
 
    if (_VERBOSE >= 1) {
       NEWLINE();
-      _B();
-      if ((data->flags & OP_YAOURT))   puts("::YAOURT");
-      if ((data->flags & OP_SYNC))     puts("::SYNC");
-      if ((data->flags & OP_UPGRADE))  puts("::UPGRADE");
-      if ((data->flags & OP_REMOVE))   puts("::REMOVE");
-      if ((data->flags & OP_QUERY))    puts("::QUERY");
-      if ((data->flags & OP_CRAWL))    puts("::CRAWL");
-      if ((data->flags & OP_CLEAN))    puts("::CLEAN");
-      if ((data->flags & OP_VERSION))  puts("::VERSION");
-      if ((data->flags & OP_HELP))     puts("::HELP");
-      _Y();
-      if ((data->flags & GB_FORCE))     puts(";;FORCE");
-      if ((data->flags & GB_NOCONFIRM)) puts(";;NOCONFIRM");
-      if ((data->flags & GB_NOMERGE))   puts(";;NOMERGE");
-      if ((data->flags & GB_NEEDED))    puts(";;NEEDED");
-      if ((data->flags & GB_NOBAR))     puts(";;NOBAR");
-      _G();
-      if ((data->flags & A_SEARCH))    puts("->SEARCH");
-      if ((data->flags & A_CATEGORY))  puts("->CATEGORY");
-      if ((data->flags & A_INFO))      puts("->INFO");
-      if ((data->flags & A_LIST))      puts("->LIST");
-      if ((data->flags & A_REFRESH))   puts("->REFRESH");
-      if ((data->flags & A_UPGRADE))   puts("->UPGRADE");
-      if ((data->flags & A_NOSAVE))    puts("->NOSAVE");
-      if ((data->flags & A_BACKUP))    puts("->BACKUP");
-      if ((data->flags & A_ALL))       puts("->ALL");
-      _R();
-      if ((data->flags & A_MENU))      puts("[MENU]");
-      if ((data->flags & A_DESKTOP))   puts("[DESKTOP]");
-      if ((data->flags & A_APPS))      puts("[APPS]");
-      _N();
+      if ((data->flags & OP_YAOURT))    _printf("\3::YAOURT");
+      if ((data->flags & OP_SYNC))      _printf("\3::SYNC");
+      if ((data->flags & OP_UPGRADE))   _printf("\3::UPGRADE");
+      if ((data->flags & OP_REMOVE))    _printf("\3::REMOVE");
+      if ((data->flags & OP_QUERY))     _printf("\3::QUERY");
+      if ((data->flags & OP_CRAWL))     _printf("\3::CRAWL");
+      if ((data->flags & OP_CLEAN))     _printf("\3::CLEAN");
+      if ((data->flags & OP_VERSION))   _printf("\3::VERSION");
+      if ((data->flags & OP_HELP))      _printf("\3::HELP");
+      if ((data->flags & GB_FORCE))     _printf("\4;;FORCE");
+      if ((data->flags & GB_NOCONFIRM)) _printf("\4;;NOCONFIRM");
+      if ((data->flags & GB_NOMERGE))   _printf("\4;;NOMERGE");
+      if ((data->flags & GB_NEEDED))    _printf("\4;;NEEDED");
+      if ((data->flags & GB_NOBAR))     _printf("\4;;NOBAR");
+      if ((data->flags & A_SEARCH))     _printf("\2->SEARCH");
+      if ((data->flags & A_CATEGORY))   _printf("\2->CATEGORY");
+      if ((data->flags & A_INFO))       _printf("\2->INFO");
+      if ((data->flags & A_LIST))       _printf("\2->LIST");
+      if ((data->flags & A_REFRESH))    _printf("\2->REFRESH");
+      if ((data->flags & A_UPGRADE))    _printf("\2->UPGRADE");
+      if ((data->flags & A_NOSAVE))     _printf("\2->NOSAVE");
+      if ((data->flags & A_BACKUP))     _printf("\2->BACKUP");
+      if ((data->flags & A_ALL))        _printf("\2->ALL");
+      if ((data->flags & A_MENU))       _printf("\1[MENU]");
+      if ((data->flags & A_DESKTOP))    _printf("\1[DESKTOP]");
+      if ((data->flags & A_APPS))       _printf("\1[APPS]");
       NEWLINE();
 
-      if (data->root) {
-         _B(); printf("Root: %s\n", data->root->mount); _N();
-      }
-
-      _R();
-      if (data->rlist) puts("\nRepositories:");
+      if (data->root)  _printf("\3Root: %s", data->root->mount);
+      if (data->rlist) _printf("\n\1Repositories:");
       for (r = data->rlist; r; r = r->next) puts(strlen(r->name) ? r->name : r->url);
-      _N();
-
-      _W();
-      if (data->tlist) puts("\nTargets:");
+      if (data->tlist) _printf("\n\4Targets:");
       for (t = data->tlist; t; t = t->next) puts(t->id);
-      _N();
       NEWLINE();
    }
 
    /* read repository information from each device */
    for (d = data->dlist; d; d = d->next)
-      for (r = data->rlist; r; r = r->next) pndman_read_from_device(r, d);
-   pndman_repository_check_local(data->rlist);  /* check for removed/bad pnds */
-   pndman_check_updates(data->rlist);           /* check for updates */
+      for (r = data->rlist; r; r = r->next) pndman_device_read_repository(r, d);
+   pndman_repository_check_local(data->rlist);     /* check for removed/bad pnds */
+   pndman_repository_check_updates(data->rlist);   /* check for updates */
 
    /* targetting everything */
    if ((data->flags & A_ALL) && data->rlist->next) {
@@ -2135,9 +2058,7 @@ static int processflags(_USR_DATA *data)
          for (p = r->pnd; p; p = p->next)
             addtarget(p->id, &data->tlist);
 
-      if (!data->tlist) {
-         _R(); printf(_NO_X_SPECIFIED, "targets"); _N();
-      }
+      if (!data->tlist) _printf(_NO_X_SPECIFIED, "targets");
    }
 
    /* logic */
@@ -2153,8 +2074,8 @@ static int processflags(_USR_DATA *data)
 
    /* commit everything to disk */
    if (!(data->flags & OP_CLEAN)) {
-      if (pndman_commit_all(data->rlist, data->root) != RETURN_OK)
-      { _R(); printf(_COMMIT_FAIL, data->root->mount); _N(); }
+      if (pndman_repository_commit_all(data->rlist, data->root) != RETURN_OK)
+         _printf(_COMMIT_FAIL, data->root->mount);
    }
 
    return ret;
@@ -2172,9 +2093,9 @@ static int processflags(_USR_DATA *data)
  * (lockfile should be also part of libpndman!?) */
 static void sigint(int sig)
 {
-   _R(); printf("Caught %s, exiting...\n",
+   _printf("\1Caught %s, exiting...",
          sig == SIGINT  ? "SIGINT"  :
-         sig == SIGTERM ? "SIGTERM" : "SIGSEGV"); _N();
+         sig == SIGTERM ? "SIGTERM" : "SIGSEGV");
 #ifdef _WIN32
    _fcloseall();
 #endif
@@ -2209,20 +2130,18 @@ int main(int argc, char **argv)
    data.bin = argv[0];
 
    /* detect devices */
-   if (!(data.dlist = pndman_device_detect(NULL))) {
-      _R(); printf(_FAILED_TO_DEVICES); _N();
-   }
+   if (!(data.dlist = pndman_device_detect(NULL)))
+      _printf(_FAILED_TO_DEVICES);
 
    /* get local repository */
-   if (!(data.rlist = pndman_repository_init())) {
-      _R(); printf(_FAILED_TO_REPOS); _N();
-   }
+   if (!(data.rlist = pndman_repository_init()))
+      _printf(_FAILED_TO_REPOS);
 
    /* do logic, if everything ok! */
    if (data.dlist && data.rlist) {
       /* read configuration */
       if ((ret = getconfigpath(path)) == RETURN_OK) ret = readconfig(path, &data);
-      if (ret != RETURN_OK) { _R(); printf(_CONFIG_READ_FAIL, path); _N(); }
+      if (ret != RETURN_OK) _printf(_CONFIG_READ_FAIL, path);
 
       /* read root */
       data.root = getroot(&data);

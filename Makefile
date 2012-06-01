@@ -69,8 +69,8 @@ else
    CFLAGS += -fPIC
 endif
 
-all: ${LIB_TARGET} test
-#all: ${LIB_TARGET} ${CLI_BIN} test
+#all: ${LIB_TARGET} test
+all: ${LIB_TARGET} ${CLI_BIN} test
 
 version:
 	@echo lib/version.h
