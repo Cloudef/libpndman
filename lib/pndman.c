@@ -188,6 +188,7 @@ void _pndman_debug_hook(const char *file, int line,
 
    /* no hook, handle it internally */
    if (!_PNDMAN_DEBUG_HOOK) {
+      if (_PNDMAN_VERBOSE < verbose_level) return;
       memset(buffer2, 0, LINE_MAX);
       snprintf(buffer2, LINE_MAX-1, DBG_FMT,
             file, line, function, buffer);
@@ -262,7 +263,7 @@ PNDMANAPI void pndman_puts(const char *buffer)
       else printf("%c", buffer[i]);
    }
    _pndman_normal();
-   printf("\n");
+   if (buffer[len-1] != '\7') printf("\n");
    fflush(stdout);
 }
 

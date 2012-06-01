@@ -59,11 +59,11 @@ void _pndman_pnd_get_path(pndman_package *pnd, char *buffer)
 static void _pndman_init_version(pndman_version *ver)
 {
    memset(ver, 0, sizeof(pndman_version));
-   strcpy(ver->major,   "0");
-   strcpy(ver->minor,   "0");
-   strcpy(ver->release, "0");
-   strcpy(ver->build,   "0");
-   ver->type = PND_VERSION_RELEASE;
+   ver->major[0]   = '0';
+   ver->minor[0]   = '0';
+   ver->release[0] = '0';
+   ver->build[0]   = '0';
+   ver->type       = PND_VERSION_RELEASE;
 }
 
 /* \brief Copy version struct */
@@ -343,7 +343,7 @@ static pndman_application* _pndman_new_application(void)
 
    /* NULL */
    memset(app, 0, sizeof(pndman_application));
-   strcpy(app->icon, PNDMAN_DEFAULT_ICON);
+   strncpy(app->icon, PNDMAN_DEFAULT_ICON, PNDMAN_PATH-1);
 
    _pndman_init_author(&app->author);
    _pndman_init_version(&app->osversion);
@@ -406,7 +406,7 @@ pndman_package* _pndman_new_pnd(void)
 
    /* NULL */
    memset(pnd, 0, sizeof(pndman_package));
-   strcpy(pnd->icon, PNDMAN_DEFAULT_ICON);
+   strncpy(pnd->icon, PNDMAN_DEFAULT_ICON, PNDMAN_PATH-1);
    _pndman_init_author(&pnd->author);
    _pndman_init_version(&pnd->version);
 

@@ -296,8 +296,9 @@ static int _pndman_curl_perform(void)
          if (handle->header.size)
             DEBUG(PNDMAN_LEVEL_CRAP, (char*)handle->header.data);
          fseek(handle->file, 0L, SEEK_SET);
-         if (fgets(buffer, sizeof(buffer)-1, handle->file))
-            puts(buffer);
+         if (fgets(buffer, sizeof(buffer)-1, handle->file) &&
+             strlen(buffer) > 5)
+            DEBUG(PNDMAN_LEVEL_CRAP, buffer);
          fseek(handle->file, 0L, SEEK_SET);
 
          if (msg->data.result != CURLE_OK) {

@@ -14,7 +14,7 @@ static pndman_repository* _pndman_repository_init()
       goto fail;
 
    memset(repo, 0, sizeof(pndman_repository));
-   strcpy(repo->version, "1.0");
+   strncpy(repo->version, "1.0", PNDMAN_VERSION-1);
    return repo;
 
 fail:
@@ -119,8 +119,9 @@ int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *repo)
    /* check first first */
    if (repo->pnd == pnd) {
       /* if no next_installed, assing next pnd in repo list */
-      if (!(repo->pnd = _pndman_free_pnd(pnd)))
-         repo->pnd = pnd->next; /* next pnd */
+      repo->pnd = pnd->next;
+      if ((p = _pndman_free_pnd(pnd)))
+         repo->pnd = p; /* assign next_installed to head */
       return RETURN_OK;
    }
 
@@ -248,12 +249,14 @@ static int _pndman_repository_check(pndman_repository *repo)
 {
    pndman_package *p, *pn;
    FILE *f;
+   char path[PNDMAN_PATH];
    int removed = 0;
    assert(repo);
 
    for (p = repo->pnd; p; p = pn) {
       pn = p->next;
-      if (!(f = fopen(p->path, "rb"))) {
+      _pndman_pnd_get_path(p, path);
+      if (!(f = fopen(path, "rb"))) {
          if (_pndman_repository_free_pnd(p, repo) == RETURN_OK)
             ++removed;
       }
@@ -271,7 +274,7 @@ PNDMANAPI pndman_repository* pndman_repository_init(void)
    pndman_repository *repo;
    repo = _pndman_repository_init();
    if (!repo) return NULL;
-   strcpy(repo->name, PNDMAN_LOCAL_DB);
+   strncpy(repo->name, PNDMAN_LOCAL_DB, PNDMAN_NAME-1);
    return repo;
 }
 

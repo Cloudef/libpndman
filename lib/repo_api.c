@@ -279,8 +279,8 @@ static pndman_handshake_packet* _pndman_api_handshake_packet(
    if (!(packet = malloc(sizeof(pndman_handshake_packet))))
       goto fail;
    memset(packet, 0, sizeof(pndman_handshake_packet));
-   strcpy(packet->username, username);
-   strcpy(packet->key, key);
+   strncpy(packet->username, username, PNDMAN_SHRT_STR-1);
+   strncpy(packet->key, key, PNDMAN_STR-1);
 
    return packet;
 
@@ -396,7 +396,7 @@ static int _pndman_api_generate_nonce(char *buffer)
       goto fail;
 
    /* cpy and free */
-   strcpy(buffer, md5);
+   strncpy(buffer, md5, PNDMAN_MD5-1);
    free(md5);
    return RETURN_OK;
 

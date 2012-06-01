@@ -43,7 +43,7 @@ fail:
 static int _get_backup_dir(char *buffer, pndman_device *device)
 {
    assert(buffer && device);
-   strcpy(buffer, device->mount);
+   strncpy(buffer, device->mount, PNDMAN_PATH-1);
    strncat(buffer, "/pandora", PNDMAN_PATH-1);
    strncat(buffer, "/backup", PNDMAN_PATH-1);
    if (access(buffer, F_OK) != 0) {
@@ -91,7 +91,7 @@ static int _pndman_backup(pndman_package *pnd, pndman_device *device)
       goto backup_fail;
 
    /* copy path */
-   strcpy(tmp, bckdir);
+   strncpy(tmp, bckdir, PNDMAN_PATH-1);
    strncat(tmp, "/", PNDMAN_PATH-1);
    strncat(tmp, pnd->id, PNDMAN_PATH-1);
    strncat(tmp, " - ", PNDMAN_PATH-1);
@@ -330,7 +330,7 @@ static int _pndman_package_handle_install(pndman_package_handle *object,
          oldp = pnd;
 
    /* temporary path used for conflict checking */
-   strcpy(tmp, relative);
+   strncpy(tmp, relative, PNDMAN_PATH-1);
    strncat(tmp, "/", PNDMAN_PATH-1);
    strncat(tmp, filename, PNDMAN_PATH-1);
 
@@ -343,7 +343,7 @@ static int _pndman_package_handle_install(pndman_package_handle *object,
          uniqueid++;
          snprintf(tmp, PNDMAN_PATH-1, "%s_%d.pnd", relative, uniqueid);
       }
-      strcpy(relative, tmp);
+      strncpy(relative, tmp, PNDMAN_PATH-1);
    } else {
       /* join filename to install path */
       strncat(relative, "/", PNDMAN_PATH-1);
@@ -384,8 +384,8 @@ static int _pndman_package_handle_install(pndman_package_handle *object,
 
    /* mark installed */
    DEBUG(PNDMAN_LEVEL_CRAP, "install mark");
-   strcpy(pnd->path, relative);
-   strcpy(pnd->mount, object->device->mount);
+   strncpy(pnd->path, relative, PNDMAN_PATH-1);
+   strncpy(pnd->mount, object->device->mount, PNDMAN_PATH-1);
    return RETURN_OK;
 
 handle_no_dev:

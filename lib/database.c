@@ -6,18 +6,8 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#ifdef __unix__
-#  define __POSIX__
-#endif
-
-#ifdef __POSIX__
-#  include <fcntl.h>
-#  define BLOCK_FD   int
-#  define BLOCK_INIT 0
-#else
-#  define BLOCK_FD   file*
-#  define BLOCK_INIT NULL
-#endif
+#define BLOCK_FD   FILE*
+#define BLOCK_INIT NULL
 
 /* \brief replace substring, precondition: s!=0, old!=0, new!=0 */
 static char *str_replace(const char *s, const char *old, const char *new)
@@ -29,7 +19,7 @@ static char *str_replace(const char *s, const char *old, const char *new)
       if (!strncmp(s, old, strlen(old))) {
          p  -= (intptr_t)cout;
          cout= realloc(cout, slen += strlen(new)-strlen(old) );
-         tmp = strcpy(p=cout+(intptr_t)p, new);
+         tmp = strncpy(p=cout+(intptr_t)p, new, slen-1);
          p  += strlen(tmp);
          s  += strlen(old);
       } else *p++=*s++;
@@ -38,28 +28,9 @@ static char *str_replace(const char *s, const char *old, const char *new)
 }
 
 /* \brief internal blocking function with timeout */
-#ifdef __POSIX__
-static int blockfile(int fd, char *path, struct flock *fl)
-#else
 static int blockfile(char *path)
-#endif
 {
    int timeout=5;
-#ifdef __POSIX__
-   /* block until file ready for use */
-   while (fcntl(fd, F_SETLK, fl) != 0) {
-      sleep(1);
-
-      /* timeout */
-      if (--timeout==0) {
-         fl->l_type = F_UNLCK;
-         fcntl(fd, F_SETLK, fl);
-         goto fail;
-      }
-   }
-   fl->l_type = F_UNLCK;
-   fcntl(fd, F_SETLK, fl);
-#else
    FILE *f;
    /* block until lock doesn't exist */
    while ((f = fopen(path, "r"))) {
@@ -74,7 +45,6 @@ static int blockfile(char *path)
       if (--timeout==0)
          goto fail;
    }
-#endif
    return RETURN_OK;
 
 fail:
@@ -85,65 +55,22 @@ fail:
 /* \brief block read until file is unlocked */
 static int readblock(char *path)
 {
-#ifdef __POSIX__
-   struct flock fl;
-   int fd;
-
-   fl.l_type   = F_WRLCK | F_RDLCK;
-   fl.l_whence = SEEK_SET;
-   fl.l_start  = 0;
-   fl.l_len    = 0;
-   fl.l_pid    = getpid();
-   if ((fd = open(path, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR)) == -1)
-      return RETURN_FAIL;
-   if (blockfile(fd, path, &fl) != RETURN_OK) {
-      close(fd);
-      return RETURN_FAIL;
-   }
-   close(fd);
-#else
    char lckpath[PNDMAN_PATH];
-   /* on non posix, do it uncertain way by creating lock file */
-   strcpy(lckpath, path);
+   strncpy(lckpath, path, PNDMAN_PATH-1);
    strncat(lckpath, ".lck", PNDMAN_PATH-1);
    if (blockfile(lckpath) != RETURN_OK)
       return RETURN_FAIL;
-#endif
    return RETURN_OK;
 }
 
 /* \brief locks file from other processes from reading and writing */
-#ifdef __POSIX__
-static int lockfile(char *path)
-#else
 static FILE* lockfile(char *path)
-#endif
 {
-#ifdef __POSIX__
-   struct flock fl;
-   int fd;
-
-   /* lock the file */
-   fl.l_type   = F_WRLCK | F_RDLCK;
-   fl.l_whence = SEEK_SET;
-   fl.l_start  = 0;
-   fl.l_len    = 0;
-   fl.l_pid    = getpid();
-   if ((fd = open(path, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR)) == -1)
-      return -1;
-
-   /* block until ready */
-   if (blockfile(fd, path, &fl) != RETURN_OK) {
-      close(fd);
-      return -1;
-   }
-   return fd;
-#else
    FILE *f;
    char lckpath[PNDMAN_PATH];
 
    /* on non posix, do it uncertain way by creating lock file */
-   strcpy(lckpath, path);
+   strncpy(lckpath, path, PNDMAN_PATH-1);
    strncat(lckpath, ".lck", PNDMAN_PATH-1);
 
    /* block until ready */
@@ -157,29 +84,17 @@ static FILE* lockfile(char *path)
    /* make sure it's created */
    fflush(f);
    return f;
-#endif
 }
 
 /* \brief unlock the file */
-#ifdef __POSIX__
-static void unlockfile(int fd)
-#else
 static void unlockfile(FILE *f, char *path)
-#endif
 {
-#ifdef __POSIX__
-   struct flock fl;
-   fl.l_type = F_UNLCK;
-   fcntl(fd, F_SETLK, &fl);
-   close(fd);
-#else
    char lckpath[PNDMAN_PATH];
    /* on non posix, do it uncertain way by creating lock file */
-   strcpy(lckpath, path);
+   strncpy(lckpath, path, PNDMAN_PATH-1);
    strncat(lckpath, ".lck", PNDMAN_PATH-1);
    fclose(f);
    unlink(lckpath);
-#endif
 }
 
 /* \brief Store local database seperately */
@@ -199,13 +114,8 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
    DEBUG(PNDMAN_LEVEL_CRAP, "-!- writing to %s", db_path);
 
    /* lock the file */
-#ifdef __POSIX__
-   if ((fd = lockfile(db_path)) == -1)
-      goto fail;
-#else
    if (!(fd = lockfile(db_path)))
       goto fail;
-#endif
 
    if (!(f = fopen(db_path, "w")))
       goto write_fail;
@@ -215,21 +125,13 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
 
    fclose(f);
 
-#ifdef __POSIX__
-   unlockfile(fd);
-#else
    unlockfile(fd, db_path);
-#endif
    return RETURN_OK;
 
 write_fail:
    DEBFAIL(WRITE_FAIL, db_path);
 fail:
-#ifdef __POSIX__
-   if (fd != -1) close(fd);
-#else
    IFDO(fclose, fd);
-#endif
    IFDO(fclose, f);
    return RETURN_FAIL;
 }
@@ -257,13 +159,8 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
    DEBUG(PNDMAN_LEVEL_CRAP, "-!- writing to %s", db_path);
 
    /* lock the file */
-#ifdef __POSIX__
-   if ((fd = lockfile(db_path)) == -1)
-      goto fail;
-#else
    if (!(fd = lockfile(db_path)))
       goto fail;
-#endif
 
    if (!(f = fopen(db_path, "w")))
       goto write_fail;
@@ -277,22 +174,13 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
    }
 
    fclose(f);
-#ifdef __POSIX__
-   unlockfile(fd);
-#else
    unlockfile(fd, db_path);
-#endif
-
    return RETURN_OK;
 
 write_fail:
    DEBFAIL(WRITE_FAIL, db_path);
 fail:
-#ifdef __POSIX__
-   if (fd != -1) close(fd);
-#else
    IFDO(fclose, fd);
-#endif
    IFDO(fclose, f);
    return RETURN_FAIL;
 }

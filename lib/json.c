@@ -211,6 +211,11 @@ static int _pndman_json_repo_header(json_t *repo_header, pndman_repository *repo
    _json_set_string(repo->api.username, json_object_get(repo_header, "username"), PNDMAN_SHRT_STR);
    _json_set_string(repo->api.key, json_object_get(repo_header, "api_key"), PNDMAN_STR);
 
+   /* save next time too */
+   if (strlen(repo->api.username) &&
+       strlen(repo->api.key))
+      repo->api.store_credentials = 1;
+
    _strip_slash(repo->updates);
    _strip_slash(repo->api.root);
 
@@ -278,10 +283,8 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       _json_set_number(&pnd->commercial,  json_object_get(package,"commercial"), int);
 
       /* update mount, if device given */
-      if (device) {
+      if (device)
          strncpy(pnd->mount, device->mount, PNDMAN_PATH-1);
-         _strip_slash(pnd->mount);
-      }
 
       _strip_slash(pnd->url);
       _strip_slash(pnd->icon);
@@ -573,7 +576,7 @@ int _pndman_json_commit(pndman_repository *r,
    pndman_previewpic *pic;
    pndman_category *c;
    pndman_license *l;
-   int found = 0;
+   int found = 0, delim = 0;
    assert(f && d && r);
 
    fprintf(f, "{"); /* start */
@@ -599,7 +602,7 @@ int _pndman_json_commit(pndman_repository *r,
       if (!r->prev && strcmp(p->mount, d->mount))
          continue;
 
-      fprintf(f, "{");
+      fprintf(f, "%s{", delim?",":""); delim = 1;
 
       /* local repository */
       if (!r->prev) {
@@ -685,7 +688,7 @@ int _pndman_json_commit(pndman_repository *r,
          _fstrf(f, c->sub, c->next ? 1 : 0);
       }
       fprintf(f, "]");
-      fprintf(f, "}%s", p->next ? "," : "");
+      fprintf(f, "}");
    }
    fprintf(f, "]}\n"); /* end */
 

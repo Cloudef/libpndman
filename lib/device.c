@@ -72,7 +72,7 @@ static void _pndman_remove_tmp_files(pndman_device *device)
    if (!dp) return;
    while (ep = readdir(dp)) {
       if (strstr(ep->d_name, ".tmp")) {
-         strcpy(tmp2, tmp);
+         strncpy(tmp2, tmp, PNDMAN_PATH-1);
          strncat(tmp2, "/", PNDMAN_PATH-1);
          strncat(tmp2, ep->d_name, PNDMAN_PATH-1);
          remove(tmp2);
@@ -80,14 +80,14 @@ static void _pndman_remove_tmp_files(pndman_device *device)
    }
    closedir(dp);
 #else
-   strcpy(tmp2, tmp);
+   strncpy(tmp2, tmp, PNDMAN_PATH-1);
    strncat(tmp2, "/*.tmp", PNDMAN_PATH-1);
 
    if ((hFind = FindFirstFile(tmp, &dp)) == INVALID_HANDLE_VALUE)
       return;
 
    do {
-      strcpy(tmp2, tmp);
+      strncpy(tmp2, tmp, PNDMAN_PATH-1);
       strncat(tmp2, "/", PNDMAN_PATH-1);
       strncat(tmp2, dp.cFileName, PNDMAN_PATH-1);
       remove(tmp2);
@@ -404,7 +404,7 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
              * test against both, / and /pandora,
              * this might be SD with rootfs install.
              * where only /pandora is owned by everyone. */
-            strcpy(pandoradir, mnt.mnt_dir);
+            strncpy(pandoradir, mnt.mnt_dir, PNDMAN_PATH-1);
             strncat(pandoradir, "/pandora", PNDMAN_PATH-1);
             if (access(pandoradir,  R_OK | W_OK) == -1 &&
                 access(mnt.mnt_dir, R_OK | W_OK) == -1)
@@ -446,7 +446,7 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
           * test against both, / and /pandora,
           * this might be SD with rootfs install.
           * where only /pandora is owned by everyone. */
-         strcpy(pandoradir, szDrive);
+         strncpy(pandoradir, szDrivei, PNDMAN_PATH-1);
          strncat(pandoradir, "/pandora", PNDMAN_PATH-1);
          if (access(pandoradir,  R_OK | W_OK) == -1 &&
              access(szDrive,     R_OK | W_OK) == -1)
@@ -502,7 +502,7 @@ void _pndman_device_get_appdata_no_create(char *appdata, pndman_device *device)
    assert(device && appdata);
    memset(appdata, 0, PNDMAN_PATH);
    if (strlen(device->appdata) && access(device->appdata, F_OK) == RETURN_OK)
-      strcpy(appdata, device->appdata);
+      strncpy(appdata, device->appdata, PNDMAN_PATH-1);
    else {
       strncpy(appdata, device->mount, PNDMAN_PATH-1);
       strncat(appdata, "/pandora", PNDMAN_PATH-1);
