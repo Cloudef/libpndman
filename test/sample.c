@@ -89,7 +89,7 @@ static void dl_history_cb(void *user_data,
 {
    puts("");
    printf("-- Download History --\n");
-   printf("%s [%zu] (%s.%s.%s.%s)\n", id, date,
+   printf("%s [%lu] (%s.%s.%s.%s)\n", id, date,
          version->major, version->minor,
          version->release, version->build);
 }
@@ -101,7 +101,7 @@ static void comment_cb(void *user_data,
 {
    puts("");
    printf("-- Comment List --\n");
-   printf("%s [%zu] (%s.%s.%s.%s) // %s: %s\n", pnd->id, date,
+   printf("%s [%lu] (%s.%s.%s.%s) // %s: %s\n", pnd->id, date,
          version->major, version->minor,
          version->release, version->build,
          username, comment);
@@ -114,7 +114,7 @@ static void archived_cb(void *user_data, pndman_package *pnd)
    puts("");
    printf("-- Archieved Packages --\n");
    for (p = pnd->next_installed; p; p = p->next_installed)
-      printf("%s [%zu] (%s.%s.%s.%s)\n", p->id, p->modified_time,
+      printf("%s [%lu] (%s.%s.%s.%s)\n", p->id, p->modified_time,
             p->version.major,   p->version.minor,
             p->version.release, p->version.build);
 }

@@ -5,7 +5,7 @@ static void comment_pull_cb(void *user_data,
       pndman_package *pnd, pndman_version *version, time_t date,
       const char *username, const char *comment)
 {
-   printf("%s [%zu] (%s.%s.%s.%s) // %s: %s\n", pnd->id, date,
+   printf("%s [%lu] (%s.%s.%s.%s) // %s: %s\n", pnd->id, date,
          version->major, version->minor, version->release, version->build,
          username, comment);
 }
@@ -13,7 +13,7 @@ static void comment_pull_cb(void *user_data,
 static void history_cb(void *user_data,
       const char *id, pndman_version *version, time_t date)
 {
-   printf("%s [%zu] (%s.%s.%s.%s)\n", id, date,
+   printf("%s [%lu] (%s.%s.%s.%s)\n", id, date,
          version->major, version->minor, version->release, version->build);
 }
 
@@ -22,7 +22,7 @@ static void archive_cb(void *user_data, pndman_package *pnd)
    pndman_package *p;
    printf("got archive data for: %s\n", pnd->id);
    for (p = pnd->next_installed; p; p = p->next_installed)
-      printf("%s [%zu] (%s.%s.%s.%s)\n", p->id, p->modified_time,
+      printf("%s [%lu] (%s.%s.%s.%s)\n", p->id, p->modified_time,
             p->version.major,   p->version.minor,
             p->version.release, p->version.build);
 }

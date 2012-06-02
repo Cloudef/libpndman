@@ -361,8 +361,8 @@ int _pndman_json_comment_pull(void *user_data,
       pndman_api_comment_callback callback,
       pndman_package *pnd, void *file)
 {
-   time_t date;
-   const char *comment, *username;
+   time_t date = 0;
+   const char *comment = NULL, *username = NULL;
    pndman_version version;
    json_t *root, *versions, *varray, *comments, *carray;
    json_error_t error;
@@ -405,8 +405,8 @@ int _pndman_json_download_history(void *user_data,
       pndman_api_history_callback callback,
       void *file)
 {
-   time_t date;
-   const char *id;
+   time_t date = 0;
+   const char *id = NULL;
    pndman_version version;
    json_t *root, *history, *packages, *parray;
    json_error_t error;
@@ -445,7 +445,7 @@ bad_json:
 /* \brief process archived pnd json data */
 int _pndman_json_archived_pnd(
       pndman_package *pnd, void *file) {
-   time_t date;
+   time_t date = 0;
    pndman_version version;
    pndman_package *p;
    json_t *root, *archived, *versions, *varray;
@@ -587,7 +587,7 @@ int _pndman_json_commit(pndman_repository *r,
    /* non local repository */
    if (r->prev) {
       _fkeyf(f, "updates", r->updates, 1);
-      fprintf(f, "\"timestamp\":%zu,", r->timestamp);
+      fprintf(f, "\"timestamp\":%lu,", r->timestamp);
       _fkeyf(f, "client_api", r->api.root, r->api.store_credentials?1:0);
       if (r->api.store_credentials) {
          _fkeyf(f, "username", r->api.username, 1);
@@ -649,7 +649,7 @@ int _pndman_json_commit(pndman_repository *r,
 
       fprintf(f, "\"size\":%zu,", p->size);
       _fkeyf(f, "md5", p->md5, 1);
-      fprintf(f, "\"modified-time\":%zu,", p->modified_time);
+      fprintf(f, "\"modified-time\":%lu,", p->modified_time);
       fprintf(f, "\"rating\":%d,", p->rating);
 
       /* author object */
