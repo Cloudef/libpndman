@@ -5,7 +5,6 @@
 #include <expat.h>
 #include <assert.h>
 #include <ctype.h>
-#include <sys/stat.h>
 
 #ifndef _WIN32
 #  include <sys/stat.h>
