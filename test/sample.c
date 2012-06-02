@@ -130,6 +130,11 @@ int main(int argc, char **argv)
    printf("NOTE: This sample touches your /tmp "
           "you can remove the /tmp/pandora safely\n\n");
 
+#if _WIN32
+   printf("This sample will not work correctly on windows\n"
+          "However, it should not crash either.\n");
+#endif
+
    /* sets verbose level of pndman,
     * this is unrelevant if you use own
     * debug hook, since the verbose level
