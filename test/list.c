@@ -9,6 +9,7 @@ int main(int argc, char **argv)
 
    pndman_set_verbose(PNDMAN_LEVEL_CRAP);
 
+#ifndef _WIN32
    device = pndman_device_add("/tmp", NULL);
    pndman_device *d2 = pndman_device_add("/media", device);
    pndman_device *d3 = pndman_device_add("/home", device);
@@ -43,6 +44,7 @@ int main(int argc, char **argv)
       device = pndman_device_free(d);
    }
 #endif
+#endif /* _WIN32 */
 
    /* maybe make more intelligence in future
     * to prevent adding same place like the first 2 here */
