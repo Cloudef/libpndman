@@ -2002,7 +2002,8 @@ static int crawlprocess(_USR_DATA *data)
    _printf(_PNDS_CRAWLED, f);
 
    /* do whatever user wants */
-   if (data->tlist && (data->flags & A_INTEGRITY)) {
+   if (data->tlist && (data->flags & A_INTEGRITY) &&
+      ((data->flags & A_INST_CRPT) || (data->flags & A_RM_CRPT))) {
       NEWLINE();
       if (!pre_op_dialog(data)) return RETURN_FAIL;
       return targetperform(data);
