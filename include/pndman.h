@@ -279,10 +279,10 @@ struct pndman_package_handle;
 struct pndman_sync_handle;
 
 /* \brief callback function definition to sync handle */
-typedef void (*pndman_package_handle_callback)(pndman_curl_code code,
-      struct pndman_package_handle *handle);
-typedef void (*pndman_sync_handle_callback)(pndman_curl_code code,
-      struct pndman_sync_handle *handle);
+typedef void (*pndman_package_handle_callback)(
+      pndman_curl_code code, struct pndman_package_handle *handle);
+typedef void (*pndman_sync_handle_callback)(
+      pndman_curl_code code, struct pndman_sync_handle *handle);
 
 /*! \brief Struct for PND transaction */
 typedef struct pndman_package_handle
@@ -296,7 +296,11 @@ typedef struct pndman_package_handle
    pndman_curl_progress progress;
    pndman_package_handle_callback callback;
 
-   /* internal request data */
+   /* assign your own data here */
+   void *user_data;
+
+   /* internal request data,
+    * you don't want to touch this. */
    void *data;
 } pndman_package_handle;
 
@@ -309,21 +313,25 @@ typedef struct pndman_sync_handle
    pndman_curl_progress progress;
    pndman_sync_handle_callback callback;
 
-   /* internal request data */
+   /* assign your own data here */
+   void *user_data;
+
+   /* internal request data,
+    * you don't want to touch this. */
    void *data;
 } pndman_sync_handle;
 
 /* \brief callback for comment pull */
-typedef void (*pndman_api_comment_callback)(
+typedef void (*pndman_api_comment_callback)(void *user_data,
       pndman_package *pnd, pndman_version *version,
       time_t date, const char *username, const char *comment);
 
 /* \brief callback for download history */
-typedef void (*pndman_api_history_callback)(
+typedef void (*pndman_api_history_callback)(void *user_data,
       const char *id, pndman_version *version, time_t download_date);
 
 /* \brief callback for archived pnd's */
-typedef void (*pndman_api_archived_callback)(
+typedef void (*pndman_api_archived_callback)(void *user_data,
       pndman_package *pnd);
 
 /* \brief get git head */
@@ -498,9 +506,12 @@ PNDMANAPI int pndman_api_comment_pnd(pndman_package *pnd,
 /* \brief get comments from pnd package,
  * comment data is retivied through
  * pndman_api_comment_callback prototype.
+ * user_data pointer is for your own data,
+ * which is passed back on callback.
  * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_api_comment_pnd_pull(pndman_package *pnd,
-      pndman_repository *repository, pndman_api_comment_callback callback);
+PNDMANAPI int pndman_api_comment_pnd_pull(void *user_data,
+      pndman_package *pnd, pndman_repository *repository,
+      pndman_api_comment_callback callback);
 
 /* \brief rate pnd package.
  * returns 0 on success, -1 on failure */
@@ -511,14 +522,17 @@ PNDMANAPI int pndman_api_rate_pnd(pndman_package *pnd,
  * history is retivied through
  * pndman_api_history_callback prototype.
  * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_api_download_history(
+PNDMANAPI int pndman_api_download_history(void *user_data,
       pndman_repository *repository, pndman_api_history_callback callback);
 
 /* \brief get archived pnds
  * archived pnd's are store in next_installed of pnd
+ * user_data pointer is for your own data,
+ * which is passed back on callback.
  * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_api_archived_pnd(pndman_package *pnd,
-      pndman_repository *repository, pndman_api_archived_callback callback);
+PNDMANAPI int pndman_api_archived_pnd(void *user_data,
+      pndman_package *pnd, pndman_repository *repository,
+      pndman_api_archived_callback callback);
 
 /* \brief perform curl operation
  * returns number of curl operations pending

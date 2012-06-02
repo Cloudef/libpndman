@@ -39,6 +39,7 @@ typedef struct pndman_comment_packet
    pndman_package *pnd;
    pndman_repository *repository;
    pndman_api_comment_callback callback;
+   void *user_data;
 } pndman_comment_packet;
 
 /* \brief rate packet */
@@ -54,6 +55,7 @@ typedef struct pndman_history_packet
 {
    pndman_repository *repository;
    pndman_api_history_callback callback;
+   void *user_data;
 } pndman_history_packet;
 
 /* \brief archived pnd packet */
@@ -62,6 +64,7 @@ typedef struct pndman_archived_packet
    pndman_package *pnd;
    pndman_repository *repository;
    pndman_api_archived_callback callback;
+   void *user_data;
 } pndman_archived_packet;
 
 /* \brief download packet */
@@ -148,7 +151,8 @@ static void _pndman_api_comment_pull_cb(pndman_curl_code code,
                &status) != RETURN_OK) && strlen(status.text)) {
       DEBFAIL(API_FAIL, status.number, status.text);
    } else {
-      _pndman_json_comment_pull(packet->callback, packet->pnd, chandle->file);
+      _pndman_json_comment_pull(packet->user_data,
+            packet->callback, packet->pnd, chandle->file);
       DEBUG(PNDMAN_LEVEL_CRAP, "comment pull: %s",
             code==PNDMAN_CURL_DONE?"OK":info);
    }
@@ -173,7 +177,8 @@ static void _pndman_api_download_history_cb(pndman_curl_code code,
                &status) != RETURN_OK) && strlen(status.text)) {
       DEBFAIL(API_FAIL, status.number, status.text);
    } else {
-      _pndman_json_download_history(packet->callback, chandle->file);
+      _pndman_json_download_history(packet->user_data,
+            packet->callback, chandle->file);
       DEBUG(PNDMAN_LEVEL_CRAP, "download history: %s",
             code==PNDMAN_CURL_DONE?"OK":info);
    }
@@ -199,7 +204,7 @@ static void _pndman_api_archived_cb(pndman_curl_code code,
       DEBFAIL(API_FAIL, status.number, status.text);
    } else {
       _pndman_json_archived_pnd(packet->pnd, chandle->file);
-      packet->callback(packet->pnd);
+      packet->callback(packet->user_data, packet->pnd);
       DEBUG(PNDMAN_LEVEL_CRAP, "pnd archive: %s",
             code==PNDMAN_CURL_DONE?"OK":info);
    }
@@ -596,7 +601,8 @@ fail:
 }
 
 /* \brief get comments for pnd */
-static int _pndman_api_comment_pnd_pull(pndman_package *pnd, pndman_repository *repository,
+static int _pndman_api_comment_pnd_pull(void *user_data,
+      pndman_package *pnd, pndman_repository *repository,
       pndman_api_comment_callback callback)
 {
    char url[PNDMAN_URL];
@@ -616,6 +622,7 @@ static int _pndman_api_comment_pnd_pull(pndman_package *pnd, pndman_repository *
 
    handle->data = packet;
    packet->callback = callback;
+   packet->user_data = user_data;
    _pndman_curl_handle_set_url(handle, url);
    _pndman_curl_handle_set_post(handle, buffer);
    return _pndman_curl_handle_perform(handle);
@@ -626,8 +633,8 @@ fail:
 }
 
 /* \brief get download history */
-static int _pndman_api_download_history(pndman_repository *repository,
-      pndman_api_history_callback callback)
+static int _pndman_api_download_history(void *user_data,
+      pndman_repository *repository, pndman_api_history_callback callback)
 {
    pndman_history_packet *packet = NULL;
    pndman_curl_handle *handle;
@@ -638,6 +645,7 @@ static int _pndman_api_download_history(pndman_repository *repository,
    if (!(packet = _pndman_api_history_packet(repository, callback)))
       goto fail;
 
+   packet->user_data = user_data;
    return _pndman_api_handshake(handle, repository,
          _pndman_api_download_history_perform, packet);
 
@@ -647,8 +655,9 @@ fail:
 }
 
 /* \brief get archived pnds */
-static int _pndman_api_archived_pnd(pndman_package *pnd,
-      pndman_repository *repository, pndman_api_archived_callback callback)
+static int _pndman_api_archived_pnd(void *user_data,
+      pndman_package *pnd, pndman_repository *repository,
+      pndman_api_archived_callback callback)
 {
    char url[PNDMAN_URL];
    char buffer[PNDMAN_POST];
@@ -667,6 +676,7 @@ static int _pndman_api_archived_pnd(pndman_package *pnd,
 
    handle->data = packet;
    packet->callback = callback;
+   packet->user_data = user_data;
    _pndman_curl_handle_set_url(handle, url);
    _pndman_curl_handle_set_post(handle, buffer);
    return _pndman_curl_handle_perform(handle);
@@ -719,8 +729,9 @@ PNDMANAPI int pndman_api_comment_pnd(pndman_package *pnd,
 }
 
 /* \brief get comments from pnd */
-PNDMANAPI int pndman_api_comment_pnd_pull(pndman_package *pnd,
-      pndman_repository *repository, pndman_api_comment_callback callback)
+PNDMANAPI int pndman_api_comment_pnd_pull(void *user_data,
+      pndman_package *pnd, pndman_repository *repository,
+      pndman_api_comment_callback callback)
 {
    CHECKUSE(pnd);
    CHECKUSE(repository);
@@ -730,8 +741,8 @@ PNDMANAPI int pndman_api_comment_pnd_pull(pndman_package *pnd,
       return RETURN_FAIL;
    }
 
-   return _pndman_api_comment_pnd_pull(pnd,
-         repository, callback);
+   return _pndman_api_comment_pnd_pull(user_data,
+         pnd, repository, callback);
 }
 
 /* \brief rate pnd */
@@ -749,7 +760,7 @@ PNDMANAPI int pndman_api_rate_pnd(pndman_package *pnd,
 }
 
 /* \brief get download history */
-PNDMANAPI int pndman_api_download_history(
+PNDMANAPI int pndman_api_download_history(void *user_data,
       pndman_repository *repository, pndman_api_history_callback callback)
 {
    CHECKUSE(repository);
@@ -759,18 +770,21 @@ PNDMANAPI int pndman_api_download_history(
       return RETURN_FAIL;
    }
 
-   return _pndman_api_download_history(repository, callback);
+   return _pndman_api_download_history(user_data,
+         repository, callback);
 }
 
 /* \brief get archived pnds
  * archived pnd's are store in next_installed */
-PNDMANAPI int pndman_api_archived_pnd(pndman_package *pnd,
-      pndman_repository *repository, pndman_api_archived_callback callback)
+PNDMANAPI int pndman_api_archived_pnd(void *user_data,
+      pndman_package *pnd, pndman_repository *repository,
+      pndman_api_archived_callback callback)
 {
    if (!repository->prev) {
       BADUSE("repository is local repository");
       return RETURN_FAIL;
    }
 
-   return _pndman_api_archived_pnd(pnd, repository, callback);
+   return _pndman_api_archived_pnd(user_data,
+         pnd, repository, callback);
 }

@@ -357,7 +357,7 @@ bad_json:
 #define json_fast_number(x,y,c)  if (x) y = (c)json_number_value(x)
 
 /* \brief process comment json data */
-int _pndman_json_comment_pull(
+int _pndman_json_comment_pull(void *user_data,
       pndman_api_comment_callback callback,
       pndman_package *pnd, void *file)
 {
@@ -386,7 +386,7 @@ int _pndman_json_comment_pull(
             json_fast_number(json_object_get(carray, "date"), date, time_t);
             json_fast_string(json_object_get(carray, "username"), username);
             json_fast_string(json_object_get(carray, "comment"), comment);
-            callback(pnd, &version, date, username, comment);
+            callback(user_data, pnd, &version, date, username, comment);
          }
       }
    } else DEBUG(PNDMAN_LEVEL_WARN, JSON_NO_V_ARRAY, "comment pull");
@@ -401,7 +401,7 @@ bad_json:
 }
 
 /* \brief process download history json data */
-int _pndman_json_download_history(
+int _pndman_json_download_history(void *user_data,
       pndman_api_history_callback callback,
       void *file)
 {
@@ -428,7 +428,7 @@ int _pndman_json_download_history(
             json_fast_string(json_object_get(parray, "id"), id);
             _json_set_version(&version, json_object_get(parray,"version"));
             json_fast_number(json_object_get(parray, "download_date"), date, time_t);
-            callback(id, &version, date);
+            callback(user_data, id, &version, date);
          }
       } else DEBUG(PNDMAN_LEVEL_WARN, JSON_NO_P_ARRAY, "download history");
    }
