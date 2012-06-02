@@ -1887,7 +1887,8 @@ static int crawlprocess(_USR_DATA *data)
       /* check that we aren't using local repository */
       if ((rs = checkremoterepo("crawl", data))) {
          for (p = data->rlist->pnd; p; p = p->next) {
-            if (!strlen(p->md5)) pndman_package_fill_md5(p);
+            if (!strlen(p->md5) || (data->flags & GB_FORCE))
+               pndman_package_fill_md5(p);
             for (r = rs; r; r = r->next)
                for (pp = r->pnd; pp; pp = pp->next) {
                   if (strcmp(p->id, pp->id)) continue;
@@ -1995,7 +1996,6 @@ static int help(_USR_DATA *data)
       NEWLINE();
       _printf("\2~ Global arguments:");
       _printf("\5  -v : Verbose mode, combine to increase verbose level.");
-      _printf("\5  -f : Force install even if MD5 checking fails.");
       _printf("\5  -t : Plain text mode, do not use colors.");
       _printf("\5  -r : Root device/directory.\n%s\n%s\n%s",
               "       All operations are going to be done under this device/directory.",
@@ -2026,6 +2026,7 @@ static int help(_USR_DATA *data)
    } else if ((data->flags & OP_SYNC)) {
       NEWLINE();
       _printf("\2~ Sync arguments:");
+      _printf("\5  -f : Force install even if MD5 checking fails.");
       _printf("\5  -s : Search remote repositories, by matching id/title/description.");
       _printf("\5  -c : Search remote repositories, by matching category.");
       _printf("\5  -i : Show full information of matching PND.");
@@ -2048,13 +2049,16 @@ static int help(_USR_DATA *data)
       _printf("\5  -i : Show full information of matching PND.");
       _printf("\5  -u : Filter query with upgrade status.");
    } else if ((data->flags & OP_UPGRADE)) {
+      NEWLINE();
       _printf("\2~ Upgrade operation:");
       _printf("\5  This operation is just a alias for -Su.");
    } else if ((data->flags & OP_CRAWL)) {
+      NEWLINE();
       _printf("\2~ Crawl operation:");
       _printf("\5  -c : Run integrity check.");
-      _printf("\5  -s : Reinstall corrupt packages. (combine with -c)");
-      _printf("\5  -d : Remove corrupt packages.    (combine with -c)");
+      _printf("\5  -f : Regenerate MD5 sums for every crawled PND. (combine with -c)");
+      _printf("\5  -s : Reinstall corrupt packages.                (combine with -c)");
+      _printf("\5  -d : Remove corrupt packages.                   (combine with -c)");
    } else {
       _printf("\1This operation has no arguments.");
    }
