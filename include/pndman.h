@@ -576,8 +576,10 @@ PNDMANAPI int pndman_api_archived_pnd(void *user_data,
  * returns number of curl operations pending, -1 on failure */
 PNDMANAPI int pndman_curl_process(void);
 
-/* eh, let it be :) */
-int pnd_do_something(const char *file);
+/* \brief function that does some internal
+ * tests to catch up bad programming..
+ * eh, let it be :) */
+PNDMANAPI int pndman_pxml_test(const char *file);
 
 #ifdef __cplusplus
 }

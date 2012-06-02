@@ -1308,8 +1308,8 @@ fail:
    return RETURN_FAIL;
 }
 
-/* \brief test function */
-PNDMANAPI int pnd_do_something(const char *pnd_file)
+/* \brief internal test function */
+PNDMANAPI int pndman_pxml_test(const char *file)
 {
    char PXML[PXML_MAX_SIZE];
    char *type, *x11; size_t size = 0;
@@ -1322,7 +1322,7 @@ PNDMANAPI int pnd_do_something(const char *pnd_file)
    pndman_association   *a;
 
    memset(PXML, 0, PXML_MAX_SIZE);
-   _fetch_pxml_from_pnd(pnd_file, PXML, &size);
+   _fetch_pxml_from_pnd(file, PXML, &size);
    test = _pndman_new_pnd();
    if (!test) return RETURN_FAIL;
 
@@ -1352,7 +1352,7 @@ PNDMANAPI int pnd_do_something(const char *pnd_file)
    if (test->version.type == PND_VERSION_BETA)        type = PND_TYPE_BETA;
    else if (test->version.type == PND_VERSION_ALPHA)  type = PND_TYPE_ALPHA;
 
-   printf(" ");
+   puts("");
    printf("ID:       %s\n", test->id);
    if (!strlen(test->id)) {
       DEBFAIL("Your code sucks, fix it!");
@@ -1361,13 +1361,13 @@ PNDMANAPI int pnd_do_something(const char *pnd_file)
    }
 
    /* titles */
-   printf("TITLE(S):");
+   printf("TITLE(S):\n");
    t = test->title;
    for (; t; t = t->next)
       printf("  %s:    %s\n", t->lang, t->string);
 
    /* descriptions */
-   printf("DESCRIPTION(S):");
+   printf("DESCRIPTION(S):\n");
    t = test->description;
    for (; t; t = t->next)
       printf("  %s:    %s\n", t->lang, t->string);
@@ -1392,13 +1392,13 @@ PNDMANAPI int pnd_do_something(const char *pnd_file)
       printf("ID:       %s\n", app->id);
 
       /* titles */
-      printf("TITLE(S):");
+      printf("TITLE(S):\n");
       t = app->title;
       for (; t; t = t->next)
          printf("  %s:    %s\n", t->lang, t->string);
 
       /* descriptions */
-      printf("DESCRIPTION(S):");
+      printf("DESCRIPTION(S):\n");
       t = app->description;
       for (; t; t = t->next)
          printf("  %s:    %s\n", t->lang, t->string);
@@ -1420,30 +1420,30 @@ PNDMANAPI int pnd_do_something(const char *pnd_file)
       printf("FREQ:     %d\n", app->frequency);
 
       /* previewpics */
-      printf("LICENSE(S):");
+      printf("LICENSE(S):\n");
       l = app->license;
       for (; l; l = l->next)
          printf("  %s, %s, %s\n", l->name, l->url, l->sourcecodeurl);
 
       /* previewpics */
-      printf("ASSOCIATION(S):");
+      printf("ASSOCIATION(S):\n");
       a = app->association;
       for (; a; a = a->next)
          printf("  %s, %s, %s\n", a->name, a->filetype, a->exec);
 
       /* categories */
-      printf("CATEGORIE(S):");
+      printf("CATEGORIE(S):\n");
       c = app->category;
       for (; c; c = c->next)
          printf("  %s, %s\n", c->main, c->sub);
 
       /* previewpics */
-      printf("PREVIEWPIC(S):");
+      printf("PREVIEWPIC(S):\n");
       p = app->previewpic;
       for (; p; p = p->next)
          printf("  %s\n", p->src);
    }
-   printf(" ");
+   puts("");
    while ((test = _pndman_free_pnd(test)));
 
    return RETURN_OK;

@@ -34,7 +34,7 @@ int main(int argc, char **argv)
          strncpy(path2, path1,      PATH_MAX-1);
          strncat(path2, ep->d_name, PATH_MAX-1);
          puts(path2);
-         pnd_do_something(path2);
+         pndman_pxml_test(path2);
          ++count;
       }
    }
@@ -49,7 +49,7 @@ int main(int argc, char **argv)
    do {
       sprintf(path2, "%s/pandora/menu/%s", cwd, dp.cFileName);
       puts(path2);
-      pnd_do_something(path2);
+      pndman_pxml_test(path2);
 
       ++count;
    } while (FindNextFile(hFind, &dp));
