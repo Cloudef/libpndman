@@ -56,7 +56,7 @@ int main(int argc, char **argv)
    puts("");
 
    pndman_repository_set_credentials(repo,
-         "use", "key", 0);
+         "user", "key", 0);
 
    if (!repo->pnd)
       err("no PND's retivied from "REPOSITORY_URL", maybe it's down?");
