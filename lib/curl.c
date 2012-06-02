@@ -137,20 +137,26 @@ fail:
 /* \brief set curl handle's url */
 void _pndman_curl_handle_set_url(pndman_curl_handle *handle, const char *url)
 {
+   assert(handle);
    if (!url) return;
+   memset(handle->url, 0, PNDMAN_URL-1);
    strncpy(handle->url, url, PNDMAN_URL-1);
 }
 
 /* \brief set curl handle's post field */
 void _pndman_curl_handle_set_post(pndman_curl_handle *handle, const char *post)
 {
+   assert(handle);
    if (!post) return;
+   memset(handle->post, 0, PNDMAN_POST-1);
    strncpy(handle->post, post, PNDMAN_POST-1);
 }
 
 /* \brief perform curl operation */
 int _pndman_curl_handle_perform(pndman_curl_handle *handle)
 {
+   assert(handle);
+
    /* no callback or data, we will fail */
    if (!handle->data || !handle->callback)
       goto no_data_or_callback;
