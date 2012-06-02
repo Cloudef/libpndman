@@ -471,6 +471,8 @@ static void _pndman_api_handshake_perform(pndman_api_request *request)
    pndman_handshake_packet *handshake = request->handshake;
    pndman_curl_handle *handle = request->handle;
 
+   memset(cnonce, 0, NONCE_LEN);
+   memset(nonce,  0, sizeof(nonce));
    if (_pndman_api_generate_nonce(cnonce) != RETURN_OK)
       goto fail;
 
