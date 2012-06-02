@@ -16,6 +16,7 @@
 #  include <limits.h>
 #  include <pwd.h>
 #  include <sys/stat.h>
+#  include <dirent.h>
 #endif
 
 /*   ____ _____ _   _ _____ ____      _    _
@@ -118,6 +119,8 @@ static void init_usrdata(_USR_DATA *data)
 #define _PND_HAS_UPDATE          _D"\1Package \4%s \1has a update."
 #define _PND_IS_CORRUPT          _D"\1Package \4%s \1is corrupt!"
 #define _PND_MAY_CORRUPT         _D"\1Package \4%s \1may be corrupt!"
+#define _REMOVING_APPDATA        _D"\2Removing appdata: \5%s"
+#define _APPDATA_FAIL            _D"\1Failed to remove appdata: \5%s"
 #define _UPGRADE_DONE            _D"\2Upgraded package:\4%s"
 #define _UPGRADE_FAIL            _D"\1Failed to upgrade \4%s"
 #define _INSTALL_DONE            _D"\2Installed package: \4%s"
@@ -1603,11 +1606,67 @@ static void commithandle(_USR_DATA *data, pndman_package_handle *handle)
       _printf(opstrfromflags(1,data->flags), handle->name);
 }
 
+/* remove directory */
+static int _rmdir(const char *dir)
+{
+   char tmp[PATH_MAX];
+#ifndef _WIN32
+   DIR *dp;
+   struct dirent *ep;
+#else
+   WIN32_FIND_DATA dp;
+   HANDLE hFind = NULL;
+#endif
+
+   memset(tmp, 0, PATH_MAX);
+#ifndef _WIN32
+   if (!(dp = opendir(dir)))
+      return -1;
+   while (ep = readdir(dp)) {
+      if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, "..")) continue;
+      if (ep->d_type == DT_DIR) {
+         strncpy(tmp, dir, PATH_MAX-1);
+         strncat(tmp, "/", PATH_MAX-1);
+         strncat(tmp, ep->d_name, PATH_MAX-1);
+         _rmdir(tmp);
+      }
+      strncpy(tmp, dir, PATH_MAX-1);
+      strncat(tmp, "/", PATH_MAX-1);
+      strncat(tmp, ep->d_name, PATH_MAX-1);
+      unlink(tmp);
+   }
+   closedir(dp);
+#else
+   strncpy(tmp, dir,  PATH_MAX-1);
+   strncat(tmp, "/*", PATH_MAX-1);
+
+   if ((hFind = FindFirstFile(tmp, &dp)) == INVALID_HANDLE_VALUE)
+      return -1;
+
+   do {
+      if (!strcmp(dp.cFileName, ".") || !strcmp(dp.cFileName, "..")) continue;
+      if (dp.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY) {
+         strncpy(tmp, dir, PATH_MAX-1);
+         strncat(tmp, "/", PATH_MAX-1);
+         strncat(tmp, dp.cFileName, PATH_MAX-1);
+         _rmdir(tmp);
+      }
+      strncpy(tmp, dir, PATH_MAX-1);
+      strncat(tmp, "/", PATH_MAX-1);
+      strncat(tmp, dp.cFileName, PATH_MAX-1);
+      unlink(tmp);
+   } while (FindNextFile(hFind, &dp));
+   FindClose(hFind);
+#endif
+   return rmdir(dir);
+}
+
 /* remove PND's appdata */
 static void removeappdata(pndman_package *pnd, _USR_DATA *data)
 {
    pndman_application *a;
    pndman_device *d, *dev;
+   char path[PATH_MAX];
    assert(pnd && data);
 
    /* user don't want this */
@@ -1620,11 +1679,14 @@ static void removeappdata(pndman_package *pnd, _USR_DATA *data)
          break;
       }
 
-   /* TODO: remove appdata */
+   /* remove appdata */
    for (a = pnd->app; a; a = a->next) {
-      _printf(_D"\4%s \1appdata is: \5%s/pandora/appdata/%s\n"
-            "    \1however this functionality is not yet added.",
-            pnd->id, dev->mount, a->appdata);
+      memset(path, 0, PATH_MAX);
+      strncpy(path, dev->mount, PATH_MAX-1);
+      strncat(path, "/pandora/appdata/", PATH_MAX-1);
+      strncat(path, a->appdata, PATH_MAX-1);
+      _printf(_REMOVING_APPDATA, path);
+      if (_rmdir(path) != 0) _printf(_APPDATA_FAIL, path);
    }
 }
 
