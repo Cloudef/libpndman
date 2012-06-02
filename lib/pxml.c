@@ -1220,7 +1220,7 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
    }
 
    /* merge pnd's to repo */
-   for (p = list; p; p = n) {
+   for (p = list, ret = 0; p; p = n) {
       pnd = _pndman_repository_new_pnd_check(p, p->path, device->mount, local);
       if (pnd) {
          /* copy needed stuff over */
@@ -1232,6 +1232,9 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
          /* stat for modified time */
          if (!pnd->modified_time && stat(path, &st) == 0)
             pnd->modified_time = st.st_mtime;
+
+         /* count again */
+         ++ret;
       }
 
       /* free */
