@@ -116,6 +116,8 @@ static void init_usrdata(_USR_DATA *data)
 #define _PND_NOT_FOUND           _D"\1Warning: No such package \4%s"
 #define _PND_NO_UPDATE           _D"\1Warning: Package \4%s, has no update."
 #define _PND_HAS_UPDATE          _D"\1Package \4%s \1has a update."
+#define _PND_IS_CORRUPT          _D"\1Package \4%s \1is corrupt!"
+#define _PND_MAY_CORRUPT         _D"\1Package \4%s \1may be corrupt!"
 #define _UPGRADE_DONE            _D"\2Upgraded package:\4%s"
 #define _UPGRADE_FAIL            _D"\1Failed to upgrade \4%s"
 #define _INSTALL_DONE            _D"\2Installed package: \4%s"
@@ -523,23 +525,26 @@ static const char* _OP_ARG = "hSURQPCV";     /* operations */
 static const char* _S_ARG  = "scilyumdab";   /* sync operation arguments */
 static const char* _R_ARG  = "n";            /* remove operation arguments */
 static const char* _Q_ARG  = "sciu";         /* query operation arguments */
+static const char* _P_ARG  = "cds";          /* crawl operation arguments */
 
 /* milkyhelper's operation flags */
 typedef enum _HELPER_FLAGS
 {
-   GB_FORCE    = 0x0000001, OP_YAOURT    = 0x0000002,
-   OP_SYNC     = 0x0000004, OP_UPGRADE   = 0x0000008,
-   OP_REMOVE   = 0x0000010, OP_QUERY     = 0x0000020,
-   OP_CLEAN    = 0x0000040, OP_VERSION   = 0x0000080,
-   OP_HELP     = 0x0000100, OP_CRAWL     = 0x0000200,
-   A_SEARCH    = 0x0000400, A_CATEGORY   = 0x0000800,
-   A_INFO      = 0x0001000, A_LIST       = 0x0002000,
-   A_REFRESH   = 0x0004000, A_UPGRADE    = 0x0008000,
-   A_MENU      = 0x0010000, A_DESKTOP    = 0x0020000,
-   A_APPS      = 0x0040000, A_NOSAVE     = 0x0080000,
-   GB_NOMERGE  = 0x0100000, GB_NOCONFIRM = 0x0200000,
-   GB_NEEDED   = 0x0400000, GB_NOBAR     = 0x0800000,
-   A_BACKUP    = 0x1000000, A_ALL        = 0x2000000,
+   GB_FORCE    = 0x00000001, OP_YAOURT    = 0x00000002,
+   OP_SYNC     = 0x00000004, OP_UPGRADE   = 0x00000008,
+   OP_REMOVE   = 0x00000010, OP_QUERY     = 0x00000020,
+   OP_CLEAN    = 0x00000040, OP_VERSION   = 0x00000080,
+   OP_HELP     = 0x00000100, OP_CRAWL     = 0x00000200,
+   A_SEARCH    = 0x00000400, A_CATEGORY   = 0x00000800,
+   A_INFO      = 0x00001000, A_LIST       = 0x00002000,
+   A_REFRESH   = 0x00004000, A_UPGRADE    = 0x00008000,
+   A_MENU      = 0x00010000, A_DESKTOP    = 0x00020000,
+   A_APPS      = 0x00040000, A_NOSAVE     = 0x00080000,
+   GB_NOMERGE  = 0x00100000, GB_NOCONFIRM = 0x00200000,
+   GB_NEEDED   = 0x00400000, GB_NOBAR     = 0x00800000,
+   A_BACKUP    = 0x01000000, A_ALL        = 0x02000000,
+   A_INTEGRITY = 0x04000000, A_RM_CRPT    = 0x08000000,
+   A_INST_CRPT = 0x10000000,
 } _HELPER_FLAGS;
 typedef _HELPER_FLAGS (*_PARSE_FUNC)(char, char*, int*, _USR_DATA*); /* function prototype for parsing flags */
 
@@ -572,9 +577,9 @@ static int needtarget(unsigned int flags)
 /* set destination */
 static unsigned int setdest(_HELPER_FLAGS dest, _USR_DATA *data)
 {
-   data->flags  = data->flags & ~A_MENU;
-   data->flags  = data->flags & ~A_DESKTOP;
-   data->flags  = data->flags & ~A_APPS;
+   data->flags = data->flags & ~A_MENU;
+   data->flags = data->flags & ~A_DESKTOP;
+   data->flags = data->flags & ~A_APPS;
    return dest;
 }
 
@@ -621,7 +626,9 @@ static _HELPER_FLAGS getsync(char c, char *arg, int *skipn, _USR_DATA *data)
 /* parse removal flags */
 static _HELPER_FLAGS getremove(char c, char *arg, int *skipn, _USR_DATA *data)
 {
-   if (c == 'n') return A_NOSAVE;
+   if (c == 'n')        return A_NOSAVE;
+   else if (c == 's')   return OP_SYNC;
+   else if (c == 'r')   return OP_REMOVE;
    return 0;
 }
 
@@ -632,6 +639,15 @@ static _HELPER_FLAGS getquery(char c, char *arg, int *skipn, _USR_DATA *data)
    else if (c == 'c')   return A_CATEGORY;
    else if (c == 'i')   return A_INFO;
    else if (c == 'u')   return A_UPGRADE;
+   return 0;
+}
+
+/* parse crawl flags */
+static _HELPER_FLAGS getcrawl(char c, char *arg, int *skipn, _USR_DATA *data)
+{
+   if (c == 'c') return A_INTEGRITY;
+   else if (c == 's') return A_INST_CRPT;
+   else if (c == 'd') return A_RM_CRPT;
    return 0;
 }
 
@@ -650,23 +666,27 @@ static void parse(_PARSE_FUNC func, const char *ref, char *arg, char *narg, int 
 /* determites which type of flags we need to parse */
 static void parsearg(char *arg, char *narg, int *skipn, _USR_DATA *data)
 {
-   if (!strcmp(arg, "-r"))             _PASSARG(_setroot);     /* argument with argument */
-   if (!strcmp(arg, "--root"))         _PASSARG(_setroot);     /* argument with argument */
-   if (!strcmp(arg, "--help"))         _PASSFLG(OP_HELP);      /* another way of calling help */
-   if (!strcmp(arg, "--version"))      _PASSFLG(OP_VERSION);   /* another way of calling version */
-   if (!strcmp(arg, "--noconfirm"))    _PASSFLG(GB_NOCONFIRM); /* noconfirm option */
-   if (!strcmp(arg, "--nomerge"))      _PASSFLG(GB_NOMERGE);   /* nomerge option */
-   if (!strcmp(arg, "--needed"))       _PASSFLG(GB_NEEDED);    /* needed option */
-   if (!strcmp(arg, "--nobar"))        _PASSFLG(GB_NOBAR);     /* nobar option */
-   if (!strcmp(arg, "--nosave"))       _PASSFLG(A_NOSAVE);     /* nosave option */
-   if (!strcmp(arg, "--backup"))       _PASSFLG(A_BACKUP);     /* backup option */
-   if (!strcmp(arg, "--all"))          _PASSFLG(A_ALL);        /* all option */
-   if (arg[0] != '-')                  _PASSTHS(_addtarget);   /* not argument */
+   if (!strcmp(arg, "-r"))                _PASSARG(_setroot);     /* argument with argument */
+   if (!strcmp(arg, "--root"))            _PASSARG(_setroot);     /* argument with argument */
+   if (!strcmp(arg, "--help"))            _PASSFLG(OP_HELP);      /* another way of calling help */
+   if (!strcmp(arg, "--version"))         _PASSFLG(OP_VERSION);   /* another way of calling version */
+   if (!strcmp(arg, "--noconfirm"))       _PASSFLG(GB_NOCONFIRM); /* noconfirm option */
+   if (!strcmp(arg, "--nomerge"))         _PASSFLG(GB_NOMERGE);   /* nomerge option */
+   if (!strcmp(arg, "--needed"))          _PASSFLG(GB_NEEDED);    /* needed option */
+   if (!strcmp(arg, "--nobar"))           _PASSFLG(GB_NOBAR);     /* nobar option */
+   if (!strcmp(arg, "--nosave"))          _PASSFLG(A_NOSAVE);     /* nosave option */
+   if (!strcmp(arg, "--backup"))          _PASSFLG(A_BACKUP);     /* backup option */
+   if (!strcmp(arg, "--all"))             _PASSFLG(A_ALL);        /* all option */
+   if (!strcmp(arg, "--check-integrity")) _PASSFLG(A_INTEGRITY);  /* -Pc alias */
+   if (!strcmp(arg, "--install-corrupt")) _PASSFLG(A_INST_CRPT);  /* reinstall corrupt pnds */
+   if (!strcmp(arg, "--remove-corrupt"))  _PASSFLG(A_RM_CRPT);    /* remove corrupt pnds */
+   if (arg[0] != '-')                     _PASSTHS(_addtarget);   /* not argument */
    parse(getglob, _G_ARG, arg, narg, skipn, data);
    if (!hasop(data->flags))         parse(getop, _OP_ARG, arg, narg, skipn, data);
    if ((data->flags & OP_SYNC))     parse(getsync, _S_ARG, arg, narg, skipn, data);
    if ((data->flags & OP_REMOVE))   parse(getremove, _R_ARG, arg, narg, skipn, data);
    if ((data->flags & OP_QUERY))    parse(getquery, _Q_ARG, arg, narg, skipn, data);
+   if ((data->flags & OP_CRAWL))    parse(getcrawl, _P_ARG, arg, narg, skipn, data);
 }
 
 /* loop for argument parsing, handles argument skipping for arguments with arguments */
@@ -1322,7 +1342,8 @@ static int pre_op_dialog(_USR_DATA *data)
    {
       _printf(_TARGET_MEDIA, data->root->mount);
       _printf(_TARGET_PATH, (data->flags & A_APPS)?"/apps":
-                            (data->flags & A_DESKTOP)?"/desktop":"/menu");
+                            (data->flags & A_DESKTOP)?"/desktop":
+                            (data->flags & A_MENU)?"/menu":"default/reinstall");
    }
    NEWLINE();
 
@@ -1542,7 +1563,7 @@ static void listupdate(_USR_DATA *data)
 }
 
 /* get handle flags from milkyhelper's flags */
-static unsigned int handleflagsfromflags(unsigned int flags)
+static unsigned int handleflagsfromflags(pndman_package *p, unsigned int flags)
 {
    unsigned int hflags = 0;
    if ((flags & OP_SYNC))           hflags |= PNDMAN_PACKAGE_INSTALL;
@@ -1553,7 +1574,12 @@ static unsigned int handleflagsfromflags(unsigned int flags)
    if (!(flags & OP_UPGRADE) && !(flags & A_UPGRADE)) {
       if ((flags & A_DESKTOP))         hflags |= PNDMAN_PACKAGE_INSTALL_DESKTOP;
       else if ((flags & A_APPS))       hflags |= PNDMAN_PACKAGE_INSTALL_APPS;
-      else                             hflags |= PNDMAN_PACKAGE_INSTALL_MENU; /* default to menu */
+      else if ((flags & A_MENU))       hflags |= PNDMAN_PACKAGE_INSTALL_MENU;
+      else if (strstr(p->path, "pandora/desktop"))
+         hflags |= PNDMAN_PACKAGE_INSTALL_DESKTOP;
+      else if (strstr(p->path, "pandora/apps"))
+         hflags |= PNDMAN_PACKAGE_INSTALL_APPS;
+      else hflags |= PNDMAN_PACKAGE_INSTALL_MENU; /* default to menu */
    }
 
    /* create backup of old file */
@@ -1623,7 +1649,7 @@ static int targetperform(_USR_DATA *data)
       pndman_package_handle_init(strlen(t->pnd->id)?t->pnd->id:"notitle", &handle[c]);
       handle[c].pnd        = t->pnd;
       handle[c].device     = ((data->flags & OP_UPGRADE) || (data->flags & A_UPGRADE))?data->dlist:data->root;
-      handle[c].flags      = handleflagsfromflags(data->flags);
+      handle[c].flags      = handleflagsfromflags(t->pnd, data->flags);
       handle[c].repository = t->repository;
       done[c]              = 0;
       start[c]             = 0;
@@ -1805,19 +1831,90 @@ static int queryprocess(_USR_DATA *data)
    return searchrepo(data->rlist, data, longest_title);
 }
 
+/* version compare, ret 0 on same, 1 on different */
+static int vercmp(pndman_version *l, pndman_version *r)
+{
+   return !(!strcmp(l->major,   r->major)   &&
+            !strcmp(l->minor,   r->minor)   &&
+            !strcmp(l->release, r->release) &&
+            !strcmp(l->build,   r->build)   &&
+            l->type == r->type);
+}
+
+/* handle corrupt package */
+static void handlecorrupt(pndman_package *p, pndman_package *rp,
+      pndman_repository *r, int certain, _USR_DATA *data)
+{
+   _USR_TARGET *t;
+
+   /* this is here so we won't output warning
+    * for same pnd again, (+ user action) */
+   if (!(t = addtarget(p->id, &data->tlist)))
+      return;
+
+   t->pnd = (data->flags & OP_SYNC)?rp:p;
+   t->repository = r;
+   _printf(certain?_PND_IS_CORRUPT:
+                   _PND_MAY_CORRUPT, p->id);
+}
+
 /* crawl operation logic */
 static int crawlprocess(_USR_DATA *data)
 {
    pndman_device *d;
+   pndman_package *p, *pp;
+   pndman_repository *r, *rs;
    int f = 0, ret = 0;
+
+   /* set operation flag if user wants to
+    * handle corrupt packages somehow. */
+   if (data->flags & A_INTEGRITY) {
+      /* remove any target medias */
+      data->flags = data->flags & ~A_MENU;
+      data->flags = data->flags & ~A_DESKTOP;
+      data->flags = data->flags & ~A_APPS;
+      freetarget_all(data->tlist); data->tlist = NULL;
+      if (data->flags & A_INST_CRPT)    data->flags |= OP_SYNC;
+      else if (data->flags & A_RM_CRPT) data->flags |= OP_REMOVE;
+   }
 
    /* crawl and count on success */
    for (d = data->dlist; d; d = d->next)
       if ((ret = pndman_package_crawl(0, d, data->rlist)) != RETURN_FAIL) f += ret;
 
+   /* check integrity */
+   if ((data->flags & A_INTEGRITY)) {
+      /* check that we aren't using local repository */
+      if ((rs = checkremoterepo("crawl", data))) {
+         for (p = data->rlist->pnd; p; p = p->next) {
+            if (!strlen(p->md5)) pndman_package_fill_md5(p);
+            for (r = rs; r; r = r->next)
+               for (pp = r->pnd; pp; pp = pp->next) {
+                  if (strcmp(p->id, pp->id)) continue;
+                  if (!strcmp(p->repository, r->name)    &&
+                      !vercmp(&p->version, &pp->version) &&
+                       strcmp(p->md5, pp->md5)) {
+                     handlecorrupt(p, pp, r, 1, data);
+                     break;
+                  } else if (!vercmp(&p->version, &pp->version) &&
+                              strcmp(p->md5, pp->md5))
+                     handlecorrupt(p, pp, r, 0, data);
+               }
+         }
+      }
+   }
+
+   /* check updates and list them */
    pndman_repository_check_updates(data->rlist);
    listupdate(data);
    _printf(_PNDS_CRAWLED, f);
+
+   /* do whatever user wants */
+   if (data->tlist && (data->flags & A_INTEGRITY)) {
+      NEWLINE();
+      if (!pre_op_dialog(data)) return RETURN_FAIL;
+      return targetperform(data);
+   }
    return RETURN_OK;
 }
 
@@ -1888,7 +1985,8 @@ static int help(_USR_DATA *data)
       printf("[-%c%s] ", _OP_ARG[i],
             _OP_ARG[i]=='S'?_S_ARG:
             _OP_ARG[i]=='R'?_R_ARG:
-            _OP_ARG[i]=='Q'?_Q_ARG:"");
+            _OP_ARG[i]=='Q'?_Q_ARG:
+            _OP_ARG[i]=='P'?_P_ARG:"");
    }
    NEWLINE();
 
@@ -1952,6 +2050,11 @@ static int help(_USR_DATA *data)
    } else if ((data->flags & OP_UPGRADE)) {
       _printf("\2~ Upgrade operation:");
       _printf("\5  This operation is just a alias for -Su.");
+   } else if ((data->flags & OP_CRAWL)) {
+      _printf("\2~ Crawl operation:");
+      _printf("\5  -c : Run integrity check.");
+      _printf("\5  -s : Reinstall corrupt packages. (combine with -c)");
+      _printf("\5  -d : Remove corrupt packages.    (combine with -c)");
    } else {
       _printf("\1This operation has no arguments.");
    }
