@@ -90,6 +90,7 @@ void _strip_slash(char *path)
  /* \brief output in red */
 inline static void _pndman_red(void)
 {
+   if (!_PNDMAN_COLOR) return;
 #ifdef __unix__
    printf("\33[31m");
 #endif
@@ -104,6 +105,7 @@ inline static void _pndman_red(void)
 /* \brief output in green */
 inline static void _pndman_green(void)
 {
+   if (!_PNDMAN_COLOR) return;
 #ifdef __unix__
    printf("\33[32m");
 #endif
@@ -118,6 +120,7 @@ inline static void _pndman_green(void)
 /* \brief output in blue */
 inline static void _pndman_blue(void)
 {
+   if (!_PNDMAN_COLOR) return;
 #ifdef __unix__
    printf("\33[34m");
 #endif
@@ -132,6 +135,7 @@ inline static void _pndman_blue(void)
 /* \brief output in yellow */
 inline static void _pndman_yellow(void)
 {
+   if (!_PNDMAN_COLOR) return;
 #ifdef __unix__
    printf("\33[33m");
 #endif
@@ -146,6 +150,7 @@ inline static void _pndman_yellow(void)
 /* \brief output in white */
 inline static void _pndman_white(void)
 {
+   if (!_PNDMAN_COLOR) return;
 #ifdef __unix__
    printf("\33[37m");
 #endif
@@ -160,6 +165,7 @@ inline static void _pndman_white(void)
 /* \brief reset output color */
 inline static void _pndman_normal(void)
 {
+   if (!_PNDMAN_COLOR) return;
 #ifdef __unix__
    printf("\33[0m");
 #endif
@@ -188,7 +194,7 @@ void _pndman_debug_hook(const char *file, int line,
 
    /* no hook, handle it internally */
    if (!_PNDMAN_DEBUG_HOOK) {
-      if (_PNDMAN_VERBOSE < verbose_level) return;
+      if (_PNDMAN_VERBOSE <= verbose_level) return;
       memset(buffer2, 0, LINE_MAX);
       snprintf(buffer2, LINE_MAX-1, DBG_FMT,
             file, line, function, buffer);
@@ -247,12 +253,6 @@ PNDMANAPI void pndman_puts(const char *buffer)
    int i;
    size_t len;
 
-   /* no color output */
-   if (!_PNDMAN_COLOR) {
-      puts(buffer);
-      return;
-   }
-
    len = strlen(buffer);
    for (i = 0; i != len; ++i) {
            if (buffer[i] == '\1') _pndman_red();
@@ -270,8 +270,8 @@ PNDMANAPI void pndman_puts(const char *buffer)
 /* \brief use this to disable internal color output */
 PNDMANAPI void pndman_set_color(int use_color)
 {
-   if (!(_PNDMAN_COLOR = use_color))
-      _pndman_normal();
+   if (!use_color) _pndman_normal();
+   _PNDMAN_COLOR = use_color;
 }
 
 /* vim: set ts=8 sw=3 tw=0 :*/
