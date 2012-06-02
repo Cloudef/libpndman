@@ -124,7 +124,7 @@ static void init_usrdata(_USR_DATA *data)
 #define _BAD_DEVICE_SELECTED     _D"\1Bad device selected, exiting.."
 #define _PND_IGNORED_FORCE       _D"\3Package \4%s \3is being ignored. Do you want to force?"
 #define _PND_REINSTALL           _D"\3Package \4%s \3is already installed, reinstall?"
-#define _NO_ROOT_YET             _D"\3Sir! You haven't selected your mount where to store packages yet."
+#define _NO_ROOT_YET             _D"\4Sir! You haven't selected your mount where to store packages yet."
 #define _WARNING_SKIPPING        _D"\1Warning: Skipping package \4%s"
 #define _WARNING_UPDATE          _D"\1Warning: \4%s \1is up-to-date, skipping."
 #define _NOTHING_TO_DO           _D"\4There is nothing to do."
@@ -966,6 +966,7 @@ static char* getmodified(pndman_package *pnd)
 static void filltitle(pndman_package *pnd, char *buffer)
 {
    memset(buffer, 0, LINE_MAX-1);
+   if (!pnd) return;
    snprintf(buffer, LINE_MAX-1, "\4%s\5/\2%s\7",
          pnd->category ? strlen(pnd->category->sub) ?
          pnd->category->sub : pnd->category->main : "nogroup",
@@ -1080,10 +1081,9 @@ static int rootdialog(_USR_DATA *data)
 
    i = 0;
    fflush(stdout);
-   NEWLINE();
-   printf(_NO_ROOT_YET);
-   for (d = data->dlist; d; d = d->next) printf("%d. %s\n", ++i, d->mount);
-   printf(_INPUT_LINE"\7");
+   _printf(_NO_ROOT_YET);
+   for (d = data->dlist; d; d = d->next) _printf("\4%d. \5%s", ++i, d->mount);
+   _printf(_INPUT_LINE"\7");
    fflush(stdout);
 
    if (!fgets(response, sizeof(response), stdin))
@@ -1410,7 +1410,7 @@ static int matchquery(pndman_package *p, _USR_TARGET *t, _USR_DATA *data)
 /* search repository */
 static int searchrepo(pndman_repository *r, _USR_DATA *data, size_t longest_title)
 {
-   pndman_package *p;
+   pndman_package *p, *pp;
    _USR_TARGET *t;
    char donl = 0;
    assert(r);
@@ -1420,8 +1420,14 @@ static int searchrepo(pndman_repository *r, _USR_DATA *data, size_t longest_titl
       for (p = r->pnd; p; p = p->next) {
          if ((data->flags & A_UPGRADE) && !p->update)
             continue;
+         for (pp = p->next_installed; pp; pp = pp->next_installed) {
+            pndinfo(pp, data, longest_title);
+            if (pp->next_installed) NEWLINE();
+            donl = 1;
+         }
          pndinfo(p, data, longest_title);
          if (p->next) NEWLINE();
+         donl = 1;
       }
    else
       for (t = data->tlist; t; t = t->next)
@@ -1436,7 +1442,7 @@ static int searchrepo(pndman_repository *r, _USR_DATA *data, size_t longest_titl
          }
 
    /* formatting */
-   if (!(data->flags & A_INFO)) NEWLINE();
+   if (!(data->flags & A_INFO) && donl) NEWLINE();
    return RETURN_OK;
 }
 
@@ -1454,7 +1460,7 @@ static int targetpnd(pndman_repository *rs, _USR_DATA *data, int up)
       for (r = rs; r; r = r->next) {
          for (p = r->pnd; p; p = p->next)
             if (!strcmp(p->id, t->id)) {
-               if (_VERBOSE >= 1) printf("A: %s %s\n", t->id, p->id);
+               if (_VERBOSE >= 1) _printf(_D"\2A: \4%s %s", t->id, p->id);
                if (t->pnd && (tn = addtarget(p->id, &data->tlist))) {
                   if (!ts) ts = tn;
                   tn->pnd = p;
@@ -1475,7 +1481,7 @@ static int targetpnd(pndman_repository *rs, _USR_DATA *data, int up)
       for (r = rs; r; r = r->next) {
          for (p = r->pnd; p; p = p->next)
             if (strstr(p->id, t->id)) {
-               if (_VERBOSE >= 1) printf("A: %s %s\n", t->id, p->id);
+               if (_VERBOSE >= 1) printf(_D"\2A: \4%s %s", t->id, p->id);
                if (t->pnd && (tn = addtarget(p->id, &data->tlist))) {
                   if (!ts) ts = tn;
                   tn->pnd = p;
@@ -1593,7 +1599,7 @@ static void removeappdata(pndman_package *pnd, _USR_DATA *data)
 
    /* TODO: remove appdata */
    for (a = pnd->app; a; a = a->next) {
-      _printf("\5%s appdata is: %s/pandora/appdata/%s, however this functionality is not yet added.",
+      _printf("\5%s appdata is: %s/pandora/appdata/%s, \3however this functionality is not yet added.",
             pnd->id, dev->mount, a->appdata);
    }
 }
@@ -1602,7 +1608,7 @@ static void removeappdata(pndman_package *pnd, _USR_DATA *data)
 static int targetperform(_USR_DATA *data)
 {
    _USR_TARGET *t;
-   float tdl, ttdl; /* total download, total total to download */
+   float tdl, ttdl = 0; /* total download, total total to download */
    int ret;
    unsigned int c = 0, count = 0;
    assert(data);
@@ -1727,6 +1733,9 @@ static int syncprocess(_USR_DATA *data)
       listupdate(data);
    }
 
+   /* everything else needs synced repositories */
+   if (!checksyncedrepo(rs)) return RETURN_FAIL;
+
    /* search */
    if (isquery(data->flags))  {
       longest_title = getlongtarget(data, rs);
@@ -1734,9 +1743,6 @@ static int syncprocess(_USR_DATA *data)
          searchrepo(r, data, longest_title);
       return RETURN_OK;
    }
-
-   /* everything else needs synced repositories */
-   if (!checksyncedrepo(rs)) return RETURN_FAIL;
 
    /* upgrade without no targets given, add all targets that needs update */
    if ((data->flags & A_UPGRADE) && !data->tlist)
