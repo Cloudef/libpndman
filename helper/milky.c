@@ -1499,7 +1499,7 @@ static int targetpnd(pndman_repository *rs, _USR_DATA *data, int up)
       for (r = rs; r; r = r->next) {
          for (p = r->pnd; p; p = p->next)
             if (strstr(p->id, t->id)) {
-               if (_VERBOSE >= 1) printf(_D"\2A: \4%s %s", t->id, p->id);
+               if (_VERBOSE >= 1) _printf(_D"\2A: \4%s %s", t->id, p->id);
                if (t->pnd && (tn = addtarget(p->id, &data->tlist))) {
                   if (!ts) ts = tn;
                   tn->pnd = p;
