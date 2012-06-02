@@ -429,7 +429,7 @@ int _pndman_copy_pnd(pndman_package *pnd, pndman_package *src)
       memcpy(pnd->id,      src->id,       PNDMAN_ID);
    if (strlen(src->url))
       memcpy(pnd->info,    src->info,     PNDMAN_STR);
-   if (strlen(pnd->md5))
+   if (strlen(src->md5))
       memcpy(pnd->md5,     src->md5,      PNDMAN_MD5);
    if (strlen(src->url))
       memcpy(pnd->url,     src->url,      PNDMAN_STR);
