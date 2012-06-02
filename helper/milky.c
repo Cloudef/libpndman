@@ -218,15 +218,6 @@ static int strupcmp(const char *hay, const char *needle)
    return RETURN_FALSE;
 }
 
-/* \brief strncmp strings in uppercase, NOTE: returns 0 on found else 1 (so you don't mess up with strcmp) */
-static int strnupcmp(const char *hay, const char *needle, size_t len)
-{
-   size_t i;
-   for (i = 0; i != len; ++i)
-      if (toupper(hay[i]) != toupper(needle[i])) return RETURN_TRUE;
-   return RETURN_FALSE;
-}
-
 /* \brief strstr strings in uppercase */
 static char* strupstr(const char *hay, const char *needle)
 {
@@ -447,6 +438,7 @@ static _USR_IGNORE* addignore(char *id, _USR_IGNORE **list)
    return new;
 }
 
+#if 0 /* not used */
 /* free ignored package from list */
 static _USR_IGNORE* freeignore(_USR_IGNORE *t)
 {
@@ -458,6 +450,7 @@ static _USR_IGNORE* freeignore(_USR_IGNORE *t)
    free(t);                                  /* free this */
    return f == t ? NULL : f;                 /* return first or null */
 }
+#endif
 
 /* free all ignored packages */
 static void freeignore_all(_USR_IGNORE *t)
