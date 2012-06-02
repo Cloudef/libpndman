@@ -889,6 +889,7 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
    pndman_license *l, *lc;
    pndman_previewpic *p, *pc;
    pndman_category *c, *cc;
+   pndman_application *a;
 
    /* no need to do anything */
    if (!pnd->app)
@@ -972,6 +973,11 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
          }
       }
    }
+
+   /* check for null appdata */
+   for (a = pnd->app; a; a = a->next)
+      if (!strlen(a->appdata))
+         strncpy(a->appdata, a->id, PNDMAN_PATH-1);
 }
 
 /* \brief Process crawl */
