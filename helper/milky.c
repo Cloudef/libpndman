@@ -77,18 +77,22 @@ typedef struct _USR_DATA
    pndman_repository *rlist;
    _USR_TARGET       *tlist;
    _USR_IGNORE       *ilist;
-   char *no_action;
+   char              *no_action;
+   char              syslc[6];
 } _USR_DATA;
 
 /* initialize _USR_DATA struct */
 static void init_usrdata(_USR_DATA *data)
 {
+   char *LANG;
    assert(data);
-   data->flags = 0;
-   data->dlist = NULL; data->root  = NULL;
-   data->rlist = NULL; data->tlist = NULL;
-   data->ilist = NULL; data->bin   = "milky";
-   data->no_action = NULL;
+   memset(data, 0, sizeof(_USR_DATA));
+   data->bin = "milky";
+   strncpy(data->syslc, "en_US", 5);
+   if (!(LANG = getenv("LC_ALL"))  || !strlen(LANG))
+      if (!(LANG = getenv("LANG")) || !strlen(LANG))
+         return;
+   strncpy(data->syslc, LANG, 5);
 }
 
 /*  ____ _____ ____  ___ _   _  ____ ____
@@ -387,10 +391,8 @@ static _USR_TARGET* addtarget(const char *id, _USR_TARGET **list)
    if (*list) new->prev = t;
    else     { new->prev = NULL; *list = new; }
 
-   memset(new->id, 0, PND_ID);
+   memset(new, 0, sizeof(_USR_TARGET));
    strncpy(new->id, id, PND_ID-1);
-   new->pnd  = NULL;
-   new->next = NULL;
    return new;
 }
 
@@ -438,9 +440,8 @@ static _USR_IGNORE* addignore(char *id, _USR_IGNORE **list)
    if (*list) new->prev = t;
    else     { new->prev = NULL; *list = new; }
 
-   memset(new->id, 0, PND_ID);
+   memset(new, 0, sizeof(_USR_IGNORE));
    strncpy(new->id, id, PND_ID-1);
-   new->next = NULL;
    return new;
 }
 
@@ -984,7 +985,8 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data, size_t longest_title)
    assert(pnd);
 
    /* get description */
-   desc  = strstrip((char*)pnddesc(pnd, "en_US"));
+   if (!(desc = strstrip((char*)pnddesc(pnd, data->syslc))))
+      desc = strstrip((char*)pnddesc(pnd, "en_US")); /* fallback locale */
 
    /* strip description to maximum length */
    if (!(data->flags & A_INFO) && desc && strlen(desc) > DESCRIPTION_LENGTH)
@@ -1020,7 +1022,9 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data, size_t longest_title)
             printf("%s ", strlen(l->name)?l->name:"");
          puts("");
       }
-      if ((title = strstrip((char*)pndtitle(pnd, "en_US")))) {
+      if (!(title = strstrip((char*)pndtitle(pnd, data->syslc))))
+         title = strstrip((char*)pndtitle(pnd, "en_US")); /* fallback locale */
+      if (title) {
          _printf("\2Title         \5: %s", title?title:pnd->id);
          free(title);
       }
@@ -2044,6 +2048,7 @@ static int processflags(_USR_DATA *data)
       if ((data->flags & A_APPS))       _printf("\1[APPS]");
       NEWLINE();
 
+      _printf("\1LANG: %s", data->syslc);
       if (data->root)  _printf("\3Root: %s", data->root->mount);
       if (data->rlist) _printf("\n\1Repositories:");
       for (r = data->rlist; r; r = r->next) puts(strlen(r->name) ? r->name : r->url);
