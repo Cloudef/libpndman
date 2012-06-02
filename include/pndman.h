@@ -459,51 +459,69 @@ PNDMANAPI const char* pndman_package_fill_md5(
 PNDMANAPI int pndman_package_crawl(int full_crawl,
       pndman_device *device, pndman_repository *local);
 
-/* \brief update pnd_package by crawling it locally
+/* \brief update pnd_package struct
+ * by crawling it locally.
  * returns 0 on success, -1 on failuer */
 PNDMANAPI int pndman_package_crawl_single_package(int full_crawl,
       pndman_package *pnd);
 
-/* \brief initialize new pndman handle
+/* \brief initialize package handle
+ * NOTE: you should pass reference to
+ * declared pndman_sync_handle variable
  * returns 0 on success, -1 on failure */
 PNDMANAPI int pndman_package_handle_init(const char *name,
       pndman_package_handle *handle);
 
-/* \brief perform action with the handle
+/* \brief perform action with the package handle
+ * NOTE: this will start a internal curl operation,
+ * if flag PNDMAN_PACKAGE_INSTALL is used.
+ * see pndman_curl_process, function for what
+ * to do next.
  * returns 0 on success, -1 on failure */
 PNDMANAPI int pndman_package_handle_perform(
       pndman_package_handle *handle);
 
 /* \brief commit handle to local database
+ * NOTE: this won't write anything to disc,
+ * see pndman_repository_commit_all function.
  * returns 0 on success, -1 on failure */
 PNDMANAPI int pndman_package_handle_commit(
       pndman_package_handle *handle, pndman_repository *local);
 
-/* \brief free/cancel handle */
+/* \brief free/cancel handle
+ * NOTE: this function should be safe
+ * to call from anywhere. */
 PNDMANAPI void pndman_package_handle_free(
       pndman_package_handle *handle);
 
-/* \brief create new synchorization handle
+/* \brief initialize synchorization handle.
+ * NOTE: you should pass reference to
+ * declared pndman_sync_handle variable.
  * returns 0 on success, -1 on failure */
 PNDMANAPI int pndman_sync_handle_init(
       pndman_sync_handle *handle);
 
-/* \brief perform synchorization
+/* \brief perform synchorization.
+ * NOTE: this starts a internal curl operation,
+ * see pndman_curl_process, function for what
+ * to do next.
  * return 0 on success, -1 on failure */
 PNDMANAPI int pndman_sync_handle_perform(
       pndman_sync_handle *handle);
 
-/* \brief free/cancel synchorization */
+/* \brief free/cancel synchorization
+ * NOTE: this function should be safe
+ * to call from anywhere. */
 PNDMANAPI void pndman_sync_handle_free(
       pndman_sync_handle *handle);
 
-/* \brief comment on pnd package,
+/* \brief comment on package at repository,
  * you need to pass the repository as well.
  * returns 0 on success, -1 on failure */
 PNDMANAPI int pndman_api_comment_pnd(pndman_package *pnd,
       pndman_repository *repository, const char *comment);
 
-/* \brief get comments from pnd package,
+/* \brief get comments from package on repository,
  * comment data is retivied through
  * pndman_api_comment_callback prototype.
  * user_data pointer is for your own data,
@@ -513,7 +531,7 @@ PNDMANAPI int pndman_api_comment_pnd_pull(void *user_data,
       pndman_package *pnd, pndman_repository *repository,
       pndman_api_comment_callback callback);
 
-/* \brief rate pnd package.
+/* \brief rate the package on repository.
  * returns 0 on success, -1 on failure */
 PNDMANAPI int pndman_api_rate_pnd(pndman_package *pnd,
       pndman_repository *repository, int rate);
@@ -525,7 +543,7 @@ PNDMANAPI int pndman_api_rate_pnd(pndman_package *pnd,
 PNDMANAPI int pndman_api_download_history(void *user_data,
       pndman_repository *repository, pndman_api_history_callback callback);
 
-/* \brief get archived pnds
+/* \brief get archived packages from repository
  * archived pnd's are store in next_installed of pnd
  * user_data pointer is for your own data,
  * which is passed back on callback.
@@ -535,9 +553,27 @@ PNDMANAPI int pndman_api_archived_pnd(void *user_data,
       pndman_api_archived_callback callback);
 
 /* \brief perform curl operation
- * returns number of curl operations pending
+ * This is the magic functions that make,
+ * everything that needs network transmission work.
  *
- * NOTE: this replaces pndman_sync(); pndman_download(); */
+ * When you have performed either sync or package handle,
+ * you should call this function until it returns either
+ * failure or zero.
+ *
+ * WARNING: It is important that this function runs
+ * until it returns either failure or zero,
+ * since it does many internal checks and freeups,
+ * when needed or requested.
+ *
+ * If you have GUI application, you can simply run it all the time
+ * either on main loop or by intervals.
+ * The function won't do anything if it doesn't need to do anything.
+ *
+ * For CLI application, you should run it inside while loop
+ * for example until it returns what's expected above.
+ *
+ * NOTE: this replaces pndman_sync(); pndman_download();
+ * returns number of curl operations pending, -1 on failure */
 PNDMANAPI int pndman_curl_process(void);
 
 /* eh, let it be :) */
