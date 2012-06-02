@@ -851,7 +851,7 @@ static int mkconfig(const char *path)
    fputs("\n# Queue limit for concurrent downloads\n", f);
    fputs("# queue 5\n", f);
    fputs("\n# milkshake's repo is enabled by default\n", f);
-   fputs("repository \"http://repo.openpandora.org/includes/get_data.php\"\n",f );
+   fputs("repository \"http://repo.openpandora.org/client/masterlist\"\n",f );
    fclose(f);
    return RETURN_OK;
 }
