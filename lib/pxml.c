@@ -1199,8 +1199,12 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
 {
    pndman_package *list, *p, *n = NULL, *pnd;
    char path[PNDMAN_PATH];
-   struct stat st;
    int ret;
+#ifdef _WIN32
+   /* TODO: win32 implementation */
+#else
+   struct stat st;
+#endif
    assert(device && local);
 
    list = _pndman_new_pnd();
@@ -1226,11 +1230,17 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
          if (!full) _pndman_package_free_applications(pnd);
          _pndman_copy_pnd(pnd, p);
          strncpy(pnd->mount, device->mount, PNDMAN_PATH-1);
-         _pndman_pnd_get_path(pnd, path);
 
          /* stat for modified time */
-         if (!pnd->modified_time && stat(path, &st) == 0)
-            pnd->modified_time = st.st_mtime;
+         if (!pnd->modified_time) {
+            _pndman_pnd_get_path(pnd, path);
+#ifdef _WIN32
+            /* TODO: win32 implementation */
+#else
+            if (stat(path, &st) == 0)
+               pnd->modified_time = st.st_mtime;
+#endif
+         }
 
          /* count again */
          ++ret;
@@ -1263,7 +1273,11 @@ PNDMANAPI int pndman_package_crawl_single_package(int full_crawl,
 {
    char path[PNDMAN_PATH];
    pxml_parse data;
+#ifdef _WIN32
+   /* TODO: win32 implementation */
+#else
    struct stat st;
+#endif
    CHECKUSE(pnd);
 
    data.pnd   = pnd;
@@ -1280,8 +1294,12 @@ PNDMANAPI int pndman_package_crawl_single_package(int full_crawl,
    /* stat for modified time */
    if (!pnd->modified_time) {
       _pndman_pnd_get_path(pnd, path);
+#ifdef _WIN32
+      /* TODO: win32 implementation */
+#else
       if (stat(path, &st) == 0)
          pnd->modified_time = st.st_mtime;
+#endif
    }
 
    return RETURN_OK;

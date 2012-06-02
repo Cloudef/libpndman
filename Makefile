@@ -36,16 +36,16 @@ VERSION = `git rev-parse HEAD`
 COMMIT  = `git log --format=%B -n 1 HEAD | head -n1`
 
 ifeq (${DEBUG},1)
-   CFLAGS := -std=c99 -D_GNU_SOURCE -Wall -O0 -g -Wno-switch -Wno-parentheses
+   CFLAGS := -std=gnu99 -D_GNU_SOURCE -Wall -O0 -g -Wno-switch -Wno-parentheses
 else
-   CFLAGS := -std=c99 -D_GNU_SOURCE -Wall -O2 -s -fomit-frame-pointer -Wno-switch -Wno-parentheses
+   CFLAGS := -std=gnu99 -D_GNU_SOURCE -Wall -O2 -s -fomit-frame-pointer -Wno-switch -Wno-parentheses
 endif
 
 ifeq (${MINGW},1)
    X86 = 1
    CFLAGS += -DCURL_STATICLIB
    LIB_LIBS += -static -static-libgcc
-   LIB_LIBS += -lssl -lcrypto -lz -lws2_32 -lmingw32 -lkernel32 -lgdi32
+   LIB_LIBS += -lssl -lcrypto -lz -lidn -lws2_32 -lmingw32 -lkernel32 -lgdi32
    EXT=.exe
 else
    ifeq (${STATIC_BIN},0)

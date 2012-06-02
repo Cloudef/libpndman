@@ -239,10 +239,10 @@ static void _pndman_device_free_all(pndman_device *device)
    }
 }
 
+#ifdef __linux__
 /* \brief Stat absolute path, and fill the device struct according to that. */
 static pndman_device* _pndman_device_add_absolute(const char *path, pndman_device *device)
 {
-#ifdef __linux__
    struct stat st;
    struct statvfs fs;
 
@@ -276,10 +276,10 @@ static pndman_device* _pndman_device_add_absolute(const char *path, pndman_devic
    device->available = fs.f_bavail * fs.f_bsize;
    _strip_slash(device->device);
    _strip_slash(device->mount);
-#endif
 
    return device;
 }
+#endif
 
 /* \brief
  * Check that path is a correct device, mount point or absolute path,
@@ -341,7 +341,7 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
 
    memset(szName, 0, PNDMAN_PATH);
    if (!QueryDosDevice(szDrive, szName, PNDMAN_PATH-1)) {
-      DEBFAIL(ROOT_FAIL, szName);
+      DEBFAIL(DEVICE_ROOT_FAIL, szName);
       return NULL;
    }
 
@@ -446,7 +446,7 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
           * test against both, / and /pandora,
           * this might be SD with rootfs install.
           * where only /pandora is owned by everyone. */
-         strncpy(pandoradir, szDrivei, PNDMAN_PATH-1);
+         strncpy(pandoradir, szDrive, PNDMAN_PATH-1);
          strncat(pandoradir, "/pandora", PNDMAN_PATH-1);
          if (access(pandoradir,  R_OK | W_OK) == -1 &&
              access(szDrive,     R_OK | W_OK) == -1)

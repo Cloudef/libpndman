@@ -237,13 +237,6 @@ static char* strupstr(const char *hay, const char *needle)
    return NULL;
 }
 
-/* strip leading slash from path */
-static void stripslash(char *path)
-{
-   if (path[strlen(path)-1] == '/' || path[strlen(path)-1] == '\\')
-      path[strlen(path)-1] = '\0';
-}
-
 /* strip string from bad characters */
 static char* strstrip(char *src)
 {
@@ -264,6 +257,16 @@ static char* strstrip(char *src)
    return dst;
 }
 
+/* pandora && win32 doesn't use below functions */
+#if !defined(PANDORA) && !defined(_WIN32)
+/* strip leading slash from path */
+static void stripslash(char *path)
+{
+   if (path[strlen(path)-1] == '/' || path[strlen(path)-1] == '\\')
+      path[strlen(path)-1] = '\0';
+}
+
+
 /* mkdir if it doesn't exist */
 static int mkdirexist(const char *path)
 {
@@ -278,6 +281,7 @@ static int mkdirexist(const char *path)
    }
    return RETURN_OK;
 }
+#endif
 
 /* get $XDG_CONFIG_HOME/$CFG_DIR path, (create if doesn't exist) */
 static int getcfgpath(char *path)
@@ -1607,7 +1611,7 @@ static void commithandle(_USR_DATA *data, pndman_package_handle *handle)
 }
 
 /* remove directory */
-static int _rmdir(const char *dir)
+static int _rmdir_(const char *dir)
 {
    char tmp[PATH_MAX];
 #ifndef _WIN32
@@ -1628,7 +1632,7 @@ static int _rmdir(const char *dir)
          strncpy(tmp, dir, PATH_MAX-1);
          strncat(tmp, "/", PATH_MAX-1);
          strncat(tmp, ep->d_name, PATH_MAX-1);
-         _rmdir(tmp);
+         _rmdir_(tmp);
       }
       strncpy(tmp, dir, PATH_MAX-1);
       strncat(tmp, "/", PATH_MAX-1);
@@ -1649,7 +1653,7 @@ static int _rmdir(const char *dir)
          strncpy(tmp, dir, PATH_MAX-1);
          strncat(tmp, "/", PATH_MAX-1);
          strncat(tmp, dp.cFileName, PATH_MAX-1);
-         _rmdir(tmp);
+         _rmdir_(tmp);
       }
       strncpy(tmp, dir, PATH_MAX-1);
       strncat(tmp, "/", PATH_MAX-1);
@@ -1686,7 +1690,7 @@ static void removeappdata(pndman_package *pnd, _USR_DATA *data)
       strncat(path, "/pandora/appdata/", PATH_MAX-1);
       strncat(path, a->appdata, PATH_MAX-1);
       _printf(_REMOVING_APPDATA, path);
-      if (_rmdir(path) != 0) _printf(_APPDATA_FAIL, path);
+      if (_rmdir_(path) != 0) _printf(_APPDATA_FAIL, path);
    }
 }
 
