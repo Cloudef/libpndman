@@ -1078,8 +1078,8 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data, size_t longest_title)
       _printf(buffer);
       for (i = longest_title; i > strlen(buffer); --i) printf(" ");
       _printf("\t\t%s%s\5[\3%d\5]\5[\4%s.%s.%s.%s%s\5]",
-                      pndinstalled(pnd, data)?"\5[\2I\5]":"",
-                      pnd->update?"\5[\1U\5]":"", pnd->rating,
+                      pndinstalled(pnd, data)?"\5[\2I\5]":"   ",
+                      pnd->update?"\5[\1U\5]":"   ", pnd->rating,
                       pnd->version.major,   pnd->version.minor,
                       pnd->version.release, pnd->version.build,
                       pnd->version.type==PND_VERSION_BETA?" beta":
@@ -1625,7 +1625,7 @@ static int _rmdir_(const char *dir)
    memset(tmp, 0, PATH_MAX);
 #ifndef _WIN32
    if (!(dp = opendir(dir)))
-      return -1;
+      return 0;
    while (ep = readdir(dp)) {
       if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, "..")) continue;
       if (ep->d_type == DT_DIR) {
@@ -1645,7 +1645,7 @@ static int _rmdir_(const char *dir)
    strncat(tmp, "/*", PATH_MAX-1);
 
    if ((hFind = FindFirstFile(tmp, &dp)) == INVALID_HANDLE_VALUE)
-      return -1;
+      return 0;
 
    do {
       if (!strcmp(dp.cFileName, ".") || !strcmp(dp.cFileName, "..")) continue;
