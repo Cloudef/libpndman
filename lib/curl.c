@@ -79,12 +79,12 @@ static int _pndman_curl_progress_func(pndman_curl_handle *handle,
    return 0;
 }
 
-/* INTERNAL API */
-
-/* \brief free curl handle */
-void _pndman_curl_handle_free(pndman_curl_handle *handle)
+static void _pndman_curl_handle_free_real(pndman_curl_handle *handle)
 {
    assert(handle);
+
+   /* we were not requested to do this */
+   if (!handle->free) return;
 
    /* cleanup */
    if (handle->curl) {
@@ -98,6 +98,19 @@ void _pndman_curl_handle_free(pndman_curl_handle *handle)
 
    /* free handle */
    free(handle);
+}
+
+/* INTERNAL API */
+
+/* \brief free curl handle */
+void _pndman_curl_handle_free(pndman_curl_handle *handle)
+{
+   assert(handle);
+   handle->free = 1;
+
+   /* can we free immediatly? */
+   if (!_pndman_curlm)
+      _pndman_curl_handle_free_real(handle);
 }
 
 /* \brief create new curl handle */
@@ -242,10 +255,9 @@ fail:
 /* \brief query cleanup */
 static void _pndman_curl_cleanup(void)
 {
-   if (_pndman_curlm) {
-      curl_multi_cleanup(_pndman_curlm);
-      curl_global_cleanup();
-   }
+   if (!_pndman_curlm) return;
+   curl_multi_cleanup(_pndman_curlm);
+   curl_global_cleanup();
    _pndman_curlm = NULL;
 }
 
@@ -338,6 +350,10 @@ static int _pndman_curl_perform(void)
             fflush(handle->file);
             handle->callback(PNDMAN_CURL_DONE, handle->data, NULL, handle);
          }
+
+         /* free handle if requested */
+         if (handle->free)
+            _pndman_curl_handle_free_real(handle);
 
          /* if we got messages and still running == 0
           * make it back 1, since callbacks might restart

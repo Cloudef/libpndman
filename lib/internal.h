@@ -128,6 +128,7 @@ typedef struct pndman_curl_handle
    char url[PNDMAN_URL];
    char post[PNDMAN_POST];
    char path[PNDMAN_PATH];
+   char free;
 } pndman_curl_handle;
 
 /* \brief client api return error code */
