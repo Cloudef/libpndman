@@ -1622,7 +1622,8 @@ static void removeappdata(pndman_package *pnd, _USR_DATA *data)
 
    /* TODO: remove appdata */
    for (a = pnd->app; a; a = a->next) {
-      _printf("\5%s appdata is: %s/pandora/appdata/%s, \3however this functionality is not yet added.",
+      _printf(_D"\4%s \1appdata is: \5%s/pandora/appdata/%s\n"
+            "    \1however this functionality is not yet added.",
             pnd->id, dev->mount, a->appdata);
    }
 }
