@@ -18,7 +18,8 @@
 /* sample  debug hook, use this to catch error
  * messages etc */
 static void sample_hook(const char *file, int line,
-      const char *function, int verbose_level, const char *str)
+      const char *function, int verbose_level,
+      const char *str)
 {
    /* lets ignore all PNDMAN_LEVEL_CRAP
     * messages */
@@ -27,7 +28,8 @@ static void sample_hook(const char *file, int line,
 }
 
 /* callback for our sync handles */
-static void sync_done_cb(pndman_curl_code code, pndman_sync_handle *handle)
+static void sync_done_cb(pndman_curl_code code,
+      pndman_sync_handle *handle)
 {
    /* this callback also gives
     * progression data, but we
@@ -57,7 +59,8 @@ static void sync_done_cb(pndman_curl_code code, pndman_sync_handle *handle)
 }
 
 /* callback for our package handles */
-static void pkg_done_cb(pndman_curl_code code, pndman_package_handle *handle)
+static void pkg_done_cb(pndman_curl_code code,
+      pndman_package_handle *handle)
 {
    /* this callback also gives
     * progression data, but we
@@ -87,7 +90,8 @@ static void dl_history_cb(void *user_data,
    puts("");
    printf("-- Download History --\n");
    printf("%s [%zu] (%s.%s.%s.%s)\n", id, date,
-         version->major, version->minor, version->release, version->build);
+         version->major, version->minor,
+         version->release, version->build);
 }
 
 /* callback for our comment list api call */
@@ -98,7 +102,8 @@ static void comment_cb(void *user_data,
    puts("");
    printf("-- Comment List --\n");
    printf("%s [%zu] (%s.%s.%s.%s) // %s: %s\n", pnd->id, date,
-         version->major, version->minor, version->release, version->build,
+         version->major, version->minor,
+         version->release, version->build,
          username, comment);
 }
 
