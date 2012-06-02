@@ -1186,7 +1186,7 @@ static int _pndman_crawl_to_pnd_list(pndman_device *device, pndman_package *list
    ret += _pndman_crawl_dir(tmp, "pandora/menu", list);
 
    /* apps */
-   ret += _pndman_crawl_dir(tmp, "pnadora/apps", list);
+   ret += _pndman_crawl_dir(tmp, "pandora/apps", list);
 
    return ret;
 
