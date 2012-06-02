@@ -939,14 +939,18 @@ pndman_category* _pndman_application_new_category(pndman_application *app)
 const char* pndman_package_fill_md5(pndman_package *pnd)
 {
    char *md5;
+   char path[PNDMAN_PATH];
    if (!pnd) return NULL;
 
+   /* get full path */
+   _pndman_pnd_get_path(pnd, path);
+
    /* get md5 */
-   if (!(md5 = _pndman_md5(pnd->path)))
+   if (!(md5 = _pndman_md5(path)))
       return NULL;
 
    /* store it in pnd */
-   strncpy(pnd->md5, md5, PNDMAN_MD5);
+   strncpy(pnd->md5, md5, PNDMAN_MD5-1);
    free(md5);
 
    return pnd->md5;
