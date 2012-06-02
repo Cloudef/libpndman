@@ -119,7 +119,7 @@ static void init_usrdata(_USR_DATA *data)
 #define _PND_HAS_UPDATE          _D"\1Package \4%s \1has a update."
 #define _PND_IS_CORRUPT          _D"\1Package \4%s \1is corrupt!"
 #define _PND_MAY_CORRUPT         _D"\1Package \4%s \1may be corrupt!"
-#define _REMOVING_APPDATA        _D"\2Removing appdata: \5%s"
+#define _REMOVED_APPDATA         _D"\2Removed appdata: \5%s"
 #define _APPDATA_FAIL            _D"\1Failed to remove appdata: \5%s"
 #define _UPGRADE_DONE            _D"\2Upgraded package:\4%s"
 #define _UPGRADE_FAIL            _D"\1Failed to upgrade \4%s"
@@ -524,7 +524,7 @@ static const char* _G_ARG  = "vftr";         /* global arguments */
 static const char* _OP_ARG = "hSURQPCV";     /* operations */
 static const char* _S_ARG  = "scilyumdab";   /* sync operation arguments */
 static const char* _R_ARG  = "n";            /* remove operation arguments */
-static const char* _Q_ARG  = "sciu";         /* query operation arguments */
+static const char* _Q_ARG  = "scilu";        /* query operation arguments */
 static const char* _P_ARG  = "cds";          /* crawl operation arguments */
 
 /* milkyhelper's operation flags */
@@ -639,6 +639,7 @@ static _HELPER_FLAGS getquery(char c, char *arg, int *skipn, _USR_DATA *data)
    else if (c == 'c')   return A_CATEGORY;
    else if (c == 'i')   return A_INFO;
    else if (c == 'u')   return A_UPGRADE;
+   else if (c == 'l')   return A_LIST;
    return 0;
 }
 
@@ -947,6 +948,15 @@ static const char* pnddesc(pndman_package *pnd, const char *lang)
    return NULL;
 }
 
+/* get application title */
+static const char* apptitle(pndman_application *app, const char *lang)
+{
+   pndman_translated *t;
+   for (t = app->title; t; t = t->next)
+      if (!strupcmp(t->lang, lang)) return strlen(t->string)?t->string:NULL;
+   return NULL;
+}
+
 /* get human readable modified time */
 static char* getmodified(pndman_package *pnd)
 {
@@ -999,6 +1009,7 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data, size_t longest_title)
 {
    pndman_category *c;
    pndman_license  *l;
+   pndman_application *a;
    char *title, *desc, *info, *time;
    char buffer[LINE_MAX];
    size_t i;
@@ -1045,7 +1056,7 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data, size_t longest_title)
       if (!(title = strstrip((char*)pndtitle(pnd, data->syslc))))
          title = strstrip((char*)pndtitle(pnd, "en_US")); /* fallback locale */
       if (title) {
-         _printf("\2Title         \5: %s", title?title:pnd->id);
+         _printf("\2Title         \5: %s", strlen(title)?title:pnd->id);
          free(title);
       }
       _printf("\2Size          \5: %.2f MiB", (float)pnd->size/1048576);
@@ -1072,7 +1083,8 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data, size_t longest_title)
          _printf("\3Information   \5:\n%s", info);
          free(info);
         }
-   } else if ((data->flags & A_SEARCH) || (data->flags & OP_YAOURT)) {
+   } else if (((data->flags & A_SEARCH) && !(data->flags & A_LIST))
+          || (data->flags & OP_YAOURT)) {
       /* default style */
       filltitle(pnd, buffer);
       _printf(buffer);
@@ -1091,8 +1103,25 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data, size_t longest_title)
             pnd->version.release, pnd->version.build,
             pnd->version.type==PND_VERSION_BETA?" beta":
             pnd->version.type==PND_VERSION_ALPHA?" alpha":"");
+      if ((data->flags & OP_QUERY) && (data->flags & A_LIST)) {
+         pndman_package_crawl_single_package(1, pnd);
+         if (!(title = strstrip((char*)pndtitle(pnd, data->syslc))))
+            title = strstrip((char*)pndtitle(pnd, "en_US")); /* fallback locale */
+         _printf("\n"
+                 "\1─┬─\4%s", (title && strlen(title))?title:pnd->id);
+         _printf("\1 └─%s─\5%s/%s", pnd->app?"┬":"",
+               pnd->mount, pnd->path);
+         if (title) free(title);
+         for (a = pnd->app; a; a = a->next) {
+            if (!(title = strstrip((char*)apptitle(a, data->syslc))))
+               title = strstrip((char*)apptitle(a, data->syslc));
+            _printf("   \1%s─┬─\5%s", a->next?"├":"└", (title && strlen(title))?title:a->id);
+            _printf("   \1%s └─\5%s/pandora/appdata/%s", a->next?"│":" ", pnd->mount, a->appdata);
+            if (title) free(title);
+         }
+      }
    }
-   if (desc)  free(desc);
+   if (desc) free(desc);
 }
 
 /* dialog for asking root device where to perform operations on, when no such device isn't available yet */
@@ -1625,7 +1654,7 @@ static int _rmdir_(const char *dir)
    memset(tmp, 0, PATH_MAX);
 #ifndef _WIN32
    if (!(dp = opendir(dir)))
-      return 0;
+      return 1;
    while (ep = readdir(dp)) {
       if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, "..")) continue;
       if (ep->d_type == DT_DIR) {
@@ -1645,7 +1674,7 @@ static int _rmdir_(const char *dir)
    strncat(tmp, "/*", PATH_MAX-1);
 
    if ((hFind = FindFirstFile(tmp, &dp)) == INVALID_HANDLE_VALUE)
-      return 0;
+      return 1;
 
    do {
       if (!strcmp(dp.cFileName, ".") || !strcmp(dp.cFileName, "..")) continue;
@@ -1671,6 +1700,7 @@ static void removeappdata(pndman_package *pnd, _USR_DATA *data)
    pndman_application *a;
    pndman_device *d, *dev;
    char path[PATH_MAX];
+   int ret;
    assert(pnd && data);
 
    /* user don't want this */
@@ -1685,12 +1715,13 @@ static void removeappdata(pndman_package *pnd, _USR_DATA *data)
 
    /* remove appdata */
    for (a = pnd->app; a; a = a->next) {
+      if (!strlen(a->appdata)) continue;
       memset(path, 0, PATH_MAX);
       strncpy(path, dev->mount, PATH_MAX-1);
       strncat(path, "/pandora/appdata/", PATH_MAX-1);
       strncat(path, a->appdata, PATH_MAX-1);
-      _printf(_REMOVING_APPDATA, path);
-      if (_rmdir_(path) != 0) _printf(_APPDATA_FAIL, path);
+      if ((ret = _rmdir_(path)) == 0) _printf(_REMOVED_APPDATA, path);
+      else if (ret == -1)             _printf(_APPDATA_FAIL, path);
    }
 }
 
@@ -2107,6 +2138,7 @@ static int help(_USR_DATA *data)
       _printf("\5  -s : Search local database, by matching id/title/description.");
       _printf("\5  -c : Search local database, by matching category.");
       _printf("\5  -i : Show full information of matching PND.");
+      _printf("\5  -l : List contents of PND's.");
       _printf("\5  -u : Filter query with upgrade status.");
    } else if ((data->flags & OP_UPGRADE)) {
       NEWLINE();
