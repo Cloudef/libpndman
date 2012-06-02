@@ -1267,7 +1267,6 @@ PNDMANAPI int pndman_package_crawl_single_package(int full_crawl,
    struct stat st;
    CHECKUSE(pnd);
 
-   _pndman_pnd_get_path(pnd, path);
    data.pnd   = pnd;
    data.app   = NULL;
    data.data  = NULL;
@@ -1275,13 +1274,16 @@ PNDMANAPI int pndman_package_crawl_single_package(int full_crawl,
    data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
    data.state = PXML_PARSE_DEFAULT;
 
-   if (_pndman_crawl_process(path, pnd->path, &data)
+   if (_pndman_crawl_process(pnd->mount, pnd->path, &data)
          != RETURN_OK)
       goto fail;
 
    /* stat for modified time */
-   if (!pnd->modified_time && stat(path, &st) == 0)
-      pnd->modified_time = st.st_mtime;
+   if (!pnd->modified_time) {
+      _pndman_pnd_get_path(pnd, path);
+      if (stat(path, &st) == 0)
+         pnd->modified_time = st.st_mtime;
+   }
 
    return RETURN_OK;
 
