@@ -116,7 +116,7 @@ static void init_usrdata(_USR_DATA *data)
 #define _REPO_SYNCED_NOT         _D"\1Failed to synchorize repository: \4%s"
 #define _PND_NOT_FOUND           _D"\1Warning: No such package \4%s"
 #define _PND_NO_UPDATE           _D"\1Warning: Package \4%s, has no update."
-#define _PND_HAS_UPDATE          _D"\1Package \4%s \1has a update."
+#define _PND_HAS_UPDATE          _D"\1Package \4%s \1has an update."
 #define _PND_IS_CORRUPT          _D"\1Package \4%s \1is corrupt!"
 #define _PND_MAY_CORRUPT         _D"\1Package \4%s \1may be corrupt!"
 #define _REMOVED_APPDATA         _D"\2Removed appdata: \5%s"
