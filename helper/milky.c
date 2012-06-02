@@ -1053,7 +1053,7 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data, size_t longest_title)
       filltitle(pnd, buffer);
       _printf(buffer);
       for (i = longest_title; i > strlen(buffer); --i) printf(" ");
-      _printf("\t\t%s%s\5[\3%.3d\5]\5[\4%s.%s.%s.%s%s\5]",
+      _printf("\t\t%s%s\5[\3%d\5]\5[\4%s.%s.%s.%s%s\5]",
                       pndinstalled(pnd, data)?"\5[\2I\5]":"",
                       pnd->update?"\5[\1U\5]":"", pnd->rating,
                       pnd->version.major,   pnd->version.minor,
