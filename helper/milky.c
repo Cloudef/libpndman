@@ -119,6 +119,7 @@ static void init_usrdata(_USR_DATA *data)
 #define _PND_HAS_UPDATE          _D"\1Package \4%s \1has an update."
 #define _PND_IS_CORRUPT          _D"\1Package \4%s \1is corrupt!"
 #define _PND_MAY_CORRUPT         _D"\1Package \4%s \1may be corrupt!"
+#define _PND_DIF_CORRUPT         _D"\1Package \4%s \1integrity differs beetwen repositories.\n"_PND_MAY_CORRUPT
 #define _REMOVED_APPDATA         _D"\2Removed appdata: \5%s"
 #define _APPDATA_FAIL            _D"\1Failed to remove appdata: \5%s"
 #define _UPGRADE_DONE            _D"\2Upgraded package:\4%s"
@@ -1945,17 +1946,17 @@ static void handlecorrupt(pndman_package *p, pndman_package *rp,
 
    t->pnd = (data->flags & OP_SYNC)?rp:p;
    t->repository = r;
-   _printf(certain?_PND_IS_CORRUPT:
-                   _PND_MAY_CORRUPT, p->id);
+   _printf(certain==1?_PND_IS_CORRUPT:
+           certain==0?_PND_MAY_CORRUPT:_PND_DIF_CORRUPT, p->id);
 }
 
 /* crawl operation logic */
 static int crawlprocess(_USR_DATA *data)
 {
    pndman_device *d;
-   pndman_package *p, *pp;
-   pndman_repository *r, *rs;
-   int f = 0, ret = 0;
+   pndman_package *p, *pp, *pm;
+   pndman_repository *r, *rs, *rm;
+   int f = 0, ret = 0, state = 0;
 
    /* set operation flag if user wants to
     * handle corrupt packages somehow. */
@@ -1985,13 +1986,43 @@ static int crawlprocess(_USR_DATA *data)
                   if (strcmp(p->id, pp->id)) continue;
                   if (!strcmp(p->repository, r->name)    &&
                       !vercmp(&p->version, &pp->version) &&
-                       strcmp(p->md5, pp->md5)) {
-                     handlecorrupt(p, pp, r, 1, data);
-                     break;
+                      p->modified_time == pp->modified_time &&
+                      strcmp(p->md5, pp->md5)) {
+                     /* defienatly corrupt package,
+                      * unless same md5 sum is found from
+                      * some other repo */
+                     if (!pm  && !rm) {
+                        pm = pp; rm = r; state = 1;
+                     }
                   } else if (!vercmp(&p->version, &pp->version) &&
-                              strcmp(p->md5, pp->md5))
-                     handlecorrupt(p, pp, r, 0, data);
+                              p->modified_time == pp->modified_time &&
+                              strcmp(p->md5, pp->md5)) {
+                     /* maybe corrupt package,
+                      * unless same md5 sum is found from
+                      * some other repo */
+                     if (!pm && !rm) {
+                        pm = pp; rm = r; state = 0;
+                     }
+                  } else if (!strcmp(p->md5, pp->md5)) {
+                     /* we found remote pnd with same
+                      * md5, this propably is not corrupt. */
+                     if (state == -1 && pm &&
+                        pm->modified_time < pp->modified_time) {
+                        pm = NULL; rm = NULL;
+                     }
+                     state = 3;
+                  } else {
+                     /* remote pnd is propably older,
+                      * but mark anyways and ignore unless,
+                      * match is found */
+                     if (!pm && !rm) {
+                        pm = pp; rm = r;
+                     }
+                  }
                }
+            if (pm && rm && state != -1)
+               handlecorrupt(p, pm, rm, state, data);
+            pm = NULL; rm = NULL; state = -1;
          }
       }
    }
