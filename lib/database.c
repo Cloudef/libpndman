@@ -43,13 +43,14 @@ static int blockfile(char *path)
 
       /* timeout */
       if (--timeout==0)
-         goto fail;
+         goto timedout;
    }
    return RETURN_OK;
 
-fail:
-   DEBFAIL(DATABASE_LOCK_TIMEOUT, path);
-   return RETURN_FAIL;
+timedout:
+   DEBUG(PNDMAN_LEVEL_WARN, DATABASE_LOCK_TIMEOUT, path);
+   unlink(path);
+   return RETURN_OK;
 }
 
 /* \brief block read until file is unlocked */
