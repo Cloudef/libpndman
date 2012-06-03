@@ -50,6 +50,7 @@
 #define WRITE_FAIL               "Failed to open %s, for writing."
 #define READ_FAIL                "Failed to open %s, for reading."
 #define ACCESS_FAIL              "Can't access: %s"
+#define OUT_OF_MEMORY            "Out of memory, shit will break!"
 #define CURL_CURLM_FAIL          "Internal CURLM initialization failed."
 #define CURL_HANDLE_FAIL         "Failed to allocate CURL handle."
 #define CURL_REQUEST_FAIL        "Failed to init curl request."

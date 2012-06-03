@@ -13,19 +13,23 @@
 
 #define PND_WINDOW         4096
 #define PND_WINDOW_FRACT   PND_WINDOW-10
+#define CHCKBUF(z)      \
+   if (pos+z > bufsize) \
+      if (!(buffer = _realloc(buffer, bufsize, bufsize+PND_WINDOW))) goto buffer_fail; \
+      else bufsize += PND_WINDOW;
 
-#define PNG_MAX_SIZE       1024 * 1024
 #define PNG_HEADER         "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A"
 #define PNG_END            "\x49\x45\x4E\x44"
 #define PNGSTART()         pos = 0;
-#define PNGCOPY(x,y,z)     if (PNG_MAX_SIZE>pos+z) { memcpy(buffer+x,y,z); pos+=z; } else goto png_too_big;
+#define PNGCOPY(x,y,z) \
+   CHCKBUF(z); memcpy(buffer+x,y,z); pos+=z;
 
 #define PXML_START_TAG     "<PXML"
 #define PXML_END_TAG       "</PXML>"
-#define PXML_MAX_SIZE      1024 * 1024
 #define XML_HEADER         "<?xml version=\"1.1\" encoding=\"UTF-8\"?>"
 #define XMLSTART()         pos = 0; strip = '<';
-#define XMLCOPY(x,y,z)     if (PXML_MAX_SIZE>pos+z) { memcpy(PXML+x,y,z); pos+=z; } else goto xml_too_big;
+#define XMLCOPY(x,y,z) \
+   CHCKBUF(z); memcpy(buffer+x,y,z); pos+=z;
 
 /* PXML Tags */
 #define PXML_PACKAGE_TAG      "package"
@@ -116,6 +120,21 @@ typedef struct pxml_parse
    int                  bckward_desc;
 } pxml_parse;
 
+/* \brief useful realloc wrapper */
+static void* _realloc(void *ptr, size_t osize, size_t nsize)
+{
+   void *ptr2;
+   if (!(ptr2 = realloc(ptr, nsize))) {
+      if (!(ptr2 = malloc(nsize))) {
+         free(ptr);
+         return NULL;
+      }
+      memcpy(ptr2, ptr, osize);
+      free(ptr);
+   }
+   return ptr2;
+}
+
 /* \brief search tag from string. NOTE: we do correct incorrect XML too so string changes */
 static char* _match_tag(char *s, size_t len, char *tag, size_t *p, char *strip)
 {
@@ -172,12 +191,12 @@ static char* _match_tag(char *s, size_t len, char *tag, size_t *p, char *strip)
 }
 
 /* \brief get PXML out of pnd */
-static int _fetch_pxml_from_pnd(const char *pnd_file, char *PXML, size_t *size)
+static char* _fetch_pxml_from_pnd(const char *pnd_file, size_t *size)
 {
    FILE     *pnd;
    char     s[PND_WINDOW];
-   char     *match, strip;
-   size_t   pos, len, ret, read, stag, etag;
+   char     *match, *buffer = NULL, strip;
+   size_t   pos, len, ret, read, stag, etag, bufsize;
 
    /* open PND */
    if (!(pnd = fopen(pnd_file, "rb")))
@@ -192,7 +211,13 @@ static int _fetch_pxml_from_pnd(const char *pnd_file, char *PXML, size_t *size)
    } else {
       pos  = 0;
       read = len;
+
    }
+
+   /* allocate our buffer */
+   if (!(buffer = malloc(read)))
+      goto buffer_fail;
+   memset(buffer, 0, (bufsize = read));
 
    /* hackety, hackety, hack */
    while (1) {
@@ -249,10 +274,13 @@ static int _fetch_pxml_from_pnd(const char *pnd_file, char *PXML, size_t *size)
 
    /* close the file */
    fclose(pnd);
-   return RETURN_OK;
+   return buffer;
 
 read_fail:
    DEBFAIL(READ_FAIL, pnd_file);
+   goto fail;
+buffer_fail:
+   DEBFAIL(OUT_OF_MEMORY);
    goto fail;
 fail_start:
    DEBFAIL("%s: %s", pnd_file, PXML_START_TAG_FAIL);
@@ -264,7 +292,8 @@ xml_too_big:
    DEBFAIL("%s: %s", pnd_file, PXML_XML_CPY_FAIL);
 fail:
    IFDO(fclose, pnd);
-   return RETURN_FAIL;
+   IFDO(free, buffer);
+   return NULL;
 }
 
 /* \brief match png start or ending */
@@ -286,12 +315,12 @@ static char* _match_png(char *s, size_t len, char *tag, size_t *p)
 }
 
 /* \brief fetch png icon from pnd */
-static int _fetch_png_from_pnd(const char *pnd_file, char *buffer, size_t *size)
+static char* _fetch_png_from_pnd(const char *pnd_file, size_t *size)
 {
    FILE     *pnd;
    char     s[PND_WINDOW];
-   char     *match;
-   size_t   pos, len, ret, read, stag, etag;
+   char     *match, *buffer = NULL;
+   size_t   pos, len, ret, read, stag, etag, bufsize;
 
    /* open PND */
    if (!(pnd = fopen(pnd_file, "rb")))
@@ -307,6 +336,11 @@ static int _fetch_png_from_pnd(const char *pnd_file, char *buffer, size_t *size)
       pos  = 0;
       read = len;
    }
+
+   /* allocate our buffer */
+   if (!(buffer = malloc(read)))
+      goto buffer_fail;
+   memset(buffer, 0, (bufsize = read));
 
    /* hackety, hackety, hack */
    while (1) {
@@ -357,10 +391,13 @@ static int _fetch_png_from_pnd(const char *pnd_file, char *buffer, size_t *size)
    *size = pos;
 
    fclose(pnd);
-   return RETURN_OK;
+   return buffer;
 
 read_fail:
    DEBFAIL(READ_FAIL, pnd_file);
+   goto fail;
+buffer_fail:
+   DEBFAIL(OUT_OF_MEMORY);
    goto fail;
 png_not_found:
    DEBFAIL(PXML_PNG_NOT_FOUND, pnd_file);
@@ -369,7 +406,8 @@ png_too_big:
    DEBFAIL("%s: %s", pnd_file, PXML_PNG_CPY_FAIL);
 fail:
    IFDO(fclose, pnd);
-   return RETURN_FAIL;
+   IFDO(free, buffer);
+   return NULL;
 }
 
 /* \brief fills pndman_package's struct */
@@ -1094,8 +1132,7 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
 static int _pndman_crawl_process(const char *path,
       const char *relative, pxml_parse *data)
 {
-   char PXML[PXML_MAX_SIZE];
-   char full_path[PNDMAN_PATH];
+   char *PXML = NULL, full_path[PNDMAN_PATH];
    size_t size = 0;
    FILE *f;
    assert(path && relative && data);
@@ -1105,8 +1142,7 @@ static int _pndman_crawl_process(const char *path,
    strncat(full_path, "/", PNDMAN_PATH-1);
    strncat(full_path, relative, PNDMAN_PATH-1);
 
-   memset(PXML, 0, PXML_MAX_SIZE);
-   if (_fetch_pxml_from_pnd(full_path, PXML, &size) != RETURN_OK)
+   if (!(PXML = _fetch_pxml_from_pnd(full_path, &size)))
       goto fail;
 
    /* reset some stuff before crawling for post process */
@@ -1119,6 +1155,10 @@ static int _pndman_crawl_process(const char *path,
    if (_pxml_pnd_parse(data, PXML, size) != RETURN_OK)
       goto parse_fail;
 
+   /* we don't need this anymore */
+   free(PXML);
+
+   /* post process */
    _pxml_pnd_post_process(data->pnd);
 
    /* add size to the pnd */
@@ -1135,6 +1175,7 @@ static int _pndman_crawl_process(const char *path,
 parse_fail:
    DEBFAIL(PXML_PND_PARSE_FAIL, relative);
 fail:
+   IFDO(free, PXML);
    return RETURN_FAIL;
 }
 
@@ -1429,8 +1470,7 @@ fail:
 PNDMANAPI size_t pndman_package_get_embedded_png(
       pndman_package *pnd, char *buffer, size_t buflen)
 {
-   char path[PNDMAN_PATH];
-   char PNG[PNG_MAX_SIZE];
+   char *PNG = NULL, path[PNDMAN_PATH];
    size_t size;
 
    CHECKUSE(pnd);
@@ -1438,8 +1478,7 @@ PNDMANAPI size_t pndman_package_get_embedded_png(
 
    /* fill our buffer */
    _pndman_pnd_get_path(pnd, path);
-   if (_fetch_png_from_pnd(path, PNG, &size)
-         != RETURN_OK)
+   if (!(PNG = _fetch_png_from_pnd(path, &size)))
       goto fail;
 
    /* our buffer is too big. */
@@ -1448,20 +1487,24 @@ PNDMANAPI size_t pndman_package_get_embedded_png(
 
    memset(buffer, 0, buflen);
    memcpy(buffer, PNG, size);
+
+   /* free buffer */
+   free(PNG);
    return size;
 
 too_big:
    DEBFAIL(PXML_PNG_BUFFER_TOO_BIG);
 fail:
+   IFDO(free, PNG);
    return 0;
 }
 
 /* \brief internal test function */
 PNDMANAPI int pndman_pxml_test(const char *file)
 {
-   char PXML[PXML_MAX_SIZE];
-   char PNG[PNG_MAX_SIZE];
+   char *PXML, *PNG;
    char *type, *x11; size_t size = 0;
+   FILE *f;
    pndman_package       *test;
    pndman_application   *app;
    pndman_translated    *t;
@@ -1470,17 +1513,19 @@ PNDMANAPI int pndman_pxml_test(const char *file)
    pndman_previewpic    *p;
    pndman_association   *a;
 
-   memset(PNG, 0, PNG_MAX_SIZE);
-   _fetch_png_from_pnd(file, PNG, &size);
-   FILE *f = fopen("test.png", "wb");
-   if (f) {
-      fwrite(PNG, size, 1, f);
-      fflush(f);
-      fclose(f);
+   /* write PNG to file */
+   if ((PNG = _fetch_png_from_pnd(file, &size))) {
+      if ((f = fopen("test.png", "wb"))) {
+         fwrite(PNG, size, 1, f);
+         fflush(f);
+         fclose(f);
+      }
+      free(PNG);
    }
 
-   memset(PXML, 0, PXML_MAX_SIZE);
-   _fetch_pxml_from_pnd(file, PXML, &size);
+   if (!(PXML = _fetch_pxml_from_pnd(file, &size)))
+      return RETURN_FAIL;
+
    test = _pndman_new_pnd();
    if (!test) return RETURN_FAIL;
 
@@ -1501,8 +1546,11 @@ PNDMANAPI int pndman_pxml_test(const char *file)
    if (_pxml_pnd_parse(&data, PXML, size) != RETURN_OK) {
       DEBFAIL("Your code sucks, fix it!");
       _pndman_free_pnd(test);
+      free(PXML);
       exit(EXIT_FAILURE);
    }
+
+   free(PXML);
    _pxml_pnd_post_process(test);
 
    /* debug filled PND */
