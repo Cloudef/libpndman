@@ -1287,13 +1287,7 @@ static void progressbar(float downloaded, float total_to_download)
    float fraction;
 
    pwdt = 40; /* width */
-   if (!total_to_download) {
-      for (i = 0; i != ((unsigned int)downloaded / 1024) % pwdt; ++i)
-         _printf("\4.\7");
-      printf("\r");
-      fflush(stdout);
-      return;
-   }
+   if (!total_to_download) total_to_download = downloaded + 1000;
    fraction = (float)downloaded / (float)total_to_download;
    dots     = round(fraction * pwdt);
 
@@ -1404,11 +1398,12 @@ static void syncrepos(pndman_repository *rs, _USR_DATA *data)
    unsigned int c = 0;
 
    for (r = rs; r; r = r->next) ++c;
-   pndman_sync_handle handle[c]; r = rs;
+   pndman_sync_handle handle[c]; char done[c]; r = rs;
    for (c = 0; r; r = r->next) {
       pndman_sync_handle_init(&handle[c]);
       handle[c].flags        = (data->flags & GB_NOMERGE)?PNDMAN_SYNC_FULL:0;
       handle[c].repository = r;
+      done[c] = 0;
       pndman_sync_handle_perform(&handle[c++]);
    }
 
@@ -1419,8 +1414,11 @@ static void syncrepos(pndman_repository *rs, _USR_DATA *data)
       for (c = 0; r; r = r->next) {
          tdl   += (float)handle[c].progress.download;
          ttdl  += (float)handle[c].progress.total_to_download;
-         if (handle[c].progress.done)
+         if (handle[c].progress.done && !done[c]) {
+            if (!(data->flags & GB_NOBAR)) NEWLINE();
             _printf(_REPO_SYNCED, handle[c].repository->name);
+            done[c] = 1;
+         }
          ++c;
       }
       usleep(1000);
