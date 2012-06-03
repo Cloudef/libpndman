@@ -13,6 +13,7 @@
  * pndman_curl_process();
  * pndman_*_handle_free();
  * pndman_*_handle_perform();
+ * pndman_api_*(); <- (repo api calls)
  *
  * Any other calls should be ok.
  * Generally you should not thread
