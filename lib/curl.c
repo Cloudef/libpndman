@@ -35,15 +35,21 @@ static void _pndman_curl_init_progress(pndman_curl_progress *progress)
 /* \brief write to file */
 static size_t _pndman_curl_write_file(void *data, size_t size, size_t nmemb, pndman_curl_handle *handle)
 {
-   size_t written = fwrite(data, size, nmemb, handle->file);
+   size_t written;
+   if (!handle || handle->free) return 0;
+   written= fwrite(data, size, nmemb, handle->file);
    if (written) handle->resume += written;
    return written;
 }
 
 /* \brief write to header */
-static size_t _pndman_curl_write_header(void *data, size_t size, size_t nmemb, pndman_curl_header *header)
+static size_t _pndman_curl_write_header(void *data, size_t size, size_t nmemb, pndman_curl_handle *handle)
 {
    void *new;
+   pndman_curl_header *header;
+
+   if (!handle || handle->free) return 0;
+   header = &handle->header;
 
    /* init header if needed */
    if (!header->size)
@@ -73,6 +79,7 @@ static size_t _pndman_curl_write_header(void *data, size_t size, size_t nmemb, p
 static int _pndman_curl_progress_func(pndman_curl_handle *handle,
       double total_to_download, double download, double total_to_upload, double upload)
 {
+   if (!handle || handle->free) return 1;
    handle->progress->download           = download;
    handle->progress->total_to_download  = total_to_download;
    handle->callback(PNDMAN_CURL_PROGRESS, handle->data, NULL, handle);
@@ -212,7 +219,7 @@ int _pndman_curl_handle_perform(pndman_curl_handle *handle)
    curl_easy_setopt(handle->curl, CURLOPT_CONNECTTIMEOUT, PNDMAN_CURL_TIMEOUT);
    curl_easy_setopt(handle->curl, CURLOPT_NOPROGRESS, handle->progress?0:1);
    curl_easy_setopt(handle->curl, CURLOPT_PROGRESSFUNCTION, _pndman_curl_progress_func);
-   curl_easy_setopt(handle->curl, CURLOPT_HEADERDATA, &handle->header);
+   curl_easy_setopt(handle->curl, CURLOPT_HEADERDATA, handle);
    curl_easy_setopt(handle->curl, CURLOPT_PROGRESSDATA, handle);
    curl_easy_setopt(handle->curl, CURLOPT_COOKIEFILE, "");
    curl_easy_setopt(handle->curl, CURLOPT_PRIVATE, handle);
