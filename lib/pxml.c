@@ -288,8 +288,6 @@ fail_start:
 fail_end:
    DEBFAIL("%s: %s", pnd_file, PXML_END_TAG_FAIL);
    goto fail;
-xml_too_big:
-   DEBFAIL("%s: %s", pnd_file, PXML_XML_CPY_FAIL);
 fail:
    IFDO(fclose, pnd);
    IFDO(free, buffer);
@@ -402,8 +400,6 @@ buffer_fail:
 png_not_found:
    DEBFAIL(PXML_PNG_NOT_FOUND, pnd_file);
    goto fail;
-png_too_big:
-   DEBFAIL("%s: %s", pnd_file, PXML_PNG_CPY_FAIL);
 fail:
    IFDO(fclose, pnd);
    IFDO(free, buffer);

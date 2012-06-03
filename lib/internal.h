@@ -76,8 +76,6 @@
 #define JSON_NO_P_ARRAY          "No packages array for: %s"
 #define JSON_NO_R_HEADER         "No repo header for: %s"
 #define JSON_NO_V_ARRAY          "No versions array for: %s"
-#define PXML_XML_CPY_FAIL        "PXML is too big for pndman :("
-#define PXML_PNG_CPY_FAIL        "PNG is too big for pndman :("
 #define PXML_PNG_BUFFER_TOO_BIG  "PNG buffer is too big to be copied over to your buffer."
 #define PXML_PNG_NOT_FOUND       "Could not find embedded PNG in: %s"
 #define PXML_START_TAG_FAIL      "PXML parse failed: could not find start tag before EOF."
