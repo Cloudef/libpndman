@@ -114,6 +114,8 @@ void _pndman_curl_handle_free(pndman_curl_handle *handle)
 {
    assert(handle);
    handle->free = 1;
+   handle->progress = NULL;
+   handle->callback = NULL;
 
    /* can we free immediatly? */
    if (!_pndman_curlm)
@@ -268,6 +270,59 @@ static void _pndman_curl_cleanup(void)
    _pndman_curlm = NULL;
 }
 
+/* \brief handle curl message */
+static void _pndman_curl_msg(int result,
+      pndman_curl_handle *handle)
+{
+   if (!handle || handle->free)
+      return;
+
+   if (handle->progress)
+      handle->progress->done = result==CURLE_OK?1:0;
+
+   char buffer[1024];
+   memset(buffer, 0, sizeof(buffer));
+   if (handle->header.size)
+      DEBUG(PNDMAN_LEVEL_CRAP, (char*)handle->header.data);
+   fseek(handle->file, 0L, SEEK_SET);
+   if (fgets(buffer, sizeof(buffer)-1, handle->file) &&
+         strlen(buffer) > 5)
+      DEBUG(PNDMAN_LEVEL_CRAP, buffer);
+   fseek(handle->file, 0L, SEEK_SET);
+
+   if (result != CURLE_OK) {
+      /* is http 1.1 resume supported? */
+      if (result == CURLE_RANGE_ERROR ||
+          result == CURLE_BAD_DOWNLOAD_RESUME)
+         handle->retry = PNDMAN_CURL_MAX_RETRY;
+
+      /* try http 1.1 download resume */
+      if ((result == CURLE_PARTIAL_FILE ||
+           result == CURLE_WRITE_ERROR  ||
+           result == CURLE_OPERATION_TIMEDOUT ||
+           result == CURLE_ABORTED_BY_CALLBACK) &&
+            handle->retry < PNDMAN_CURL_MAX_RETRY) {
+         /* retry */
+         if (_pndman_curl_handle_perform(handle) == RETURN_OK)
+            handle->retry++;
+         else handle->retry = PNDMAN_CURL_MAX_RETRY;
+      } else handle->retry = PNDMAN_CURL_MAX_RETRY;
+
+      /* fail if max retries exceeded */
+      if (handle->retry >= PNDMAN_CURL_MAX_RETRY) {
+         handle->resume = 0;
+         handle->retry  = 0;
+         handle->callback(PNDMAN_CURL_FAIL, handle->data,
+               curl_easy_strerror(result), handle);
+      }
+   } else {
+      handle->resume = 0;
+      handle->retry  = 0;
+      fflush(handle->file);
+      handle->callback(PNDMAN_CURL_DONE, handle->data, NULL, handle);
+   }
+}
+
 /* \brief perform curl operation */
 static int _pndman_curl_perform(void)
 {
@@ -313,53 +368,10 @@ static int _pndman_curl_perform(void)
    while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left))) {
       curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &handle);
       if (msg->msg == CURLMSG_DONE) { /* DONE */
-         if (handle->progress)
-            handle->progress->done = msg->data.result==CURLE_OK?1:0;
-
-         char buffer[1024];
-         memset(buffer, 0, sizeof(buffer));
-         if (handle->header.size)
-            DEBUG(PNDMAN_LEVEL_CRAP, (char*)handle->header.data);
-         fseek(handle->file, 0L, SEEK_SET);
-         if (fgets(buffer, sizeof(buffer)-1, handle->file) &&
-             strlen(buffer) > 5)
-            DEBUG(PNDMAN_LEVEL_CRAP, buffer);
-         fseek(handle->file, 0L, SEEK_SET);
-
-         if (msg->data.result != CURLE_OK) {
-            /* is http 1.1 resume supported? */
-            if (msg->data.result == CURLE_RANGE_ERROR ||
-                msg->data.result == CURLE_BAD_DOWNLOAD_RESUME)
-               handle->retry = PNDMAN_CURL_MAX_RETRY;
-
-            /* try http 1.1 download resume */
-            if ((msg->data.result == CURLE_PARTIAL_FILE ||
-                 msg->data.result == CURLE_WRITE_ERROR  ||
-                 msg->data.result == CURLE_OPERATION_TIMEDOUT ||
-                 msg->data.result == CURLE_ABORTED_BY_CALLBACK) &&
-                  handle->retry < PNDMAN_CURL_MAX_RETRY) {
-               /* retry */
-               if (_pndman_curl_handle_perform(handle) == RETURN_OK)
-                  handle->retry++;
-               else handle->retry = PNDMAN_CURL_MAX_RETRY;
-            } else handle->retry = PNDMAN_CURL_MAX_RETRY;
-
-            /* fail if max retries exceeded */
-            if (handle->retry >= PNDMAN_CURL_MAX_RETRY) {
-               handle->resume = 0;
-               handle->retry  = 0;
-               handle->callback(PNDMAN_CURL_FAIL, handle->data,
-                     curl_easy_strerror(msg->data.result), handle);
-            }
-         } else {
-            handle->resume = 0;
-            handle->retry  = 0;
-            fflush(handle->file);
-            handle->callback(PNDMAN_CURL_DONE, handle->data, NULL, handle);
-         }
+         _pndman_curl_msg(msg->data.result, handle);
 
          /* free handle if requested */
-         if (handle->free)
+         if (handle && handle->free)
             _pndman_curl_handle_free_real(handle);
 
          /* if we got messages and still running == 0
