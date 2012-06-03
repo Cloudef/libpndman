@@ -11,14 +11,21 @@
 #  include <dirent.h>
 #endif
 
+#define PND_WINDOW         4096
+#define PND_WINDOW_FRACT   PND_WINDOW-10
+
+#define PNG_MAX_SIZE       1024 * 1024
+#define PNG_HEADER         "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A"
+#define PNG_END            "\x49\x45\x4E\x44"
+#define PNGSTART()         pos = 0;
+#define PNGCOPY(x,y,z)     if (PNG_MAX_SIZE>pos+z) { memcpy(buffer+x,y,z); pos+=z; } else goto png_too_big;
+
 #define PXML_START_TAG     "<PXML"
 #define PXML_END_TAG       "</PXML>"
 #define PXML_MAX_SIZE      1024 * 1024
-#define PXML_WINDOW        4096
-#define PXML_WINDOW_FRACT  PXML_WINDOW-10
 #define XML_HEADER         "<?xml version=\"1.1\" encoding=\"UTF-8\"?>"
 #define XMLSTART()         pos = 0; strip = '<';
-#define XMLCOPY(x,y,z)     if (PXML_MAX_SIZE>pos+z) { memcpy(PXML+x,y,z); pos +=z; } else goto xml_too_big;
+#define XMLCOPY(x,y,z)     if (PXML_MAX_SIZE>pos+z) { memcpy(PXML+x,y,z); pos+=z; } else goto xml_too_big;
 
 /* PXML Tags */
 #define PXML_PACKAGE_TAG      "package"
@@ -164,12 +171,11 @@ static char* _match_tag(char *s, size_t len, char *tag, size_t *p, char *strip)
    return NULL;
 }
 
-/* \brief
- * Get PXML out of PND  */
+/* \brief get PXML out of pnd */
 static int _fetch_pxml_from_pnd(const char *pnd_file, char *PXML, size_t *size)
 {
    FILE     *pnd;
-   char     s[PXML_WINDOW];
+   char     s[PND_WINDOW];
    char     *match, strip;
    size_t   pos, len, ret, read, stag, etag;
 
@@ -178,11 +184,11 @@ static int _fetch_pxml_from_pnd(const char *pnd_file, char *PXML, size_t *size)
       goto read_fail;
 
    /* seek to end, and see if we should seek back */
-   memset(s,  0, PXML_WINDOW);
+   memset(s,  0, PND_WINDOW);
    fseek(pnd, 0, SEEK_END);
-   if ((len = ftell(pnd)) > PXML_WINDOW) {
-      pos  = len - PXML_WINDOW;
-      read = PXML_WINDOW;
+   if ((len = ftell(pnd)) > PND_WINDOW) {
+      pos  = len - PND_WINDOW;
+      read = PND_WINDOW;
    } else {
       pos  = 0;
       read = len;
@@ -194,20 +200,19 @@ static int _fetch_pxml_from_pnd(const char *pnd_file, char *PXML, size_t *size)
       fseek(pnd, pos, SEEK_SET);
 
       /* read until start tag */
-      if ((ret = fread(s, 1, read, pnd))) {
-         // if (!memcmp(s, PXML_START_TAG, strlen(PXML_START_TAG))) break;
-         if ((match = _match_tag(s, read, PXML_START_TAG, &stag, NULL))) break;
-      }
+      if ((ret = fread(s, 1, read, pnd)))
+         if ((match = _match_tag(s, read, PXML_START_TAG, &stag, NULL)))
+         { ret = 1; break; }
 
       if (!ret) break; ret = 0;              /* below breaks are failures */
       if (!pos) break;                       /* nothing more to read */
-      else if (pos > PXML_WINDOW_FRACT) {    /* seek back */
-         pos -= PXML_WINDOW_FRACT;
-         read = PXML_WINDOW;
+      else if (pos > PND_WINDOW_FRACT) {     /* seek back */
+         pos -= PND_WINDOW_FRACT;
+         read = PND_WINDOW;
          if (len - pos > (500*1024)) break;
       } else {                               /* read final segment */
-         read = PXML_WINDOW - pos;
-         memset(s + pos, 0, PXML_WINDOW - pos);
+         read = PND_WINDOW - pos;
+         memset(s + pos, 0, PND_WINDOW - pos);
          pos = 0;
       }
    }
@@ -227,7 +232,7 @@ static int _fetch_pxml_from_pnd(const char *pnd_file, char *PXML, size_t *size)
       XMLCOPY(pos, match, read-stag);
       while ((ret = fread(s, 1, read, pnd))) {
          match = s;
-         if (_match_tag(s, read, PXML_END_TAG, &etag, &strip)) break;
+         if (_match_tag(s, read, PXML_END_TAG, &etag, &strip)) { ret = 1; break; }
          XMLCOPY(pos, s, read);
       }
    } else etag += strlen(PXML_START_TAG);
@@ -257,6 +262,111 @@ fail_end:
    goto fail;
 xml_too_big:
    DEBFAIL("%s: %s", pnd_file, PXML_XML_CPY_FAIL);
+fail:
+   IFDO(fclose, pnd);
+   return RETURN_FAIL;
+}
+
+/* \brief match png start or ending */
+static char* _match_png(char *s, size_t len, char *tag, size_t *p)
+{
+   unsigned int nlen;
+   char *end;
+
+   nlen = strlen(tag);
+   end  = s + len;
+   *p   = 0;
+
+   while (s < end) {
+      /* tag found */
+      if (!strncmp(s, tag, nlen)) return &*s;
+      ++s; ++*p;
+   }
+   return NULL;
+}
+
+/* \brief fetch png icon from pnd */
+static int _fetch_png_from_pnd(const char *pnd_file, char *buffer, size_t *size)
+{
+   FILE     *pnd;
+   char     s[PND_WINDOW];
+   char     *match;
+   size_t   pos, len, ret, read, stag, etag;
+
+   /* open PND */
+   if (!(pnd = fopen(pnd_file, "rb")))
+      goto read_fail;
+
+   /* seek to end, and see if we should seek back */
+   memset(s,  0, PND_WINDOW);
+   fseek(pnd, 0, SEEK_END);
+   if ((len = ftell(pnd)) > PND_WINDOW) {
+      pos  = len - PND_WINDOW;
+      read = PND_WINDOW;
+   } else {
+      pos  = 0;
+      read = len;
+   }
+
+   /* hackety, hackety, hack */
+   while (1) {
+      /* seek */
+      fseek(pnd, pos, SEEK_SET);
+
+      /* read until start tag */
+      if ((ret = fread(s, 1, read, pnd)))
+         if ((match = _match_png(s, read, PNG_HEADER, &stag))) { ret = 1; break; }
+
+      if (!ret) break; ret = 0;              /* below breaks are failures */
+      if (!pos) break;                       /* nothing more to read */
+      else if (pos > PND_WINDOW_FRACT) {     /* seek back */
+         pos -= PND_WINDOW_FRACT;
+         read = PND_WINDOW;
+         if (len - pos > (500*1024)) break;
+      } else {                               /* read final segment */
+         read = PND_WINDOW - pos;
+         memset(s + pos, 0, PND_WINDOW - pos);
+         pos = 0;
+      }
+   }
+
+   /* found png? */
+   if (!ret)
+      goto png_not_found;
+
+   PNGSTART();
+   /* check if end tag is on the same buffer as start tag */
+   if (!_match_png(match+strlen(PNG_HEADER), read-stag-strlen(PNG_HEADER), PNG_END, &etag)) {
+      /* nope, copy first buffer and read to end */
+      PNGCOPY(pos, match, read-stag);
+      while ((ret = fread(s, 1, read, pnd))) {
+         match = s;
+         if (_match_png(s, read, PNG_END, &etag)) { ret = 1; break; }
+         PNGCOPY(pos, s, read);
+      }
+   } else etag += strlen(PNG_HEADER);
+
+   /* read fail */
+   if (!ret)
+      goto png_not_found;
+
+   /* finish */
+   PNGCOPY(pos, match, etag+strlen(PNG_END)+4);
+
+   /* store size */
+   *size = pos;
+
+   fclose(pnd);
+   return RETURN_OK;
+
+read_fail:
+   DEBFAIL(READ_FAIL, pnd_file);
+   goto fail;
+png_not_found:
+   DEBFAIL(PXML_PNG_NOT_FOUND, pnd_file);
+   goto fail;
+png_too_big:
+   DEBFAIL("%s: %s", pnd_file, PXML_PNG_CPY_FAIL);
 fail:
    IFDO(fclose, pnd);
    return RETURN_FAIL;
@@ -1314,10 +1424,42 @@ fail:
    return RETURN_FAIL;
 }
 
+/* \brief get embedded png from pnd */
+PNDMANAPI int pndman_package_get_embedded_png(
+      pndman_package *pnd, char *buffer, size_t buflen)
+{
+   char path[PNDMAN_PATH];
+   char PNG[PNG_MAX_SIZE];
+   size_t size;
+
+   CHECKUSE(pnd);
+   CHECKUSE(buffer);
+
+   /* fill our buffer */
+   _pndman_pnd_get_path(pnd, path);
+   if (_fetch_png_from_pnd(path, PNG, &size)
+         != RETURN_OK)
+      goto fail;
+
+   /* our buffer is too big. */
+   if (size > buflen)
+      goto too_big;
+
+   memset(buffer, 0, buflen);
+   memcpy(buffer, PNG, size);
+   return RETURN_OK;
+
+too_big:
+   DEBFAIL(PXML_PNG_BUFFER_TOO_BIG);
+fail:
+   return RETURN_FAIL;
+}
+
 /* \brief internal test function */
 PNDMANAPI int pndman_pxml_test(const char *file)
 {
    char PXML[PXML_MAX_SIZE];
+   char PNG[PNG_MAX_SIZE];
    char *type, *x11; size_t size = 0;
    pndman_package       *test;
    pndman_application   *app;
@@ -1326,6 +1468,15 @@ PNDMANAPI int pndman_pxml_test(const char *file)
    pndman_category      *c;
    pndman_previewpic    *p;
    pndman_association   *a;
+
+   memset(PNG, 0, PNG_MAX_SIZE);
+   _fetch_png_from_pnd(file, PNG, &size);
+   FILE *f = fopen("test.png", "wb");
+   if (f) {
+      fwrite(PNG, size, 1, f);
+      fflush(f);
+      fclose(f);
+   }
 
    memset(PXML, 0, PXML_MAX_SIZE);
    _fetch_pxml_from_pnd(file, PXML, &size);

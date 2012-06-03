@@ -461,9 +461,17 @@ PNDMANAPI int pndman_package_crawl(int full_crawl,
 
 /* \brief update pnd_package struct
  * by crawling it locally.
- * returns 0 on success, -1 on failuer */
+ * returns 0 on success, -1 on failure */
 PNDMANAPI int pndman_package_crawl_single_package(int full_crawl,
       pndman_package *pnd);
+
+/* \brief get embedded png file from pnd.
+ * you need to provide your buffer and it's size.
+ * if this functions returns 0, your buffer is filled
+ * with the png data.
+ * returns 0 on succes, -1 on failure */
+PNDMANAPI int pndman_package_get_embedded_png(
+      pndman_package *pnd, char *buffer, size_t buflen);
 
 /* \brief initialize package handle
  * NOTE: you should pass reference to
