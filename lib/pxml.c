@@ -1424,8 +1424,9 @@ fail:
    return RETURN_FAIL;
 }
 
-/* \brief get embedded png from pnd */
-PNDMANAPI int pndman_package_get_embedded_png(
+/* \brief get embedded png from pnd
+ * returns number of bytes copied on success and 0 on failure */
+PNDMANAPI size_t pndman_package_get_embedded_png(
       pndman_package *pnd, char *buffer, size_t buflen)
 {
    char path[PNDMAN_PATH];
@@ -1447,12 +1448,12 @@ PNDMANAPI int pndman_package_get_embedded_png(
 
    memset(buffer, 0, buflen);
    memcpy(buffer, PNG, size);
-   return RETURN_OK;
+   return size;
 
 too_big:
    DEBFAIL(PXML_PNG_BUFFER_TOO_BIG);
 fail:
-   return RETURN_FAIL;
+   return 0;
 }
 
 /* \brief internal test function */
