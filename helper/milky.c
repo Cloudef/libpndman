@@ -1333,8 +1333,8 @@ static int pre_op_dialog(_USR_DATA *data)
    }
 
    /* nothing to perform action on */
-   if (!count) {
-      _printf(_NOTHING_TO_DO);;
+   if (!count || !data->tlist) {
+      _printf(_NOTHING_TO_DO);
       return RETURN_FALSE;
    }
 
