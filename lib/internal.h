@@ -156,9 +156,7 @@ int   _strnupcmp(const char *hay, const char *needle, size_t len);
 /* temporary files */
 void* _pndman_get_tmp_file();
 
-/* errors && verbose */
-void _pndman_set_error(const char *file, int line,
-      const char *function, const char *err, ...);
+/* verbose */
 void _pndman_debug_hook(const char *file, int line,
       const char *function, int verbose_level, const char *fmt, ...);
 

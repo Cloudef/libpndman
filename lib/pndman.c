@@ -5,6 +5,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <assert.h>
 
 /* \brief internal verbose level */
 static int _PNDMAN_VERBOSE = 0;
@@ -186,6 +187,10 @@ void _pndman_debug_hook(const char *file, int line,
    va_list args;
    char buffer[LINE_MAX];
    char buffer2[LINE_MAX];
+
+   assert(file);
+   assert(function);
+   assert(fmt);
 
    memset(buffer, 0, LINE_MAX);
    va_start(args, fmt);
