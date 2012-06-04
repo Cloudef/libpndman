@@ -208,7 +208,7 @@ int _pndman_curl_handle_perform(pndman_curl_handle *handle)
    }
 
    /* print url */
-   DEBUG(PNDMAN_LEVEL_CRAP, handle->url);
+   DEBUG(PNDMAN_LEVEL_CRAP, "url: %s", handle->url);
 
    /* set file options */
    curl_easy_setopt(handle->curl, CURLOPT_URL, handle->url);
@@ -283,11 +283,11 @@ static void _pndman_curl_msg(int result,
    char buffer[1024];
    memset(buffer, 0, sizeof(buffer));
    if (handle->header.size)
-      DEBUG(PNDMAN_LEVEL_CRAP, (char*)handle->header.data);
+      DEBUG(PNDMAN_LEVEL_CRAP, "%s", (char*)handle->header.data);
    fseek(handle->file, 0L, SEEK_SET);
    if (fgets(buffer, sizeof(buffer)-1, handle->file) &&
          strlen(buffer) > 5)
-      DEBUG(PNDMAN_LEVEL_CRAP, buffer);
+      DEBUG(PNDMAN_LEVEL_CRAP, "%s", buffer);
    fseek(handle->file, 0L, SEEK_SET);
 
    if (result != CURLE_OK) {
