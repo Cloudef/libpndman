@@ -37,9 +37,7 @@ static size_t _pndman_curl_write_file(void *data, size_t size, size_t nmemb, pnd
 {
    size_t written;
    if (!handle || handle->free) return 0;
-   written= fwrite(data, size, nmemb, handle->file);
-   if (written) handle->resume += written;
-   return written;
+   return fwrite(data, size, nmemb, handle->file);
 }
 
 /* \brief write to header */
@@ -80,8 +78,8 @@ static int _pndman_curl_progress_func(pndman_curl_handle *handle,
       double total_to_download, double download, double total_to_upload, double upload)
 {
    if (!handle || handle->free) return 1;
-   handle->progress->download           = download;
-   handle->progress->total_to_download  = total_to_download;
+   handle->progress->download           = handle->resume + download;
+   handle->progress->total_to_download  = handle->resume + total_to_download;
    handle->callback(PNDMAN_CURL_PROGRESS, handle->data, NULL, handle);
    return 0;
 }
@@ -100,7 +98,12 @@ static void _pndman_curl_handle_free_real(pndman_curl_handle *handle)
    }
    _pndman_curl_header_free(&handle->header);
    IFDO(fclose, handle->file);
+
+   /* unlink on free
+    * commented since we allow download resumes! */
+#if 0
    if (strlen(handle->path)) unlink(handle->path);
+#endif
    memset(handle, 0, sizeof(pndman_curl_handle));
 
    /* free handle */
@@ -150,8 +153,6 @@ handle_fail:
 curl_fail:
    DEBFAIL(PNDMAN_ALLOC_FAIL, "CURL");
 fail:
-   IFDO(fclose, handle->file);
-   IFDO(unlink, path);
    IFDO(_pndman_curl_handle_free, handle);
    return NULL;
 }
@@ -202,6 +203,12 @@ int _pndman_curl_handle_perform(pndman_curl_handle *handle)
       if (!(handle->file = _pndman_get_tmp_file()))
          goto fail;
    } else {
+      /* this temporary file exists, lets do resume! */
+      if ((handle->file = fopen(handle->path, "rb"))) {
+         fseek(handle->file, 0L, SEEK_END);
+         handle->resume = ftell(handle->file);
+         fclose(handle->file);
+      }
       if (!(handle->file = fopen(handle->path,
                   handle->resume?"a+b":"w+b")))
          goto open_fail;

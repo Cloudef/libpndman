@@ -521,7 +521,15 @@ PNDMANAPI pndman_device* pndman_device_detect(pndman_device *device)
    pndman_device *d, *d2;
    if ((d = _pndman_device_detect(device)))
       for (d2 = d; d2; d2 = d2->next) {
+       /* removal of tmp files on device add
+       * disabled for now at least.
+       *
+       * might be useful if some libpndman
+       * application crashes and you can
+       * continue download. */
+#if 0
          _pndman_remove_tmp_files(d2);
+#endif
          _pndman_device_get_appdata_no_create(d2->appdata, d2);
       }
    return d;
@@ -534,7 +542,15 @@ PNDMANAPI pndman_device* pndman_device_add(const char *path, pndman_device *devi
    CHECKUSEP(path);
 
    if ((d = _pndman_device_add(path, device))) {
+      /* removal of tmp files on device add
+       * disabled for now at least.
+       *
+       * might be useful if some libpndman
+       * application crashes and you can
+       * continue download. */
+#if 0
       _pndman_remove_tmp_files(d);
+#endif
       _pndman_device_get_appdata_no_create(d->appdata, d);
    }
    return d;

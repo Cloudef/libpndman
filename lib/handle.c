@@ -169,7 +169,7 @@ static int _pndman_package_handle_download(pndman_package_handle *object)
    if (!appdata || !strlen(appdata))
       goto fail;
 
-   snprintf(tmp_path, PNDMAN_PATH-1, "%s/%p.tmp", appdata, object);
+   snprintf(tmp_path, PNDMAN_PATH-1, "%s/%s.tmp", appdata, object->pnd->id);
    object->data = handle = _pndman_curl_handle_new(object, &object->progress,
          _pndman_package_handle_done, tmp_path);
    if (!handle) goto fail;
