@@ -1407,13 +1407,14 @@ static void syncrepos(pndman_repository *rs, _USR_DATA *data)
       pndman_sync_handle_perform(&handle[c++]);
    }
 
-   tdl = 0; ttdl = 0;
+   tdl = 0; ttdl = 1;
    while ((ret = pndman_curl_process() > 0)) {
-      if (!(data->flags & GB_NOBAR)) progressbar(tdl, ttdl);
+      if (!(data->flags & GB_NOBAR) && tdl < ttdl) progressbar(tdl, ttdl);
       r = rs; tdl = 0; ttdl = 0;
       for (c = 0; r; r = r->next) {
          tdl   += (float)handle[c].progress.download;
          ttdl  += (float)handle[c].progress.total_to_download;
+         if (ttdl < tdl) ttdl = tdl+1; /* fake progress */
          if (handle[c].progress.done && !done[c]) {
             if (!(data->flags & GB_NOBAR)) NEWLINE();
             _printf(_REPO_SYNCED, handle[c].repository->name);
@@ -1754,12 +1755,13 @@ static int targetperform(_USR_DATA *data)
 
    tdl = 0; /* ttdl = 0; */
    while ((ret = pndman_curl_process()) > 0) {
-      if (!(data->flags & GB_NOBAR)) progressbar(tdl, ttdl);
+      if (!(data->flags & GB_NOBAR) && tdl < ttdl) progressbar(tdl, ttdl);
       t = data->tlist; tdl = 0; /* ttdl = 0; */
       for (c = 0; t; t = t->next) {
          if (!handle[c].flags) { ++c; continue; } /* failed perform */
          tdl  += (float)handle[c].progress.download;
          /* ttdl += (float)handle[c].progress.total_to_download; */
+         if (ttdl < tdl) ttdl = tdl+1; /* fake progress */
          if (handle[c].progress.done && !done[c]) {
             if (!(data->flags & GB_NOBAR)) NEWLINE();
             /* commit to repository */
