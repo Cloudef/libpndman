@@ -1223,7 +1223,10 @@ static int _pndman_crawl_dir(const char *path,
          ret += _pndman_crawl_dir(path, relav, list);
          continue;
       }
-      if (ep->d_type != DT_REG) continue;                /* we only want regular files */
+      if (ep->d_type != DT_REG) continue;               /* we only want regular files */
+#if 1 /* skip hidden . (dot) files? */
+      if (ep->d_name[0] == '.') continue;
+#endif
       if (!_strupstr(ep->d_name, ".pnd")) continue;     /* we only want .pnd files */
       strncpy(relav, relative, PNDMAN_PATH-1);
       strncat(relav, "/", PNDMAN_PATH-1);
@@ -1279,6 +1282,9 @@ static int _pndman_crawl_dir(const char *path,
          ret += _pndman_crawl_dir(path, relav, list);
          continue;
       }
+#if 1 /* skip hidden . (dot) files? */
+      if (ep->d_name[0] == '.') continue;
+#endif
       if (!_strupstr(dp.cFileName, ".pnd")) continue; /* we only want .pnd files */
       strncpy(relav, relative, PNDMAN_PATH-1);
       strncat(relav, "/", PNDMAN_PATH-1);
