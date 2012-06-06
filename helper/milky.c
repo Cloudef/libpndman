@@ -1580,11 +1580,15 @@ static int matchquery(pndman_package *p, _USR_TARGET *t, _USR_DATA *data)
 static int searchrepo(pndman_repository *rs, _USR_DATA *data)
 {
    pndman_repository *r;
+   char donl = 0;
    assert(rs && data);
 
    /* lame search */
-   for (r = rs->prev?rs:rs->next; r; r = r->next)
+   for (r = rs->prev?rs:rs->next; r; r = r->next) {
+      if (donl) NEWLINE();
       repoinfo(r, data);
+      donl = 1;
+   }
 
    return RETURN_OK;
 }
