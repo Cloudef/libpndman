@@ -35,7 +35,6 @@ static void _pndman_curl_init_progress(pndman_curl_progress *progress)
 /* \brief write to file */
 static size_t _pndman_curl_write_file(void *data, size_t size, size_t nmemb, pndman_curl_handle *handle)
 {
-   size_t written;
    if (!handle || handle->free) return 0;
    return fwrite(data, size, nmemb, handle->file);
 }
