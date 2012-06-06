@@ -529,11 +529,11 @@ static void _setroot(char *root, _USR_DATA *data)
 #define _PASSARG(x) { x(narg, data); *skipn = 1; return; }  /* pass next argument to function */
 #define _PASSTHS(x) { x(arg, data); return; }               /* pass current argument to function */
 #define _PASSFLG(x) { data->flags |= x; return; }           /* pass flag */
-static const char* _G_ARG  = "vftrq";        /* global arguments */
-static const char* _OP_ARG = "hSURQPCV";     /* operations */
-static const char* _S_ARG  = "scilyumdab";   /* sync operation arguments */
+static const char* _G_ARG  = "fqrtv";        /* global arguments */
+static const char* _OP_ARG = "hCPQRSUV";     /* operations */
+static const char* _S_ARG  = "abcdilmsuy";   /* sync operation arguments */
 static const char* _R_ARG  = "n";            /* remove operation arguments */
-static const char* _Q_ARG  = "scilu";        /* query operation arguments */
+static const char* _Q_ARG  = "cdilsu";       /* query operation arguments */
 static const char* _P_ARG  = "cds";          /* crawl operation arguments */
 
 /* milkyhelper's operation flags */
@@ -553,7 +553,7 @@ typedef enum _HELPER_FLAGS
    GB_NEEDED   = 0x00400000, GB_NOBAR     = 0x00800000,
    A_BACKUP    = 0x01000000, A_ALL        = 0x02000000,
    A_INTEGRITY = 0x04000000, A_RM_CRPT    = 0x08000000,
-   A_INST_CRPT = 0x10000000,
+   A_INST_CRPT = 0x10000000, A_QUERY_REPO = 0x20000000
 } _HELPER_FLAGS;
 typedef _HELPER_FLAGS (*_PARSE_FUNC)(char, char*, int*, _USR_DATA*); /* function prototype for parsing flags */
 
@@ -571,7 +571,7 @@ static int isquery(unsigned int flags)
 {
    return ((flags & OP_QUERY)   || (flags & A_SEARCH) ||
            (flags & A_CATEGORY) || (flags & A_LIST)   ||
-           (flags & A_INFO));
+           (flags & A_INFO)     || (flags & A_QUERY_REPO));
 }
 
 /* do we need targets for our operation? */
@@ -650,6 +650,7 @@ static _HELPER_FLAGS getquery(char c, char *arg, int *skipn, _USR_DATA *data)
    else if (c == 'i')   return A_INFO;
    else if (c == 'u')   return A_UPGRADE;
    else if (c == 'l')   return A_LIST;
+   else if (c == 'd')   return A_QUERY_REPO;
    return 0;
 }
 
@@ -1025,8 +1026,8 @@ static const char* apptitle(pndman_application *app, const char *lang)
    return NULL;
 }
 
-/* get human readable modified time */
-static char* getmodified(pndman_package *pnd)
+/* get human readable elapsed time since */
+static char* gettime(time_t unixtime)
 {
    time_t nao;
    unsigned int seconds, minutes, hours, days, months, years;
@@ -1037,7 +1038,7 @@ static char* getmodified(pndman_package *pnd)
       return NULL;
 
    nao = time(0);
-   rseconds  = seconds = (unsigned int)(nao - pnd->modified_time);
+   rseconds  = seconds = (unsigned int)(nao - unixtime);
    rminutes  = minutes = seconds / 60;
    rhours    = hours   = minutes / 60;
    rdays     = days    = hours   / 24;
@@ -1070,6 +1071,31 @@ static void filltitle(pndman_package *pnd, char *buffer)
          pnd->category ? strlen(pnd->category->sub) ?
          pnd->category->sub : pnd->category->main : "nogroup",
          pnd->id);
+}
+
+/* repoinfo */
+static void repoinfo(pndman_repository *repo, _USR_DATA *data)
+{
+   char *synced = NULL;
+   unsigned int packages = 0;
+   pndman_package *p;
+   assert(repo);
+
+   for (p = repo->pnd; p; p = p->next) ++packages;
+   _printf(_D"\1Repository with \4%d \1packages.", packages);
+   _printf("\1─┬─\4%s", repo->url);
+   _printf("\1 └─┬──\2%s [\3%s\5]", repo->name, repo->version);
+   if (strlen(repo->updates))  _printf("\1   ├──\5%s", repo->updates);
+   if (strlen(repo->api.root)) _printf("\1   ├─%s─\5%s",
+         (strlen(repo->api.username)||strlen(repo->api.key))?"┬":"",
+          repo->api.root);
+   if (strlen(repo->api.username)) _printf("\1   │ %s─\3%s",
+         strlen(repo->api.key)?"├":"└", repo->api.username);
+   if (strlen(repo->api.key))      _printf("\1   │ └─\3%s", repo->api.key);
+   if (repo->timestamp) synced = gettime(repo->timestamp);
+   _printf("\1   └──\5%s%s%s", synced?"\2Synced ":"",
+         synced?synced:"\3Not synced!", synced?" ago":"");
+   if (synced) free(synced);
 }
 
 /* pndinfo */
@@ -1105,7 +1131,7 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data, size_t longest_title)
       }
       _printf("\2Repository    \5: %s", strlen(pnd->repository)?pnd->repository:"Foreign");
       _printf("\2Update        \5: %s", pnd->update?"Yes":"No");
-      if ((time = getmodified(pnd))) {
+      if ((time = gettime(pnd->modified_time))) {
          _printf("\2Modified      \5: %s ago", time);
          free(time);
       }
@@ -1551,12 +1577,25 @@ static int matchquery(pndman_package *p, _USR_TARGET *t, _USR_DATA *data)
 }
 
 /* search repository */
-static int searchrepo(pndman_repository *r, _USR_DATA *data, size_t longest_title)
+static int searchrepo(pndman_repository *rs, _USR_DATA *data)
+{
+   pndman_repository *r;
+   assert(rs && data);
+
+   /* lame search */
+   for (r = rs->prev?rs:rs->next; r; r = r->next)
+      repoinfo(r, data);
+
+   return RETURN_OK;
+}
+
+/* search pnd from repository */
+static int searchpnd(pndman_repository *r, _USR_DATA *data, size_t longest_title)
 {
    pndman_package *p, *pp;
    _USR_TARGET *t;
    char donl = 0;
-   assert(r);
+   assert(r && data);
 
    /* lame search for now */
    if (!data->tlist)
@@ -1956,7 +1995,7 @@ static int syncprocess(_USR_DATA *data)
    if (isquery(data->flags))  {
       longest_title = getlongtarget(data, rs);
       for (r = rs; r && strlen(r->url); r = r->next)
-         searchrepo(r, data, longest_title);
+         searchpnd(r, data, longest_title);
       return RETURN_OK;
    }
 
@@ -2012,9 +2051,13 @@ static int removeprocess(_USR_DATA *data)
 /* query operation logic */
 static int queryprocess(_USR_DATA *data)
 {
-   size_t longest_title = getlongtarget(data, data->rlist);
-   /* lame query for now */
-   return searchrepo(data->rlist, data, longest_title);
+   size_t longest_title;
+
+   if (data->flags & A_QUERY_REPO)
+      return searchrepo(data->rlist, data);
+
+   longest_title = getlongtarget(data, data->rlist);
+   return searchpnd(data->rlist, data, longest_title);
 }
 
 /* version compare, ret 0 on same, 1 on different */
@@ -2267,6 +2310,7 @@ static int help(_USR_DATA *data)
       _printf("\5  -i : Show full information of matching PND.");
       _printf("\5  -l : List contents of PND's.");
       _printf("\5  -u : Filter query with upgrade status.");
+      _printf("\5  -d : List repositories.");
    } else if ((data->flags & OP_UPGRADE)) {
       NEWLINE();
       _printf("\2~ Upgrade operation:");
@@ -2369,6 +2413,10 @@ static int processflags(_USR_DATA *data)
       if ((data->flags & A_NOSAVE))     _printf("\2->NOSAVE");
       if ((data->flags & A_BACKUP))     _printf("\2->BACKUP");
       if ((data->flags & A_ALL))        _printf("\2->ALL");
+      if ((data->flags & A_INTEGRITY))  _printf("\2->INTEGRITY");
+      if ((data->flags & A_INST_CRPT))  _printf("\2->INST_CRPT");
+      if ((data->flags & A_RM_CRPT))    _printf("\2->RM_CRPT");
+      if ((data->flags & A_QUERY_REPO)) _printf("\2->QUERY_REPO");
       if ((data->flags & A_MENU))       _printf("\1[MENU]");
       if ((data->flags & A_DESKTOP))    _printf("\1[DESKTOP]");
       if ((data->flags & A_APPS))       _printf("\1[APPS]");
