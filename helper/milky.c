@@ -389,10 +389,10 @@ static _USR_TARGET* addtarget(const char *id, _USR_TARGET **list)
    } else new = malloc(sizeof(_USR_TARGET));
    if (!new) return NULL;
 
+   memset(new, 0, sizeof(_USR_TARGET));
    if (*list) new->prev = t;
    else     { new->prev = NULL; *list = new; }
 
-   memset(new, 0, sizeof(_USR_TARGET));
    strncpy(new->id, id, PND_ID-1);
    return new;
 }
@@ -438,10 +438,10 @@ static _USR_IGNORE* addignore(char *id, _USR_IGNORE **list)
    } else new = malloc(sizeof(_USR_IGNORE));
    if (!new) return NULL;
 
+   memset(new, 0, sizeof(_USR_IGNORE));
    if (*list) new->prev = t;
    else     { new->prev = NULL; *list = new; }
 
-   memset(new, 0, sizeof(_USR_IGNORE));
    strncpy(new->id, id, PND_ID-1);
    return new;
 }
