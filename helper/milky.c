@@ -41,6 +41,9 @@
 /* verbose level? */
 char _VERBOSE     = 0;
 
+/* quiet level? */
+char _QUIET       = 0;
+
 /* max concurrent downloads? */
 char _QUEUE       = 5;
 
@@ -116,7 +119,8 @@ static void init_usrdata(_USR_DATA *data)
 #define _REPO_SYNCED_NOT         _D"\1Failed to synchorize repository: \4%s"
 #define _PND_NOT_FOUND           _D"\1Warning: No such package \4%s"
 #define _PND_NO_UPDATE           _D"\1Warning: Package \4%s, has no update."
-#define _PND_HAS_UPDATE          _D"\1Package \4%s \1has an update."
+#define _PND_HAS_UPDATE          _D"\2Package \4%s \2has an update."
+#define _PND_HAS_UPDATE_Q        _D"\4%d \2Packages have an update."
 #define _PND_IS_CORRUPT          _D"\1Package \4%s \1is corrupt!"
 #define _PND_MAY_CORRUPT         _D"\1Package \4%s \1may be corrupt!"
 #define _PND_DIF_CORRUPT         _D"\1Package \4%s \1integrity differs beetwen repositories.\n"_PND_MAY_CORRUPT
@@ -133,10 +137,14 @@ static void init_usrdata(_USR_DATA *data)
 #define _NO_X_SPECIFIED          _D"\1No \4%s \1specified."
 #define _BAD_DEVICE_SELECTED     _D"\1Bad device selected, exiting.."
 #define _PND_IGNORED_FORCE       _D"\3Package \4%s \3is being ignored. Do you want to force?"
+#define _PND_IGNORED_FORCE_Q     _D"\4%d \3Packages are being ignored. Do you want to force?"
 #define _PND_REINSTALL           _D"\3Package \4%s \3is already installed, reinstall?"
+#define _PND_REINSTALL_Q         _D"\4%d \3Packages are already installed, reinstall?"
 #define _NO_ROOT_YET             _D"\4Sir! You haven't selected your mount where to store packages yet."
 #define _WARNING_SKIPPING        _D"\1Warning: Skipping package \4%s"
 #define _WARNING_UPDATE          _D"\1Warning: \4%s \1is up-to-date, skipping."
+#define _WARNING_SKIPPING_Q      _D"\1Warning: Skipping \4%d \1packages."
+#define _WARNING_UPDATE_Q        _D"\1Warning: \4%d \1packages are up-to-date, skipping."
 #define _NOTHING_TO_DO           _D"\4There is nothing to do."
 #define _FAILED_TO_DEVICES       _D"\1Failed to detect devices."
 #define _FAILED_TO_REPOS         _D"\1Failed to initialize local repository.."
@@ -521,7 +529,7 @@ static void _setroot(char *root, _USR_DATA *data)
 #define _PASSARG(x) { x(narg, data); *skipn = 1; return; }  /* pass next argument to function */
 #define _PASSTHS(x) { x(arg, data); return; }               /* pass current argument to function */
 #define _PASSFLG(x) { data->flags |= x; return; }           /* pass flag */
-static const char* _G_ARG  = "vftr";         /* global arguments */
+static const char* _G_ARG  = "vftrq";        /* global arguments */
 static const char* _OP_ARG = "hSURQPCV";     /* operations */
 static const char* _S_ARG  = "scilyumdab";   /* sync operation arguments */
 static const char* _R_ARG  = "n";            /* remove operation arguments */
@@ -588,6 +596,7 @@ static unsigned int setdest(_HELPER_FLAGS dest, _USR_DATA *data)
 static _HELPER_FLAGS getglob(char c, char *arg, int *skipn, _USR_DATA *data)
 {
    if (c == 'v')        ++_VERBOSE;
+   else if (c == 'q')   ++_QUIET;
    else if (c == 'f')   return GB_FORCE;
    else if (c == 't')   pndman_set_color(0);
    else if (c == 'r')   _setroot(NULL, data);
@@ -745,6 +754,16 @@ static int _setdest(char **argv, int argc, _USR_DATA *data)
    return RETURN_OK;
 }
 
+/* always backup? */
+static int _backup(char **argv, int argc, _USR_DATA *data)
+{
+   assert(data);
+   if (!argc) return RETURN_FAIL;
+   if (strtol(argv[0], (char **) NULL, 10))
+      data->flags |= A_BACKUP;
+   return RETURN_OK;
+}
+
 /* configuration wrapper for ignoring package */
 static int _addignore(char **argv, int argc, _USR_DATA *data)
 {
@@ -762,6 +781,14 @@ static int _nomerge(char **argv, int argc, _USR_DATA *data)
    return RETURN_OK;
 }
 
+/* configuration wrapper for setting nobar option */
+static int _nobar(char **argv, int argc, _USR_DATA *data)
+{
+   assert(data);
+   data->flags |= GB_NOBAR;
+   return RETURN_OK;
+}
+
 /* configuration wrapper for setting queue limit */
 static int _queue(char **argv, int argc, _USR_DATA *data)
 {
@@ -769,6 +796,33 @@ static int _queue(char **argv, int argc, _USR_DATA *data)
    if (!argc) return RETURN_FAIL;
    if ((_QUEUE = strtol(argv[0], (char **) NULL, 10)) <= 0)
       _QUEUE = 5;
+   return RETURN_OK;
+}
+
+/* configuration wrapper for setting quiet level */
+static int _quiet(char **argv, int argc, _USR_DATA *data)
+{
+   assert(data);
+   if (!argc) return RETURN_FAIL;
+   _QUIET = strtol(argv[0], (char **) NULL, 10);
+   return RETURN_OK;
+}
+
+/* configuration wrapper for setting verbose level */
+static int _verbose(char **argv, int argc, _USR_DATA *data)
+{
+   assert(data);
+   if (!argc) return RETURN_FAIL;
+   _VERBOSE = strtol(argv[0], (char **) NULL, 10);
+   return RETURN_OK;
+}
+
+/* configuration wrapper for setting color */
+static int _color(char **argv, int argc, _USR_DATA *data)
+{
+   assert(data);
+   if (!argc) return RETURN_FAIL;
+   pndman_set_color(strtol(argv[0], (char **) NULL, 10));
    return RETURN_OK;
 }
 
@@ -800,8 +854,13 @@ static _CONFIG_KEYS _CONFIG_KEY[] = {
    { "device",                _adddevice },
    { "ignore",                _addignore },
    { "destination",           _setdest },
+   { "backup",                _backup },
    { "nomerge",               _nomerge },
+   { "nobar",                 _nobar },
    { "queue",                 _queue },
+   { "quiet",                 _quiet },
+   { "verbose",               _verbose },
+   { "color",                 _color },
    { "<this ends the list>",  NULL },
 };
 
@@ -871,8 +930,16 @@ static int mkconfig(const char *path)
    fputs("# destination MENU DESKTOP APPS\n", f);
    fputs("\n# To disable repository merges when synchorizing, use 'nomerge' key\n", f);
    fputs("# nomerge\n", f);
+   fputs("\n# To disable progress bar, use 'nobar' key\n", f);
+   fputs("# nobar\n",f );
    fputs("\n# Queue limit for concurrent downloads\n", f);
    fputs("# queue 5\n", f);
+   fputs("\n# Quiet level (0 = default, 1 = truncated, 2 = silent)\n", f);
+   fputs("# quiet 0\n", f);
+   fputs("\n# Verbose level (0 = none, 1 = fail, 2 = warn, 3 = crap)\n", f);
+   fputs("# verbose 0\n", f);
+   fputs("\n# Colored output\n", f);
+   fputs("# color 1\n", f);
    fputs("\n# milkshake's repo is enabled by default\n", f);
    fputs("repository \"http://repo.openpandora.org/client/masterlist\"\n",f );
    fclose(f);
@@ -1303,33 +1370,53 @@ static void progressbar(float downloaded, float total_to_download)
 static int pre_op_dialog(_USR_DATA *data)
 {
    _USR_TARGET *t, *tn;
-   unsigned int count;
+   unsigned int count, update, skipping, ignore, reinstall;
    double size;
    char *unit, gotdialog = 0;
    assert(data);
 
+   /* init */
+   count = update = skipping = ignore = reinstall = 0;
+
    /* ask for ignores */
-   for (count = 0, t = data->tlist; t; t = tn) {
+   for (t = data->tlist; t; t = tn) {
       tn = t->next; ++count;
       if (!pndinstalled(t->pnd, data)) {
          if (checkignore(t->pnd->id, data))
-            if (!yesno(data, _PND_IGNORED_FORCE, t->pnd->id)) {
-               _printf(_WARNING_SKIPPING, t->pnd->id);
+            if ((_QUIET && ++ignore) ||
+                !yesno(data, _PND_IGNORED_FORCE, t->pnd->id)) {
+               if (!_QUIET) _printf(_WARNING_SKIPPING, t->pnd->id);
                data->tlist = freetarget(t);
                --count; gotdialog = 1;
+               ++skipping;
             }
       } else {
          if ((data->flags & GB_NEEDED)  && !t->pnd->update ||
              !(data->flags & A_UPGRADE) && !(data->flags & OP_UPGRADE) &&
              !(data->flags & OP_REMOVE) && !t->pnd->update &&
-             !yesno(data, _PND_REINSTALL, t->pnd->id)) {
+             ((_QUIET && ++reinstall) ||
+              !yesno(data, _PND_REINSTALL, t->pnd->id))) {
             if ((data->flags & GB_NEEDED)) {
-               _printf(_WARNING_UPDATE, t->pnd->id);
+               if (!_QUIET) _printf(_WARNING_UPDATE, t->pnd->id);
+               else update++;
             }
             data->tlist = freetarget(t);
             --count; gotdialog = 1;
          }
       }
+   }
+
+   /* count questions on all quiet levels */
+   if (_QUIET) {
+      if (ignore)    if (!yesno(data, _PND_IGNORED_FORCE_Q, ignore))  return RETURN_FALSE;
+      if (reinstall) if (!yesno(data, _PND_REINSTALL_Q, reinstall))   return RETURN_FALSE;
+   }
+
+   /* print count warnings on quiet
+    * level 1 */
+   if (_QUIET == 1) {
+      if (skipping)  _printf(_WARNING_SKIPPING_Q, skipping);
+      if (update)    _printf(_WARNING_UPDATE_Q, update);
    }
 
    /* nothing to perform action on */
@@ -1344,8 +1431,10 @@ static int pre_op_dialog(_USR_DATA *data)
    /* show target line */
    _printf(_TARGET_LINE"\7", count);
    for (size = 0, t = data->tlist; t; t = t->next) {
-      _printf("\4%s\7", t->pnd->id);
-      if (t->next) _printf("\5, \7");
+      if (_QUIET < 2) {
+         _printf("\4%s\7", t->pnd->id);
+         if (t->next) _printf("\5, \7");
+      }
       size += t->pnd->size;
    }
    NEWLINE();
@@ -1554,12 +1643,12 @@ static int targetpnd(pndman_repository *rs, _USR_DATA *data, int up)
    for (t = data->tlist; t && t != ts; t = tn) {
       tn = t->next;
       if (!t->pnd) {
-         _printf(_PND_NOT_FOUND, t->id);
+         if (!_QUIET) _printf(_PND_NOT_FOUND, t->id);
          data->tlist = freetarget(t);
          continue;
       }
       if (up && !t->pnd->update) {
-         _printf(_PND_NO_UPDATE, t->id);
+         if (!_QUIET) _printf(_PND_NO_UPDATE, t->id);
          data->tlist = freetarget(t);
          continue;
       }
@@ -1586,9 +1675,14 @@ static void targetup(pndman_repository *r, _USR_DATA *data)
 static void listupdate(_USR_DATA *data)
 {
    pndman_package *p;
+   unsigned int count = 0;
    assert(data);
    for (p = data->rlist->pnd; p; p = p->next)
-      if (p->update) _printf(_PND_HAS_UPDATE, p->id);
+      if (p->update) {
+         if (!_QUIET) _printf(_PND_HAS_UPDATE, p->id);
+         ++count;
+      }
+   if (_QUIET == 1 && count) _printf(_PND_HAS_UPDATE_Q, count);
 }
 
 /* get handle flags from milkyhelper's flags */
@@ -2119,6 +2213,7 @@ static int help(_USR_DATA *data)
       NEWLINE();
       _printf("\2~ Global arguments:");
       _printf("\5  -v : Verbose mode, combine to increase verbose level.");
+      _printf("\5  -q : Quietness, combine to make application more silent.");
       _printf("\5  -t : Plain text mode, do not use colors.");
       _printf("\5  -r : Root device/directory.\n%s\n%s\n%s",
               "       All operations are going to be done under this device/directory.",
