@@ -1183,13 +1183,13 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data, size_t longest_title)
       filltitle(pnd, buffer);
       _printf(buffer);
       for (i = longest_title; i > strlen(buffer); --i) printf(" ");
-      _printf("\t\t%s%s\5[\3%d\5]\5[\4%s.%s.%s.%s%s\5]",
+      _printf("%s%s\5[\3%d\5]\5[\4%s.%s.%s.%s%s\5]",
                       pndinstalled(pnd, data)?"\5[\2I\5]":"   ",
                       pnd->update?"\5[\1U\5]":"   ", pnd->rating,
                       pnd->version.major,   pnd->version.minor,
                       pnd->version.release, pnd->version.build,
-                      pnd->version.type==PND_VERSION_BETA?" beta":
-                      pnd->version.type==PND_VERSION_ALPHA?" alpha":"");
+                      pnd->version.type==PND_VERSION_BETA?" \1β":
+                      pnd->version.type==PND_VERSION_ALPHA?" \3α":"");
       _printf("    \5%s\7", desc?desc:"...");
    } else {
       _printf("\2%s \4%s.%s.%s.%s%s\7", pnd->id,
@@ -1251,30 +1251,20 @@ static int rootdialog(_USR_DATA *data)
    return RETURN_FAIL;
 }
 
-static size_t getlongtarget(_USR_DATA *data, pndman_repository *rs)
+static size_t getlongtarget(_USR_DATA *data)
 {
-   _USR_TARGET *t;
    pndman_repository *r;
    pndman_package *p;
    char buffer[LINE_MAX];
    size_t longest_title = 0, len;
-   if (!data->tlist && rs) {
-      for (r = rs; r; r = r->next) {
-         for (p = r->pnd; p; p = p->next) {
-            filltitle(p, buffer);
-            if ((len = strlen(buffer)) > longest_title)
-               longest_title = len;
-         }
-         if (!r->prev) break;
+
+   for (r = data->rlist; r; r = r->next)
+      for (p = r->pnd; p; p = p->next) {
+         filltitle(p, buffer);
+         if ((len = strlen(buffer)) > longest_title)
+            longest_title = len;
       }
-      return longest_title;
-   }
-   for (t = data->tlist; t; t = t->next) {
-      filltitle(t->pnd, buffer);
-      if ((len = strlen(buffer)) > longest_title)
-         longest_title = len;
-   }
-   return longest_title;
+   return longest_title>54?54:longest_title;
 }
 
 /* yaourt mode dialog */
@@ -1288,7 +1278,7 @@ static int yaourtdialog(_USR_DATA *data)
    if (!data->tlist) return RETURN_FALSE;
 
    /* get longest title */
-   longest_title = getlongtarget(data, NULL);
+   longest_title = getlongtarget(data);
 
    /* output query */
    for (i = 0, t = data->tlist; t; t = t->next) {
@@ -1997,7 +1987,7 @@ static int syncprocess(_USR_DATA *data)
 
    /* search */
    if (isquery(data->flags))  {
-      longest_title = getlongtarget(data, rs);
+      longest_title = getlongtarget(data);
       for (r = rs; r && strlen(r->url); r = r->next)
          searchpnd(r, data, longest_title);
       return RETURN_OK;
@@ -2060,7 +2050,7 @@ static int queryprocess(_USR_DATA *data)
    if (data->flags & A_QUERY_REPO)
       return searchrepo(data->rlist, data);
 
-   longest_title = getlongtarget(data, data->rlist);
+   longest_title = getlongtarget(data);
    return searchpnd(data->rlist, data, longest_title);
 }
 
