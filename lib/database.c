@@ -233,6 +233,7 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
    char appdata[PNDMAN_PATH];
    char *ret;
    int  parse = 0;
+   pndman_repository *r, *rs;
    assert(device);
 
    /* find local db and read it first */
@@ -264,11 +265,19 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
       goto fail;
 
    /* read repository */
-   memset(s,  0, LINE_MAX);
+   rs = _pndman_repository_first(repo);
+   memset(s, 0, LINE_MAX);
    snprintf(s2, LINE_MAX-1, "[%s]", repo->url);
    while ((ret = fgets(s, LINE_MAX, f))) {
-      if (!parse && !(memcmp(s, s2, strlen(s2)))) parse = 1;
-      else if (parse && strlen(s)) fprintf(f2, "%s", s);
+      if (!parse && !memcmp(s, s2, strlen(s2))) parse = 1;
+      else if (parse && strlen(s)) {
+         for (r = rs; r && parse; r = r->next) {
+            snprintf(s2, LINE_MAX-1, "[%s]", r->url);
+            if (!memcmp(s, s2, strlen(s2))) parse = 0;
+         }
+         if (!parse) break;
+         fprintf(f2, "%s", s);
+      }
    }
 
    /* process and close */
