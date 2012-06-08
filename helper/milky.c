@@ -17,6 +17,7 @@
 #  include <pwd.h>
 #  include <sys/stat.h>
 #  include <dirent.h>
+#  include <sys/select.h>
 #endif
 
 /*   ____ _____ _   _ _____ ____      _    _
@@ -37,6 +38,9 @@
 
 /* max length of descriptions */
 #define DESCRIPTION_LENGTH 74
+
+/* log downloads? */
+char _LOG_DL      = 0;
 
 /* verbose level? */
 char _VERBOSE     = 0;
@@ -75,7 +79,7 @@ typedef struct _USR_IGNORE
 typedef struct _USR_DATA
 {
    char              *bin;
-   unsigned int      flags;
+   unsigned long     flags;
    pndman_device     *dlist;
    pndman_device     *root;
    pndman_repository *rlist;
@@ -155,6 +159,11 @@ static void init_usrdata(_USR_DATA *data)
 #define _MKCONFIG                _D"\3Creating default configuration file in \5%s"
 #define _CONFIG_READ_FAIL        _D"\1Warning: failed to read configuration from \5%s"
 #define _INTERNAL_CURL_FAIL      _D"\1Internal curl failure!"
+#define _REPO_API_KEY_ADDED      _D"\2Credentials were set succesfully!"
+#define _REPO_API_KEY_ADD_USAGE  _D"\1usage: <repository> <username> <api key>"
+#define _COULD_NOT_FIND_REPO     _D"\1No such repository: \5%s \1make sure it's in your repository list."
+#define _REPO_API_FORGOT_RATING  _D"\1You forgot to give your rating [0-100]"
+#define _REPO_API_NO_PACKAGES    _D"\1No packages given to perform this action on."
 #define _YAOURT_DIALOG           "\4Enter number of packages to be installed \5(\2ex: 1 2 3\5)"
 #define _TARGET_MEDIA            "\4Target media  \5: %s"
 #define _TARGET_PATH             "\4Target path   \5: %s"
@@ -163,6 +172,8 @@ static void init_usrdata(_USR_DATA *data)
 #define _CONTINUE_INSTALL        "\3Continue install?"
 #define _CONTINUE_UPGRADE        "\3Continue upgrade?"
 #define _CONTINUE_UNINSTALL      "\3Continue uninstall?"
+#define _SEND_RATING             "\3Send rating for packages?"
+#define _SEND_COMMENT            "\3Send comments for packages?"
 #define _TARGET_LINE             "\2Targets \5(\4%d\5)   : "
 #define _UNIT_KIB                "\5KiB"
 #define _UNIT_MIB                "\5MiB"
@@ -530,45 +541,50 @@ static void _setroot(char *root, _USR_DATA *data)
 #define _PASSARG(x) { x(narg, data); *skipn = 1; return; }  /* pass next argument to function */
 #define _PASSTHS(x) { x(arg, data); return; }               /* pass current argument to function */
 #define _PASSFLG(x) { data->flags |= x; return; }           /* pass flag */
+#define _SETFLG(x)  { data->flags  = x; return; }           /* set flag */
 static const char* _G_ARG  = "fqrtv";        /* global arguments */
-static const char* _OP_ARG = "hCPQRSUV";     /* operations */
+static const char* _OP_ARG = "hACPQRSUV";    /* operations */
 static const char* _S_ARG  = "abcdilmsuy";   /* sync operation arguments */
 static const char* _R_ARG  = "n";            /* remove operation arguments */
 static const char* _Q_ARG  = "cdilsu";       /* query operation arguments */
 static const char* _P_ARG  = "cds";          /* crawl operation arguments */
+static const char* _A_ARG  = "cdp";          /* repo api operation arguments */
 
 /* milkyhelper's operation flags */
 typedef enum _HELPER_FLAGS
 {
-   GB_FORCE    = 0x00000001, OP_YAOURT    = 0x00000002,
-   OP_SYNC     = 0x00000004, OP_UPGRADE   = 0x00000008,
-   OP_REMOVE   = 0x00000010, OP_QUERY     = 0x00000020,
-   OP_CLEAN    = 0x00000040, OP_VERSION   = 0x00000080,
-   OP_HELP     = 0x00000100, OP_CRAWL     = 0x00000200,
-   A_SEARCH    = 0x00000400, A_CATEGORY   = 0x00000800,
-   A_INFO      = 0x00001000, A_LIST       = 0x00002000,
-   A_REFRESH   = 0x00004000, A_UPGRADE    = 0x00008000,
-   A_MENU      = 0x00010000, A_DESKTOP    = 0x00020000,
-   A_APPS      = 0x00040000, A_NOSAVE     = 0x00080000,
-   GB_NOMERGE  = 0x00100000, GB_NOCONFIRM = 0x00200000,
-   GB_NEEDED   = 0x00400000, GB_NOBAR     = 0x00800000,
-   A_BACKUP    = 0x01000000, A_ALL        = 0x02000000,
-   A_INTEGRITY = 0x04000000, A_RM_CRPT    = 0x08000000,
-   A_INST_CRPT = 0x10000000, A_QUERY_REPO = 0x20000000
+   GB_FORCE    = 0x000000001, OP_YAOURT    = 0x000000002,
+   OP_SYNC     = 0x000000004, OP_UPGRADE   = 0x000000008,
+   OP_REMOVE   = 0x000000010, OP_QUERY     = 0x000000020,
+   OP_CLEAN    = 0x000000040, OP_VERSION   = 0x000000080,
+   OP_HELP     = 0x000000100, OP_CRAWL     = 0x000000200,
+   A_SEARCH    = 0x000000400, A_CATEGORY   = 0x000000800,
+   A_INFO      = 0x000001000, A_LIST       = 0x000002000,
+   A_REFRESH   = 0x000004000, A_UPGRADE    = 0x000008000,
+   A_MENU      = 0x000010000, A_DESKTOP    = 0x000020000,
+   A_APPS      = 0x000040000, A_NOSAVE     = 0x000080000,
+   GB_NOMERGE  = 0x000100000, GB_NOCONFIRM = 0x000200000,
+   GB_NEEDED   = 0x000400000, GB_NOBAR     = 0x000800000,
+   A_BACKUP    = 0x001000000, A_ALL        = 0x002000000,
+   A_INTEGRITY = 0x004000000, A_RM_CRPT    = 0x008000000,
+   A_INST_CRPT = 0x010000000, A_QUERY_REPO = 0x020000000,
+   OP_REPO_API = 0x040000000, A_COMMENT    = 0x080000000,
+   A_RATE      = 0x100000000, A_DL_HISTORY = 0x200000000
 } _HELPER_FLAGS;
 typedef _HELPER_FLAGS (*_PARSE_FUNC)(char, char*, int*, _USR_DATA*); /* function prototype for parsing flags */
 
 /* do we have operation? */
-static int hasop(unsigned int flags)
+static int hasop(unsigned long flags)
 {
    return ((flags & OP_YAOURT) || (flags & OP_SYNC)    ||
            (flags & OP_REMOVE) || (flags & OP_UPGRADE) ||
            (flags & OP_CRAWL)  || (flags & OP_CLEAN)   ||
-           (flags & OP_QUERY)  || (flags & OP_VERSION));
+           (flags & OP_QUERY)  || (flags & OP_VERSION) ||
+           (flags & OP_REPO_API));
 }
 
 /* are we querying information? */
-static int isquery(unsigned int flags)
+static int isquery(unsigned long flags)
 {
    return ((flags & OP_QUERY)   || (flags & A_SEARCH) ||
            (flags & A_CATEGORY) || (flags & A_LIST)   ||
@@ -576,16 +592,16 @@ static int isquery(unsigned int flags)
 }
 
 /* do we need targets for our operation? */
-static int needtarget(unsigned int flags)
+static int needtarget(unsigned long flags)
 {
    return  (!(flags & OP_CLEAN)  && !isquery(flags)       &&
             !(flags & A_REFRESH) && !(flags & OP_UPGRADE) &&
             !(flags & A_UPGRADE) && !(flags & OP_CRAWL)   &&
-            !(flags & A_ALL));
+            !(flags & A_ALL)     && !(flags & OP_REPO_API));
 }
 
 /* set destination */
-static unsigned int setdest(_HELPER_FLAGS dest, _USR_DATA *data)
+static unsigned long setdest(_HELPER_FLAGS dest, _USR_DATA *data)
 {
    data->flags = data->flags & ~A_MENU;
    data->flags = data->flags & ~A_DESKTOP;
@@ -611,6 +627,7 @@ static _HELPER_FLAGS getop(char c, char *arg, int *skipn, _USR_DATA *data)
    else if (c == 'U')   return OP_UPGRADE;
    else if (c == 'R')   return OP_REMOVE;
    else if (c == 'Q')   return OP_QUERY;
+   else if (c == 'A')   return OP_REPO_API;
    else if (c == 'P')   return OP_CRAWL;
    else if (c == 'C')   return OP_CLEAN;
    else if (c == 'V')   return OP_VERSION;
@@ -655,12 +672,21 @@ static _HELPER_FLAGS getquery(char c, char *arg, int *skipn, _USR_DATA *data)
    return 0;
 }
 
+/* parse repo api flags */
+static _HELPER_FLAGS getrepoapi(char c, char *arg, int *skipn, _USR_DATA *data)
+{
+   if (c == 'c')        return A_COMMENT;
+   else if (c == 'p')   return A_RATE;
+   else if (c == 'd')   return A_DL_HISTORY;
+   return 0;
+}
+
 /* parse crawl flags */
 static _HELPER_FLAGS getcrawl(char c, char *arg, int *skipn, _USR_DATA *data)
 {
-   if (c == 'c') return A_INTEGRITY;
-   else if (c == 's') return A_INST_CRPT;
-   else if (c == 'd') return A_RM_CRPT;
+   if (c == 'c')        return A_INTEGRITY;
+   else if (c == 's')   return A_INST_CRPT;
+   else if (c == 'd')   return A_RM_CRPT;
    return 0;
 }
 
@@ -693,12 +719,14 @@ static void parsearg(char *arg, char *narg, int *skipn, _USR_DATA *data)
    if (!strcmp(arg, "--check-integrity")) _PASSFLG(A_INTEGRITY);  /* -Pc alias */
    if (!strcmp(arg, "--install-corrupt")) _PASSFLG(A_INST_CRPT);  /* reinstall corrupt pnds */
    if (!strcmp(arg, "--remove-corrupt"))  _PASSFLG(A_RM_CRPT);    /* remove corrupt pnds */
+   if (!strcmp(arg, "--add-key"))         _SETFLG(OP_REPO_API);   /* -A alias */
    if (arg[0] != '-')                     _PASSTHS(_addtarget);   /* not argument */
    parse(getglob, _G_ARG, arg, narg, skipn, data);
    if (!hasop(data->flags))         parse(getop, _OP_ARG, arg, narg, skipn, data);
    if ((data->flags & OP_SYNC))     parse(getsync, _S_ARG, arg, narg, skipn, data);
    if ((data->flags & OP_REMOVE))   parse(getremove, _R_ARG, arg, narg, skipn, data);
    if ((data->flags & OP_QUERY))    parse(getquery, _Q_ARG, arg, narg, skipn, data);
+   if ((data->flags & OP_REPO_API)) parse(getrepoapi, _A_ARG, arg, narg, skipn, data);
    if ((data->flags & OP_CRAWL))    parse(getcrawl, _P_ARG, arg, narg, skipn, data);
 }
 
@@ -828,6 +856,14 @@ static int _color(char **argv, int argc, _USR_DATA *data)
    return RETURN_OK;
 }
 
+/* configuration wrapper for logdl */
+static int _logdl(char **argv, int argc, _USR_DATA *data)
+{
+   assert(data);
+   _LOG_DL = 1;
+   return RETURN_OK;
+}
+
 /*   ____ ___  _   _ _____ ___ ____
  *  / ___/ _ \| \ | |  ___|_ _/ ___|
  * | |  | | | |  \| | |_   | | |  _
@@ -863,6 +899,7 @@ static _CONFIG_KEYS _CONFIG_KEY[] = {
    { "quiet",                 _quiet },
    { "verbose",               _verbose },
    { "color",                 _color },
+   { "logdl",                 _logdl },
    { "<this ends the list>",  NULL },
 };
 
@@ -933,7 +970,9 @@ static int mkconfig(const char *path)
    fputs("\n# To disable repository merges when synchorizing, use 'nomerge' key\n", f);
    fputs("# nomerge\n", f);
    fputs("\n# To disable progress bar, use 'nobar' key\n", f);
-   fputs("# nobar\n",f );
+   fputs("# nobar\n", f);
+   fputs("\n# To allow repository to gather download history, use 'logdl' key\n", f);
+   fputs("# logdl\n", f);
    fputs("\n# Queue limit for concurrent downloads\n", f);
    fputs("# queue 5\n", f);
    fputs("\n# Quiet level (0 = default, 1 = truncated, 2 = silent)\n", f);
@@ -1452,6 +1491,7 @@ static int pre_op_dialog(_USR_DATA *data)
 
    /* nothing to perform action on */
    if (!count || !data->tlist) {
+      printf("%d", count);
       _printf(_NOTHING_TO_DO);
       return RETURN_FALSE;
    }
@@ -1462,10 +1502,7 @@ static int pre_op_dialog(_USR_DATA *data)
    /* show target line */
    _printf(_TARGET_LINE"\7", count);
    for (size = 0, t = data->tlist; t; t = t->next) {
-      if (_QUIET < 2) {
-         _printf("\4%s\7", t->pnd->id);
-         if (t->next) _printf("\5, \7");
-      }
+      if (_QUIET < 2) _printf("\4%s\5%s\7", t->pnd->id, t->next?", ":"");
       size += t->pnd->size;
    }
    NEWLINE();
@@ -1737,7 +1774,7 @@ static void listupdate(_USR_DATA *data)
 }
 
 /* get handle flags from milkyhelper's flags */
-static unsigned int handleflagsfromflags(pndman_package *p, unsigned int flags)
+static unsigned long handleflagsfromflags(pndman_package *p, unsigned long flags)
 {
    unsigned int hflags = 0;
    if ((flags & OP_SYNC))           hflags |= PNDMAN_PACKAGE_INSTALL;
@@ -1758,11 +1795,12 @@ static unsigned int handleflagsfromflags(pndman_package *p, unsigned int flags)
 
    /* create backup of old file */
    if (flags & A_BACKUP) hflags |= PNDMAN_PACKAGE_BACKUP;
+   if (_LOG_DL)          hflags |= PNDMAN_PACKAGE_LOG_HISTORY;
    return hflags;
 }
 
 /* get operation string from milkyhelper's flags */
-static const char* opstrfromflags(char done, unsigned int flags)
+static const char* opstrfromflags(char done, unsigned long flags)
 {
    if ((flags & A_UPGRADE) || (flags & OP_UPGRADE))
                                  return done?_UPGRADE_DONE:_UPGRADE_FAIL;
@@ -2222,6 +2260,205 @@ static int cleanprocess(_USR_DATA *data)
    return RETURN_OK;
 }
 
+#ifndef _WIN32
+/* check if fd is ready */
+static int fdcheck(unsigned int fd)
+{
+   fd_set fdset;
+   struct timeval tm;
+   FD_ZERO(&fdset);
+   FD_SET(fd, &fdset);
+   tm.tv_sec   = 0;
+   tm.tv_usec  = 1;
+   return select(fd+1, &fdset, NULL, NULL, &tm)==1?1:0;
+}
+
+/* strip newline from stdin data */
+static char* stripnl(char *s) { s[strlen(s)-1] = 0; return s; }
+#endif
+
+/* hook for repo api requests
+ * this handles our failures and prints them to user */
+static void repoapihook(const char *file, int line, const char *function,
+      int verbose_level, const char *str) {
+   if (verbose_level != PNDMAN_LEVEL_ERROR) return;
+   _printf(_D"\1%s", str);
+}
+
+/* set repo credentials from CLI arguments or stdin */
+static int setrepocredentials(_USR_DATA *data)
+{
+   _USR_TARGET *t;
+   pndman_repository *r;
+   unsigned int count = 0;
+   char s[LINE_MAX], *repository, *username, *key;
+
+   /* arguments given */
+   if (data->tlist)
+      for (t = data->tlist; t; t = t->next) ++count;
+#ifndef _WIN32 /* POSIX only */
+   else { /* read stdin */
+      memset(s, 0, LINE_MAX);
+      while (fdcheck(fileno(stdin)) && fgets(s, LINE_MAX-1, stdin))
+      { addtarget(stripnl(s), &data->tlist); ++count; }
+   }
+#endif /* POSIX */
+
+   if (count < 3) goto usage;
+   repository  = (t = data->tlist)->id;
+   username    = (t = t->next)->id;
+   key         = (t = t->next)->id;
+
+   /* check if repository is valid */
+   for (r = data->rlist; r; r = r->next)
+      if (!strcmp(repository, r->url)      ||
+          !strcmp(repository, r->api.root) ||
+          (strlen(r->name) && !strcmp(repository, r->name)))
+         break;
+   if (!r) goto repo_fail;
+
+   /* set credentials */
+   _printf(_REPO_API_KEY_ADDED);
+   pndman_repository_set_credentials(r, username, key, 1 /* store */);
+   repoinfo(r, data);
+   return RETURN_OK;
+
+repo_fail:
+   _printf(_COULD_NOT_FIND_REPO, repository);
+   goto fail;
+usage:
+   _printf(_REPO_API_KEY_ADD_USAGE);
+fail:
+   return RETURN_FAIL;
+}
+
+/* comment package */
+static int repoapiratecomment(_USR_DATA *data, const char *comment, unsigned int rate)
+{
+   _USR_TARGET *t;
+   unsigned int count;
+   if (_QUIET < 2) {
+      for (t = data->tlist, count = 0; t; t = t->next); ++count;
+      _printf(_TARGET_LINE"\7", count);
+      for (t = data->tlist; t; t = t->next) _printf("\4%s\5%s\7", t->id, t->next?", ":"");
+      NEWLINE();
+   }
+   if (data->flags & A_COMMENT) {
+      if (!yesno(data, _SEND_COMMENT))    return RETURN_FAIL;
+   } else if (!yesno(data, _SEND_RATING)) return RETURN_FAIL;
+   for (t = data->tlist; t; t = t->next) {
+      if (data->flags & A_COMMENT) pndman_api_comment_pnd(t->pnd, t->repository, comment);
+      else pndman_api_rate_pnd(t->pnd, t->repository, rate);
+   }
+   while (pndman_curl_process() > 0);
+   return RETURN_OK;
+}
+
+/* comment callback */
+static void repoapicommentcb(void *user_data,
+      pndman_package *pnd, pndman_version *version, time_t date,
+      const char *username, const char *comment)
+{
+   pndman_repository *r = (pndman_repository*)user_data;
+   _printf(_D"%s%s\t\5: %s",
+         !strcmp(r->api.username, username)?"\4":"\1",
+         username, comment);
+}
+
+/* get comments for package */
+static int repoapicommentpull(_USR_DATA *data)
+{
+   _USR_TARGET *t;
+   for (t = data->tlist; t; t = t->next)
+      pndman_api_comment_pnd_pull(t->repository, t->pnd, t->repository, repoapicommentcb);
+   while (pndman_curl_process() > 0);
+   return RETURN_OK;
+}
+
+/* history callback */
+static void repoapihistorycb(void *user_data,
+      const char *id, pndman_version *version, time_t date)
+{
+   char *nao;
+   /* pndman_repository *r = (pndman_repository*)user_data; */
+   nao = gettime(date);
+   _printf("\2%s \5(\4%s.%s.%s.%s\5) \3- \5%s\n", id,
+         version->major, version->minor, version->release, version->build,
+         nao?nao:"herp derp");
+   if (nao) free(nao);
+}
+
+/* get download history */
+static int repoapidlhistory(_USR_DATA *data)
+{
+   pndman_repository *r;
+   for (r = data->rlist; r; r = r->next)
+      pndman_api_download_history(r, r, repoapihistorycb);
+   while (pndman_curl_process() > 0);
+   return RETURN_OK;
+}
+
+/* repository api operation logic */
+static int repoapiprocess(_USR_DATA *data)
+{
+   _USR_TARGET *t;
+   pndman_repository *rs;
+   char comment[LINE_MAX];
+   int rate;
+
+   /* repo api handler register */
+   pndman_set_debug_hook(repoapihook);
+   memset(comment, 0, LINE_MAX);
+
+   /* if we do action, do some sanity checks */
+   if ((data->flags & A_RATE)    ||
+       (data->flags & A_COMMENT) ||
+       (data->flags & A_DL_HISTORY)) {
+      /* check that we aren't using local repository */
+      if (!(rs = checkremoterepo("repository api", data)))
+         return RETURN_FAIL;
+
+      /* we need synced repo as well */
+      if (!checksyncedrepo(rs)) return RETURN_FAIL;
+
+      /* store comment */
+      if (data->flags & A_COMMENT ||
+          data->flags & A_RATE) {
+         for (t = data->tlist; t && t->next; t = t->next);
+         if (t && t->next) {
+            if (data->flags & A_COMMENT) strncpy(comment, t->id, LINE_MAX-1);
+            if (data->flags & A_RATE)    rate = strtol(t->id, (char**) NULL, 10);
+            data->tlist = freetarget(t);
+         }
+         if ((data->flags & A_RATE) && (!t || rate < 0 || rate > 100)) goto no_rating;
+
+         /* handle targets */
+         if (!data->tlist) goto no_targets;
+         if (!targetpnd(rs, data, 0)) return RETURN_FAIL;
+      }
+   }
+
+   /* comment on package or pull comments */
+   if (data->flags & A_COMMENT) {
+      if (strlen(comment)) return repoapiratecomment(data, comment, 0);
+      else                 return repoapicommentpull(data);
+   } else if (data->flags & A_RATE) {
+      return repoapiratecomment(data, NULL, rate);
+   } else if (data->flags & A_DL_HISTORY)
+      return repoapidlhistory(data);
+
+   /* set repo credentials, if called without operation arguments */
+   return setrepocredentials(data);
+
+no_rating:
+   _printf(_REPO_API_FORGOT_RATING);
+   goto fail;
+no_targets:
+   _printf(_REPO_API_NO_PACKAGES);
+fail:
+   return RETURN_FAIL;
+}
+
 /* version operation logic */
 static int version(_USR_DATA *data)
 {
@@ -2262,7 +2499,8 @@ static int help(_USR_DATA *data)
             _OP_ARG[i]=='S'?_S_ARG:
             _OP_ARG[i]=='R'?_R_ARG:
             _OP_ARG[i]=='Q'?_Q_ARG:
-            _OP_ARG[i]=='P'?_P_ARG:"");
+            _OP_ARG[i]=='P'?_P_ARG:
+            _OP_ARG[i]=='A'?_A_ARG:"");
    }
    NEWLINE();
 
@@ -2284,6 +2522,7 @@ static int help(_USR_DATA *data)
       _printf("\5  -U : Upgrade operation.");
       _printf("\5  -R : Removal operation.");
       _printf("\5  -Q : Local query operation.");
+      _printf("\5  -A : Repository API access.");
       _printf("\5  -P : Crawls PND's from media.");
       _printf("\5  -C : Cleans all database files.");
       _printf("\5  -V : Show version information.");
@@ -2332,11 +2571,19 @@ static int help(_USR_DATA *data)
       _printf("\5  This operation is just a alias for -Su.");
    } else if ((data->flags & OP_CRAWL)) {
       NEWLINE();
-      _printf("\2~ Crawl operation:");
+      _printf("\2~ Crawl arguments:");
       _printf("\5  -c : Run integrity check.");
       _printf("\5  -f : Regenerate MD5 sums for every crawled PND. (combine with -c)");
       _printf("\5  -s : Reinstall corrupt packages.                (combine with -c)");
       _printf("\5  -d : Remove corrupt packages.                   (combine with -c)");
+   } else if ((data->flags & OP_REPO_API)) {
+      _printf("\2~ Repository API arguments:");
+      _printf("\5  If you specify -A only, you can add your credentials to libpndman.");
+      _printf("\5  Package specific functions are executed on each repository that has the package.");
+      _printf("\5  -c : Get comments from package.");
+      _printf("\5       Send new comment for package.              (with argument)");
+      _printf("\5  -p : Rate package.                              (0-100 rating)");
+      _printf("\5  -d : Get download history.");
    } else {
       _printf("\1This operation has no arguments.");
    }
@@ -2369,7 +2616,7 @@ static int sanitycheck(_USR_DATA *data)
    if (saveroot(data) != RETURN_OK)
       _printf(_ROOT_FAIL);
 
-   /* check target list, NOTE: OP_CLEAN && OP_QUERY can perform without targets */
+   /* check target list, NOTE: OP_CLEAN && OP_QUERY && OP_REPO_API can perform without targets */
    if (!data->tlist && needtarget(data->flags)) {
       if (!data->no_action) _printf(_NO_X_SPECIFIED, "targets");
       else                  _printf(data->no_action);
@@ -2410,6 +2657,7 @@ static int processflags(_USR_DATA *data)
       if ((data->flags & OP_UPGRADE))   _printf("\3::UPGRADE");
       if ((data->flags & OP_REMOVE))    _printf("\3::REMOVE");
       if ((data->flags & OP_QUERY))     _printf("\3::QUERY");
+      if ((data->flags & OP_REPO_API))  _printf("\3::REPO_API");
       if ((data->flags & OP_CRAWL))     _printf("\3::CRAWL");
       if ((data->flags & OP_CLEAN))     _printf("\3::CLEAN");
       if ((data->flags & OP_VERSION))   _printf("\3::VERSION");
@@ -2432,6 +2680,9 @@ static int processflags(_USR_DATA *data)
       if ((data->flags & A_INST_CRPT))  _printf("\2->INST_CRPT");
       if ((data->flags & A_RM_CRPT))    _printf("\2->RM_CRPT");
       if ((data->flags & A_QUERY_REPO)) _printf("\2->QUERY_REPO");
+      if ((data->flags & A_COMMENT))    _printf("\2->COMMENT");
+      if ((data->flags & A_RATE))       _printf("\2->RATE");
+      if ((data->flags & A_DL_HISTORY)) _printf("\2->HISTORY");
       if ((data->flags & A_MENU))       _printf("\1[MENU]");
       if ((data->flags & A_DESKTOP))    _printf("\1[DESKTOP]");
       if ((data->flags & A_APPS))       _printf("\1[APPS]");
@@ -2469,8 +2720,12 @@ static int processflags(_USR_DATA *data)
    else if ((data->flags & OP_UPGRADE))   ret = upgradeprocess(data);
    else if ((data->flags & OP_REMOVE))    ret = removeprocess(data);
    else if ((data->flags & OP_QUERY))     ret = queryprocess(data);
+   else if ((data->flags & OP_REPO_API))  ret = repoapiprocess(data);
    else if ((data->flags & OP_CRAWL))     ret = crawlprocess(data);
    else if ((data->flags & OP_CLEAN))     ret = cleanprocess(data);
+
+   /* kill all hooks */
+   pndman_set_debug_hook(NULL);
 
    /* commit everything to disk */
    if (!(data->flags & OP_CLEAN)) {
@@ -2558,7 +2813,6 @@ int main(int argc, char **argv)
    /* free targets && ignores */
    freetarget_all(data.tlist);
    freeignore_all(data.ilist);
-
    return ret;
 }
 
