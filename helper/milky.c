@@ -2268,8 +2268,8 @@ static int fdcheck(unsigned int fd)
    struct timeval tm;
    FD_ZERO(&fdset);
    FD_SET(fd, &fdset);
-   tm.tv_sec   = 0;
-   tm.tv_usec  = 1;
+   tm.tv_sec   = 3;
+   tm.tv_usec  = 0;
    return select(fd+1, &fdset, NULL, NULL, &tm)==1?1:0;
 }
 
@@ -2301,6 +2301,7 @@ static int setrepocredentials(_USR_DATA *data)
       memset(s, 0, LINE_MAX);
       while (fdcheck(fileno(stdin)) && fgets(s, LINE_MAX-1, stdin))
       { addtarget(stripnl(s), &data->tlist); ++count; }
+      if (count == 1) { _printf(_D"\1%s", s); goto fail; }
    }
 #endif /* POSIX */
 
