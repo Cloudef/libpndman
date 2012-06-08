@@ -2351,7 +2351,7 @@ static int repoapiratecomment(_USR_DATA *data, const char *comment, unsigned int
       if (data->flags & A_COMMENT) pndman_api_comment_pnd(t->pnd, t->repository, comment);
       else pndman_api_rate_pnd(t->pnd, t->repository, rate);
    }
-   while (pndman_curl_process() > 0);
+   while (pndman_curl_process() > 0) usleep(1000);
    return RETURN_OK;
 }
 
@@ -2372,7 +2372,7 @@ static int repoapicommentpull(_USR_DATA *data)
    _USR_TARGET *t;
    for (t = data->tlist; t; t = t->next)
       pndman_api_comment_pnd_pull(t->repository, t->pnd, t->repository, repoapicommentcb);
-   while (pndman_curl_process() > 0);
+   while (pndman_curl_process() > 0) usleep(1000);
    return RETURN_OK;
 }
 
@@ -2383,7 +2383,7 @@ static void repoapihistorycb(void *user_data,
    char *nao;
    /* pndman_repository *r = (pndman_repository*)user_data; */
    nao = gettime(date);
-   _printf("\2%s \5(\4%s.%s.%s.%s\5) \3- \5%s\n", id,
+   _printf("\2%s \5(\4%s.%s.%s.%s\5) \3- \5%s", id,
          version->major, version->minor, version->release, version->build,
          nao?nao:"herp derp");
    if (nao) free(nao);
@@ -2395,7 +2395,7 @@ static int repoapidlhistory(_USR_DATA *data)
    pndman_repository *r;
    for (r = data->rlist; r; r = r->next)
       pndman_api_download_history(r, r, repoapihistorycb);
-   while (pndman_curl_process() > 0);
+   while (pndman_curl_process() > 0) usleep(1000);
    return RETURN_OK;
 }
 
@@ -2426,7 +2426,7 @@ static int repoapiprocess(_USR_DATA *data)
       if (data->flags & A_COMMENT ||
           data->flags & A_RATE) {
          for (t = data->tlist; t && t->next; t = t->next);
-         if (t && t->next) {
+         if (t && t->prev) {
             if (data->flags & A_COMMENT) strncpy(comment, t->id, LINE_MAX-1);
             if (data->flags & A_RATE)    rate = strtol(t->id, (char**) NULL, 10);
             data->tlist = freetarget(t);
