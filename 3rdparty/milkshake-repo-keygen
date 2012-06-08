@@ -37,7 +37,7 @@ function generateKey () {                               # $1 = password
     local KEY_URL="http://repo.openpandora.org/client/keyrequest"
     local HTTP_POST_DATA="pass=${PASSWORD_HASH}&user=${USERNAME}&ak_submit=generate"
 
-    local API_KEY="$(curl -s --data ${HTTP_POST_DATA} ${KEY_URL} >&1)"
+    local API_KEY="$(curl -s --data "${HTTP_POST_DATA}" "${KEY_URL}" >&1)"
     if ! [ "$API_KEY" ]; then
         echo "Invalid username or password."
      else
