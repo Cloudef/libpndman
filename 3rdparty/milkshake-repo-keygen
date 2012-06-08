@@ -37,18 +37,24 @@ function generateKey () {                               # $1 = password
     local KEY_URL="http://repo.openpandora.org/client/keyrequest"
     local HTTP_POST_DATA="pass=${PASSWORD_HASH}&user=${USERNAME}&ak_submit=generate"
 
-    curl -s --data ${HTTP_POST_DATA} ${KEY_URL} >&1
-    echo
+    local API_KEY="$(curl -s --data ${HTTP_POST_DATA} ${KEY_URL} >&1)"
+    if ! [ "$API_KEY" ]; then
+        echo "Invalid username or password."
+     else
+        echo "http://repo.openpandora.org/client/masterlist"
+        echo "$USERNAME"
+        echo "$API_KEY"
+    fi
 }
 
 case "$1" in
     -h|--help)
-        echo -e "Usage: $0 <password> [username]\n
+        echo -e "Usage: $(basename $0) <password> [username]\n
 \tpassword\tYour password at repository.
 \tusername\t[OPTIONAL] Your username at repository.
 \t\t\tIf not supplied current user will be used.
-\tA new key will be returned on success. They key is a MD5 hash.
-\tOn failure nothing will be returned."
+\tA new key will be returned on success. They key is a MD5 hash.\n
+\tYou can pipe the key to milkyhelper: \n\t$(basename $0) | milky --add-key"
         exit 1
     ;;
     *)
