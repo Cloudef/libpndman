@@ -1399,8 +1399,8 @@ static int pre_op_dialog(_USR_DATA *data)
       tn = t->next; ++count;
       if (!pndinstalled(t->pnd, data)) {
          if (checkignore(t->pnd->id, data))
-            if ((_QUIET && ++ignore) ||
-                !yesno(data, _PND_IGNORED_FORCE, t->pnd->id)) {
+            if ((_QUIET && ++ignore==0) ||
+                (!ignore && !yesno(data, _PND_IGNORED_FORCE, t->pnd->id))) {
                if (!_QUIET) _printf(_WARNING_SKIPPING, t->pnd->id);
                data->tlist = freetarget(t);
                --count; gotdialog = 1;
@@ -1410,8 +1410,8 @@ static int pre_op_dialog(_USR_DATA *data)
          if ((data->flags & GB_NEEDED)  && !t->pnd->update ||
              !(data->flags & A_UPGRADE) && !(data->flags & OP_UPGRADE) &&
              !(data->flags & OP_REMOVE) && !t->pnd->update &&
-             ((_QUIET && ++reinstall) ||
-              !yesno(data, _PND_REINSTALL, t->pnd->id))) {
+             ((_QUIET && ++reinstall==0) ||
+              (!reinstall && !yesno(data, _PND_REINSTALL, t->pnd->id)))) {
             if ((data->flags & GB_NEEDED)) {
                if (!_QUIET) _printf(_WARNING_UPDATE, t->pnd->id);
                else update++;
@@ -1426,6 +1426,7 @@ static int pre_op_dialog(_USR_DATA *data)
    if (_QUIET) {
       if (ignore)    if (!yesno(data, _PND_IGNORED_FORCE_Q, ignore))  return RETURN_FALSE;
       if (reinstall) if (!yesno(data, _PND_REINSTALL_Q, reinstall))   return RETURN_FALSE;
+      skipping = reinstall;
    }
 
    /* print count warnings on quiet
