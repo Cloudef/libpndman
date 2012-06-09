@@ -1424,9 +1424,22 @@ static int pre_op_dialog(_USR_DATA *data)
 
    /* count questions on all quiet levels */
    if (_QUIET) {
-      if (ignore)    if (!yesno(data, _PND_IGNORED_FORCE_Q, ignore))  return RETURN_FALSE;
-      if (reinstall) if (!yesno(data, _PND_REINSTALL_Q, reinstall))   return RETURN_FALSE;
-      skipping = reinstall;
+      if (ignore)
+         if (!yesno(data, _PND_IGNORED_FORCE_Q, ignore))
+            for (t = data->tlist; t; t = tn)
+               if (!pndinstalled(t->pnd, data))
+                  if (checkignore(t->pnd->id, data))
+                     data->tlist = freetarget(t);
+      if (reinstall)
+         if (!yesno(data, _PND_REINSTALL_Q, reinstall))
+            for (t = data->tlist; t; t = tn)
+               if (pndinstalled(t->pnd, data) &&
+                  (data->flags & GB_NEEDED)  && !t->pnd->update ||
+                  !(data->flags & A_UPGRADE) && !(data->flags & OP_UPGRADE) &&
+                  !(data->flags & OP_REMOVE) && !t->pnd->update) {
+                  data->tlist = freetarget(t);
+                  skipping = reinstall;
+               }
    }
 
    /* print count warnings on quiet
