@@ -154,6 +154,7 @@ static void init_usrdata(_USR_DATA *data)
 #define _ROOT_SET                _D"\2Root was set."
 #define _MKCONFIG                _D"\3Creating default configuration file in \5%s"
 #define _CONFIG_READ_FAIL        _D"\1Warning: failed to read configuration from \5%s"
+#define _INTERNAL_CURL_FAIL      _D"\1Internal curl failure!"
 #define _YAOURT_DIALOG           "\4Enter number of packages to be installed \5(\2ex: 1 2 3\5)"
 #define _TARGET_MEDIA            "\4Target media  \5: %s"
 #define _TARGET_PATH             "\4Target path   \5: %s"
@@ -1509,7 +1510,7 @@ static int pre_op_dialog(_USR_DATA *data)
  */
 
 /* synchorize repositories */
-static void syncrepos(pndman_repository *rs, _USR_DATA *data)
+static int syncrepos(pndman_repository *rs, _USR_DATA *data)
 {
    pndman_repository *r;
    float tdl, ttdl; /* total download, total total to download */
@@ -1543,6 +1544,7 @@ static void syncrepos(pndman_repository *rs, _USR_DATA *data)
       }
       usleep(1000);
    }
+   if (ret == -1) _printf(_INTERNAL_CURL_FAIL);
 
    for (r = rs, c = 0; r; r = r->next) {
       if (!handle[c].progress.done) {
@@ -1554,6 +1556,8 @@ static void syncrepos(pndman_repository *rs, _USR_DATA *data)
       pndman_sync_handle_free(&handle[c]);
       ++c;
    }
+
+   return ret!=-1?RETURN_OK:RETURN_FAIL;
 }
 
 /* returns true or false depending if query type matches */
@@ -1773,7 +1777,7 @@ static void commithandle(_USR_DATA *data, pndman_package_handle *handle)
    assert(data && handle);
    if (!handle->progress.done && !(data->flags & OP_REMOVE)) {
       _printf(opstrfromflags(0,data->flags), handle->name);
-      if (strlen(handle->error)) _printf(handle->error);
+      if (strlen(handle->error)) _printf("%s", handle->error);
    } else if (pndman_package_handle_commit(handle, data->rlist) != RETURN_OK)
       _printf(opstrfromflags(0,data->flags), handle->name);
    else
@@ -1919,6 +1923,7 @@ static int targetperform(_USR_DATA *data)
       count = c;
       usleep(1000);
    }
+   if (ret == -1) _printf(_INTERNAL_CURL_FAIL);
 
    /* free handles */
    t = data->tlist;
@@ -1932,7 +1937,8 @@ static int targetperform(_USR_DATA *data)
       pndman_package_handle_free(&handle[c]);
       ++c;
    }
-   return RETURN_OK;
+
+   return ret!=-1?RETURN_OK:RETURN_FAIL;
 }
 
 /* check that we have remote repository */
@@ -1991,7 +1997,8 @@ static int syncprocess(_USR_DATA *data)
 
    /* repository syncing is always the first operation */
    if (data->flags & A_REFRESH) {
-      syncrepos(rs, data);
+      if (syncrepos(rs, data) != RETURN_OK)
+         return RETURN_FAIL;
       pndman_repository_check_updates(data->rlist);
       listupdate(data);
    }
