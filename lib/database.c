@@ -308,6 +308,10 @@ static void _pndman_sync_done(pndman_curl_code code, void *data, const char *inf
    else if (code == PNDMAN_CURL_DONE) {
       if (_pndman_json_process(handle->repository, NULL, chandle->file) == RETURN_OK)
          handle->repository->timestamp = time(0);
+      else {
+         strncpy(handle->error, "json parse failed", PNDMAN_STR-1);
+         handle->progress.done = 0;
+      }
    }
 
    /* callback to this handle */
