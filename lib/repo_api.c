@@ -332,9 +332,6 @@ static void _pndman_api_download_cb(const char *info, pndman_api_request *reques
    request->handle->callback = _pndman_package_handle_done;
    request->handle->data     = handle;
 
-   /* user will free this handle! */
-   request->handle = NULL;
-
    /* error handling */
    if (info) {
       _pndman_package_handle_done(PNDMAN_CURL_FAIL, handle, info, NULL);
@@ -347,6 +344,9 @@ static void _pndman_api_download_cb(const char *info, pndman_api_request *reques
          _pndman_package_handle_done(PNDMAN_CURL_FAIL,
             handle, "_pndman_curl_handle_perform failed", NULL);
    }
+
+   /* user will free this handle! */
+   request->handle = NULL;
 
    /* free request */
    _pndman_api_request_free(request);
