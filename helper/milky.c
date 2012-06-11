@@ -2280,14 +2280,6 @@ static int fdcheck(unsigned int fd)
 static char* stripnl(char *s) { s[strlen(s)-1] = 0; return s; }
 #endif
 
-/* hook for repo api requests
- * this handles our failures and prints them to user */
-static void repoapihook(const char *file, int line, const char *function,
-      int verbose_level, const char *str) {
-   if (verbose_level != PNDMAN_LEVEL_ERROR) return;
-   _printf(_D"\1%s", str);
-}
-
 /* set repo credentials from CLI arguments or stdin */
 static int setrepocredentials(_USR_DATA *data)
 {
@@ -2336,6 +2328,21 @@ fail:
    return RETURN_FAIL;
 }
 
+#define _ID_COMMENT "comment"
+#define _ID_RATE    "rate"
+
+/* generic callback */
+static void repoapigenericcb(pndman_curl_code code, const char *info, void *data)
+{
+   if (code == PNDMAN_CURL_FAIL) {
+      _printf(_D"\1%s", info);
+      return;
+   }
+
+   if      (!strcmp((char*)data, _ID_COMMENT))   _printf(_D"\2Comment sent!");
+   else if (!strcmp((char*)data, _ID_RATE))      _printf(_D"\2Rating sent!");
+}
+
 /* comment package */
 static int repoapiratecomment(_USR_DATA *data, const char *comment, unsigned int rate)
 {
@@ -2351,22 +2358,26 @@ static int repoapiratecomment(_USR_DATA *data, const char *comment, unsigned int
       if (!yesno(data, _SEND_COMMENT))    return RETURN_FAIL;
    } else if (!yesno(data, _SEND_RATING)) return RETURN_FAIL;
    for (t = data->tlist; t; t = t->next) {
-      if (data->flags & A_COMMENT) pndman_api_comment_pnd(t->pnd, t->repository, comment);
-      else pndman_api_rate_pnd(t->pnd, t->repository, rate);
+      if (data->flags & A_COMMENT)
+         pndman_api_comment_pnd(_ID_COMMENT, t->pnd, t->repository, comment, repoapigenericcb);
+      else pndman_api_rate_pnd(_ID_RATE, t->pnd, t->repository, rate, repoapigenericcb);
    }
    while (pndman_curl_process() > 0) usleep(1000);
    return RETURN_OK;
 }
 
 /* comment callback */
-static void repoapicommentcb(void *user_data,
-      pndman_package *pnd, pndman_version *version, time_t date,
-      const char *username, const char *comment)
+static void repoapicommentcb(pndman_curl_code code, pndman_api_comment_packet *p)
 {
-   pndman_repository *r = (pndman_repository*)user_data;
+   if (code == PNDMAN_CURL_FAIL) {
+      _printf(_D"\1%s", p->error);
+      return;
+   }
+
+   pndman_repository *r = (pndman_repository*)p->user_data;
    _printf(_D"%s%s\t\5: %s",
-         !strcmp(r->api.username, username)?"\4":"\1",
-         username, comment);
+         !strcmp(r->api.username, p->username)?"\4":"\1",
+         p->username, p->comment);
 }
 
 /* get comments for package */
@@ -2380,14 +2391,19 @@ static int repoapicommentpull(_USR_DATA *data)
 }
 
 /* history callback */
-static void repoapihistorycb(void *user_data,
-      const char *id, pndman_version *version, time_t date)
+static void repoapihistorycb(pndman_curl_code code, pndman_api_history_packet *p)
 {
+   if (code == PNDMAN_CURL_FAIL) {
+      _printf(_D"\1%s", p->error);
+      return;
+   }
+
    char *nao;
    /* pndman_repository *r = (pndman_repository*)user_data; */
-   nao = gettime(date);
-   _printf("\2%s \5(\4%s.%s.%s.%s\5) \3- \5%s", id,
-         version->major, version->minor, version->release, version->build,
+   nao = gettime(p->download_date);
+   _printf("\2%s \5(\4%s.%s.%s.%s\5) \3- \5%s", p->id,
+         p->version->major, p->version->minor,
+         p->version->release, p->version->build,
          nao?nao:"herp derp");
    if (nao) free(nao);
 }
@@ -2411,7 +2427,6 @@ static int repoapiprocess(_USR_DATA *data)
    int rate;
 
    /* repo api handler register */
-   pndman_set_debug_hook(repoapihook);
    memset(comment, 0, LINE_MAX);
 
    /* if we do action, do some sanity checks */
@@ -2727,9 +2742,6 @@ static int processflags(_USR_DATA *data)
    else if ((data->flags & OP_REPO_API))  ret = repoapiprocess(data);
    else if ((data->flags & OP_CRAWL))     ret = crawlprocess(data);
    else if ((data->flags & OP_CLEAN))     ret = cleanprocess(data);
-
-   /* kill all hooks */
-   pndman_set_debug_hook(NULL);
 
    /* commit everything to disk */
    if (!(data->flags & OP_CLEAN)) {
