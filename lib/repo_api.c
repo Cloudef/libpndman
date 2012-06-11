@@ -84,6 +84,7 @@ typedef struct pndman_archived_packet
 /* \brief download packet */
 typedef struct pndman_download_packet
 {
+   char download_path[PNDMAN_PATH-1];
    pndman_package_handle *handle;
 } pndman_download_packet;
 
@@ -339,6 +340,7 @@ static void _pndman_api_download_cb(const char *info, pndman_api_request *reques
       _pndman_package_handle_done(PNDMAN_CURL_FAIL, handle, info, NULL);
    } else {
       snprintf(url, PNDMAN_URL-1, "%s&a=false", handle->pnd->url);
+      strncpy(request->handle->path, packet->download_path, PNDMAN_PATH-1);
       _pndman_curl_handle_set_url(request->handle, url);
       _pndman_curl_handle_set_post(request->handle, "");
       if (_pndman_curl_handle_perform(request->handle) != RETURN_OK)
@@ -370,13 +372,14 @@ fail:
 
 /* \brief create new comment packet */
 static pndman_download_packet* _pndman_api_download_packet(
-      pndman_package_handle *handle)
+      const char *path, pndman_package_handle *handle)
 {
    pndman_download_packet *packet;
    if (!(packet = malloc(sizeof(pndman_download_packet))))
       goto fail;
    memset(packet, 0, sizeof(pndman_download_packet));
    packet->handle = handle;
+   strncpy(packet->download_path, path, PNDMAN_PATH-1);
 
    return packet;
 
@@ -618,11 +621,12 @@ static int _pndman_api_handshake(pndman_curl_handle *handle,
       goto fail;
 
    snprintf(url, PNDMAN_URL-1, "%s/%s", repo->api.root, API_HANDSHAKE);
-
    request->data     = data;
    request->callback = callback;
    handle->callback  = _pndman_api_handshake_cb;
    handle->data      = request;
+   handle->path[0]   = 0; /* if you need file path, store it in
+                             package and restore in callback. */
    _pndman_curl_handle_set_url(request->handle, url);
    _pndman_curl_handle_set_post(request->handle, "stage=1");
    if (_pndman_curl_handle_perform(handle) != RETURN_OK)
@@ -790,7 +794,7 @@ int _pndman_api_commercial_download(pndman_curl_handle *handle,
       return RETURN_FAIL;
    }
 
-   if (!(packet = _pndman_api_download_packet(package)))
+   if (!(packet = _pndman_api_download_packet(handle->path, package)))
       goto fail;
 
    return _pndman_api_handshake(handle, package->repository,
