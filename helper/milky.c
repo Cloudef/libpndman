@@ -1813,10 +1813,13 @@ static const char* opstrfromflags(char done, unsigned long flags)
 static void commithandle(_USR_DATA *data, pndman_package_handle *handle)
 {
    assert(data && handle);
-   if (!handle->progress.done && !(data->flags & OP_REMOVE)) {
+   if (strlen(handle->error)) {
+      _printf("%s", handle->error);
+      return;
+   }
+   if (!handle->progress.done && !(data->flags & OP_REMOVE))
       _printf(opstrfromflags(0,data->flags), handle->name);
-      if (strlen(handle->error)) _printf("%s", handle->error);
-   } else if (pndman_package_handle_commit(handle, data->rlist) != RETURN_OK)
+   else if (pndman_package_handle_commit(handle, data->rlist) != RETURN_OK)
       _printf(opstrfromflags(0,data->flags), handle->name);
    else
       _printf(opstrfromflags(1,data->flags), handle->name);
@@ -1945,7 +1948,7 @@ static int targetperform(_USR_DATA *data)
          tdl  += (float)handle[c].progress.download;
          /* ttdl += (float)handle[c].progress.total_to_download; */
          if (ttdl < tdl) ttdl = tdl+1; /* fake progress */
-         if (handle[c].progress.done && !done[c]) {
+         if ((handle[c].progress.done || strlen(handle->error)) && !done[c]) {
             if (!(data->flags & GB_NOBAR)) NEWLINE();
             /* commit to repository */
             commithandle(data, &handle[c]);
