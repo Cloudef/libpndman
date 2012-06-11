@@ -51,6 +51,9 @@ char _QUIET       = 0;
 /* max concurrent downloads? */
 char _QUEUE       = 5;
 
+/* use this to clear line. */
+char _ERASE[120];
+
 typedef enum _RETURN_STATUS
 {
    RETURN_FAIL    = -1,
@@ -87,6 +90,7 @@ typedef struct _USR_DATA
    _USR_IGNORE       *ilist;
    char              *no_action;
    char              syslc[6];
+   float tdl, ttdl;
 } _USR_DATA;
 
 /* initialize _USR_DATA struct */
@@ -184,6 +188,7 @@ static void init_usrdata(_USR_DATA *data)
 
 /* other customizable */
 #define NEWLINE()                puts("");
+#define ERASE()                  printf(_ERASE); fflush(stdout);
 
 /* printf alike wrapper for pndman_puts */
 static void _printf(const char *fmt, ...)
@@ -1410,7 +1415,7 @@ static void progressbar(float downloaded, float total_to_download)
    float fraction;
 
    pwdt = 40; /* width */
-   if (!total_to_download) total_to_download = downloaded + 1000;
+   if (total_to_download < downloaded) total_to_download = downloaded + 1000;
    fraction = (float)downloaded / (float)total_to_download;
    dots     = round(fraction * pwdt);
 
@@ -1546,50 +1551,56 @@ static int pre_op_dialog(_USR_DATA *data)
  * |_|   |_| \_\\___/ \____|_____|____/____/
  */
 
+/* synchorize callback */
+static void synccallback(pndman_curl_code code, pndman_sync_handle *handle)
+{
+   _USR_DATA *data = (_USR_DATA*)handle->user_data;
+
+   if (code == PNDMAN_CURL_PROGRESS) {
+      data->tdl  = handle->progress.download;
+      data->ttdl = handle->progress.total_to_download;
+   }
+
+   if (code != PNDMAN_CURL_FAIL &&
+       code != PNDMAN_CURL_DONE) return;
+
+   ERASE();
+        if (code == PNDMAN_CURL_DONE) _printf(_REPO_SYNCED, handle->repository->name);
+   else if (code == PNDMAN_CURL_FAIL) {
+      _printf(_REPO_SYNCED_NOT, strlen(handle->repository->name)?
+         handle->repository->name:handle->repository->url);
+      _printf(_D"\1%s", handle->error);
+   }
+
+   /* we can free this already */
+   pndman_sync_handle_free(handle);
+}
+
 /* synchorize repositories */
 static int syncrepos(pndman_repository *rs, _USR_DATA *data)
 {
    pndman_repository *r;
-   float tdl, ttdl; /* total download, total total to download */
-   int ret, nonl;
    unsigned int c = 0;
+   int ret;
 
    for (r = rs; r; r = r->next) ++c;
-   pndman_sync_handle handle[c]; char done[c]; r = rs;
+   pndman_sync_handle handle[c]; r = rs;
    for (c = 0; r; r = r->next) {
       pndman_sync_handle_init(&handle[c]);
-      handle[c].flags        = (data->flags & GB_NOMERGE)?PNDMAN_SYNC_FULL:0;
+      handle[c].callback   = synccallback;
+      handle[c].user_data  = data;
+      handle[c].flags      = (data->flags & GB_NOMERGE)?PNDMAN_SYNC_FULL:0;
       handle[c].repository = r;
-      done[c] = 0;
       pndman_sync_handle_perform(&handle[c++]);
    }
 
-   tdl = 0; ttdl = 1;
    while ((ret = pndman_curl_process() > 0)) {
-      if (!(data->flags & GB_NOBAR) && tdl < ttdl) progressbar(tdl, ttdl);
-      r = rs; tdl = 0; ttdl = 0; nonl = 0;
-      for (c = 0; r; r = r->next) {
-         tdl   += (float)handle[c].progress.download;
-         ttdl  += (float)handle[c].progress.total_to_download;
-         if (ttdl < tdl) ttdl = tdl+1; /* fake progress */
-         if (handle[c].progress.done && !done[c]) {
-            if (!(data->flags & GB_NOBAR) && !nonl) NEWLINE();
-            _printf(_REPO_SYNCED, handle[c].repository->name);
-            done[c] = 1; nonl = 1;
-         }
-         ++c;
-      }
+      if (!(data->flags & GB_NOBAR)) progressbar(data->tdl, data->ttdl);
       usleep(1000);
    }
    if (ret == -1) _printf(_INTERNAL_CURL_FAIL);
 
    for (r = rs, c = 0; r; r = r->next) {
-      if (!handle[c].progress.done) {
-         _printf(_REPO_SYNCED_NOT, strlen(handle[c].repository->name) ?
-                handle[c].repository->name : handle[c].repository->url);
-         if (strlen(handle[c].error))
-            _printf(handle[c].error);
-      }
       pndman_sync_handle_free(&handle[c]);
       ++c;
    }
@@ -1731,7 +1742,7 @@ static int targetpnd(pndman_repository *rs, _USR_DATA *data, int up)
    for (t = data->tlist; t && t != ts; t = tn) {
       tn = t->next;
       if (!t->pnd) {
-         if (!_QUIET) _printf(_PND_NOT_FOUND, t->id);
+         _printf(_PND_NOT_FOUND, t->id);
          data->tlist = freetarget(t);
          continue;
       }
@@ -1909,57 +1920,73 @@ static void removeappdata(pndman_package *pnd, _USR_DATA *data)
    }
 }
 
+/* package callback for commiting */
+static void packagecallback(pndman_curl_code code,
+      pndman_package_handle *handle)
+{
+   _USR_DATA *data = (_USR_DATA*)handle->user_data;
+
+   if (code == PNDMAN_CURL_PROGRESS)
+      data->tdl = handle->progress.download;
+
+   if (code != PNDMAN_CURL_FAIL &&
+       code != PNDMAN_CURL_DONE) return;
+
+   ERASE(); commithandle(data, handle);
+   if (code == PNDMAN_CURL_FAIL) data->ttdl -= handle->pnd->size;
+
+   /* we can free this already */
+   pndman_package_handle_free(handle);
+}
+
 /* perform target's action */
 static int targetperform(_USR_DATA *data)
 {
    _USR_TARGET *t;
-   float tdl, ttdl = 0; /* total download, total total to download */
-   int ret, nonl;
    unsigned int c = 0, count = 0;
+   int ret;
    assert(data);
 
+   data->ttdl = 0; data->tdl = 0;
    for (t = data->tlist; t; t = t->next) ++c;
-   pndman_package_handle handle[c]; t = data->tlist; char done[c], start[c];
+   pndman_package_handle handle[c]; t = data->tlist; char start[c];
    for (c = 0; t; t = t->next) {
       pndman_package_handle_init(strlen(t->pnd->id)?t->pnd->id:"notitle", &handle[c]);
       handle[c].pnd        = t->pnd;
+      handle[c].callback   = packagecallback;
+      handle[c].user_data  = data;
       handle[c].device     = ((data->flags & OP_UPGRADE) || (data->flags & A_UPGRADE))?data->dlist:data->root;
       handle[c].flags      = handleflagsfromflags(t->pnd, data->flags);
       handle[c].repository = t->repository;
-      done[c]              = 0;
       start[c]             = 0;
       if (c<_QUEUE) {
          if (pndman_package_handle_perform(&handle[c]) != RETURN_OK)
             handle[c].flags = 0;
          start[c] = 1;
       }
-      ttdl += t->pnd->size;
+      data->ttdl += t->pnd->size;
       ++c;
    }
 
-   tdl = 0; /* ttdl = 0; */
    while ((ret = pndman_curl_process()) > 0) {
-      if (!(data->flags & GB_NOBAR) && tdl < ttdl) progressbar(tdl, ttdl);
-      t = data->tlist; tdl = 0; /* ttdl = 0; */ nonl = 0;
-      for (c = 0; t; t = t->next) {
+      if (!(data->flags & GB_NOBAR)) progressbar(data->tdl, data->ttdl);
+
+      /* check active transmissions */
+      for (c = 0, count = 0, t = data->tlist; t; t = t->next) {
          if (!handle[c].flags) { ++c; continue; } /* failed perform */
-         tdl  += (float)handle[c].progress.download;
-         /* ttdl += (float)handle[c].progress.total_to_download; */
-         if (ttdl < tdl) ttdl = tdl+1; /* fake progress */
-         if ((handle[c].progress.done || strlen(handle->error)) && !done[c]) {
-            if (!(data->flags & GB_NOBAR) && !nonl) NEWLINE();
-            /* commit to repository */
-            commithandle(data, &handle[c]);
-            done[c] = 1; nonl = 1;
-         }
-         if (count < _QUEUE && !start[c]) {
+         if (!handle[c].progress.done) ++count;   /* active transmissions */
+      }
+
+      /* check if we should start new handle */
+      for (c = 0, t = data->tlist; count < _QUEUE && t; t = t->next) {
+         if (!handle[c].flags) { ++c; continue; }  /* failed perform */
+         if (count < _QUEUE && !start[c]) {        /* ready to start new download */
             if (pndman_package_handle_perform(&handle[c]) != RETURN_OK)
                handle[c].flags = 0;
             start[c] = 1;
          }
          ++c;
       }
-      count = c;
       usleep(1000);
    }
    if (ret == -1) _printf(_INTERNAL_CURL_FAIL);
@@ -1973,8 +2000,7 @@ static int targetperform(_USR_DATA *data)
          removeappdata(handle[c].pnd, data);
          commithandle(data, &handle[c]);
       }
-      pndman_package_handle_free(&handle[c]);
-      ++c;
+      pndman_package_handle_free(&handle[c++]);
    }
 
    return ret!=-1?RETURN_OK:RETURN_FAIL;
@@ -2786,7 +2812,14 @@ int main(int argc, char **argv)
    int ret;
    _USR_DATA data;
    char path[PATH_MAX];
+
+   /* init path */
    memset(path, 0, PATH_MAX);
+
+   /* roll cursor back */
+   memset(_ERASE, ' ', sizeof(_ERASE)-1);
+   _ERASE[sizeof(_ERASE)-1] = '\r';
+   _ERASE[sizeof(_ERASE)-0] = 0;
 
    /* setup signals */
    (void)signal(SIGINT,  sigint);
