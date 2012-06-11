@@ -247,7 +247,9 @@ int _pndman_curl_handle_perform(pndman_curl_handle *handle)
    if (handle->progress)
       _pndman_curl_init_progress(handle->progress);
 
-   curl_multi_add_handle(_pndman_curlm, handle->curl);
+   if (curl_multi_add_handle(_pndman_curlm, handle->curl) != CURLM_OK)
+      goto add_fail;
+
    return RETURN_OK;
 
 no_data_or_callback:
@@ -261,6 +263,9 @@ open_fail:
    goto fail;
 curlm_fail:
    DEBFAIL(PNDMAN_ALLOC_FAIL, "CURLM");
+   goto fail;
+add_fail:
+   DEBFAIL("curl_multi_add_handle failed");
 fail:
    IFDO(fclose, handle->file);
    if (strlen(handle->path)) unlink(handle->path);
@@ -340,13 +345,20 @@ static int _pndman_curl_perform(void)
    fd_set fdexcep;
    long curl_timeout = -1;
 
+   CURLMcode ret;
    CURLMsg *msg;
    int msgs_left;
 
    pndman_curl_handle *handle;
 
    /* perform download */
-   curl_multi_perform(_pndman_curlm, &still_running);
+   ret = curl_multi_perform(_pndman_curlm, &still_running);
+   while (ret == CURLM_CALL_MULTI_PERFORM)
+      ret = curl_multi_perform(_pndman_curlm, &still_running);
+
+   /* check error */
+   if (ret != CURLM_OK)
+      goto fail;
 
    /* zero file descriptions */
    FD_ZERO(&fdread);
@@ -358,7 +370,9 @@ static int _pndman_curl_perform(void)
    timeout.tv_usec = 0;
 
    /* timeout */
-   curl_multi_timeout(_pndman_curlm, &curl_timeout);
+   ret = curl_multi_timeout(_pndman_curlm, &curl_timeout);
+   if (ret != CURLM_OK) goto fail;
+
    if(curl_timeout >= 0) {
       timeout.tv_sec = curl_timeout / 1000;
       if(timeout.tv_sec > 1) timeout.tv_sec = 1;
@@ -366,8 +380,8 @@ static int _pndman_curl_perform(void)
    }
 
    /* get file descriptors from the transfers */
-   curl_multi_fdset(_pndman_curlm, &fdread, &fdwrite, &fdexcep, &maxfd);
-   if (maxfd < -1) return RETURN_FAIL;
+   ret = curl_multi_fdset(_pndman_curlm, &fdread, &fdwrite, &fdexcep, &maxfd);
+   if (ret != CURLM_OK || maxfd < -1) goto fail;
    select(maxfd+1, &fdread, &fdwrite, &fdexcep, &timeout);
 
    /* update status of curl handles */
@@ -388,6 +402,10 @@ static int _pndman_curl_perform(void)
    }
 
    return still_running;
+
+fail:
+   DEBFAIL("%s", ret);
+   return -1;
 }
 
 /* PUBLIC API */
