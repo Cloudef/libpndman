@@ -160,6 +160,7 @@ static void _pndman_api_common_cb(pndman_curl_code code, void *data,
 
    /* free curl handle */
    IFDO(_pndman_curl_handle_free, chandle);
+   IFDO(free, packet);
 }
 
 /* \brief comment pull callback */
@@ -274,8 +275,11 @@ static void _pndman_api_comment_cb(const char *info, pndman_api_request *request
       snprintf(buffer, PNDMAN_POST-1, "id=%s&c=%s", packet->pnd->id, packet->comment);
       _pndman_curl_handle_set_url(request->handle, url);
       _pndman_curl_handle_set_post(request->handle, buffer);
-      if (_pndman_curl_handle_perform(request->handle) == RETURN_OK)
+      if (_pndman_curl_handle_perform(request->handle) == RETURN_OK) {
          request->handle = NULL;
+         request->data   = NULL;
+      } else _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet,
+            "_pndman_curl_handle_perform failed", NULL);
    }
 
    /* free request */
@@ -300,8 +304,11 @@ static void _pndman_api_rate_cb(const char *info, pndman_api_request *request)
       snprintf(buffer, PNDMAN_POST-1, "id=%s&r=%d", packet->pnd->id, packet->rate);
       _pndman_curl_handle_set_url(request->handle, url);
       _pndman_curl_handle_set_post(request->handle, buffer);
-      if (_pndman_curl_handle_perform(request->handle) == RETURN_OK)
+      if (_pndman_curl_handle_perform(request->handle) == RETURN_OK) {
          request->handle = NULL;
+         request->data   = NULL;
+      } else _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet,
+            "_pndman_curl_handle_perform failed", NULL);
    }
 
    /* free request */
@@ -326,8 +333,11 @@ static void _pndman_api_download_cb(const char *info, pndman_api_request *reques
       snprintf(url, PNDMAN_URL-1, "%s&a=false", handle->pnd->url);
       _pndman_curl_handle_set_url(request->handle, url);
       _pndman_curl_handle_set_post(request->handle, "");
-      if (_pndman_curl_handle_perform(request->handle) == RETURN_OK)
+      if (_pndman_curl_handle_perform(request->handle) == RETURN_OK) {
          request->handle = NULL;
+         request->data   = NULL;
+      } else _pndman_package_handle_done(PNDMAN_CURL_FAIL,
+            handle, "_pndman_curl_handle_perform failed", NULL);
    }
 
    /* free request */
