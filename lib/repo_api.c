@@ -267,6 +267,9 @@ static void _pndman_api_comment_cb(const char *info, pndman_api_request *request
    request->handle->callback = _pndman_api_common_cb;
    request->handle->data     = packet;
 
+   /* we free this here */
+   request->data = NULL;
+
    /* error handling */
    if (info) {
       _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet, info, NULL);
@@ -277,7 +280,6 @@ static void _pndman_api_comment_cb(const char *info, pndman_api_request *request
       _pndman_curl_handle_set_post(request->handle, buffer);
       if (_pndman_curl_handle_perform(request->handle) == RETURN_OK) {
          request->handle = NULL;
-         request->data   = NULL;
       } else _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet,
             "_pndman_curl_handle_perform failed", NULL);
    }
@@ -295,6 +297,9 @@ static void _pndman_api_rate_cb(const char *info, pndman_api_request *request)
 
    request->handle->callback = _pndman_api_common_cb;
    request->handle->data     = packet;
+
+   /* we free this here */
+   request->data = NULL;
 
    /* error handling */
    if (info) {
