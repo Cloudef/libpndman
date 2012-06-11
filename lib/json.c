@@ -364,6 +364,7 @@ int _pndman_json_comment_pull(void *user_data,
    time_t date = 0;
    const char *comment = NULL, *username = NULL;
    pndman_version version;
+   pndman_api_comment_packet cpacket;
    json_t *root, *versions, *varray, *comments, *carray;
    json_error_t error;
    size_t v = 0, c = 0;
@@ -375,6 +376,7 @@ int _pndman_json_comment_pull(void *user_data,
    if (!(root = json_loadf(file, 0, &error)))
       goto bad_json;
 
+   memset(&cpacket, 0, sizeof(pndman_api_comment_packet));
    versions = json_object_get(root, "versions");
    if (json_is_array(versions)) {
       while ((varray = json_array_get(versions, v++))) {
@@ -386,7 +388,11 @@ int _pndman_json_comment_pull(void *user_data,
             json_fast_number(json_object_get(carray, "date"), date, time_t);
             json_fast_string(json_object_get(carray, "username"), username);
             json_fast_string(json_object_get(carray, "comment"), comment);
-            callback(user_data, pnd, &version, date, username, comment);
+
+            cpacket.pnd = pnd; cpacket.date = date;
+            cpacket.version = &version; cpacket.username = username;
+            cpacket.comment = comment; cpacket.user_data = user_data;
+            callback(PNDMAN_CURL_DONE, &cpacket);
          }
       }
    } else DEBUG(PNDMAN_LEVEL_WARN, JSON_NO_V_ARRAY, "comment pull");
@@ -408,6 +414,7 @@ int _pndman_json_download_history(void *user_data,
    time_t date = 0;
    const char *id = NULL;
    pndman_version version;
+   pndman_api_history_packet hpacket;
    json_t *root, *history, *packages, *parray;
    json_error_t error;
    size_t p = 0;
@@ -419,6 +426,7 @@ int _pndman_json_download_history(void *user_data,
    if (!(root = json_loadf(file, 0, &error)))
       goto bad_json;
 
+   memset(&hpacket, 0, sizeof(pndman_api_history_packet));
    history = json_object_get(root, "history");
    if (json_is_object(history)) {
       packages = json_object_get(history, "packages");
@@ -428,7 +436,10 @@ int _pndman_json_download_history(void *user_data,
             json_fast_string(json_object_get(parray, "id"), id);
             _json_set_version(&version, json_object_get(parray,"version"));
             json_fast_number(json_object_get(parray, "download_date"), date, time_t);
-            callback(user_data, id, &version, date);
+
+            hpacket.id = id; hpacket.version = &version;
+            hpacket.download_date = date; hpacket.user_data = user_data;
+            callback(PNDMAN_CURL_DONE, &hpacket);
          }
       } else DEBUG(PNDMAN_LEVEL_WARN, JSON_NO_P_ARRAY, "download history");
    }

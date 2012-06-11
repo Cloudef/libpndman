@@ -84,39 +84,62 @@ static void pkg_done_cb(pndman_curl_code code,
 }
 
 /* callback for our download history api call */
-static void dl_history_cb(void *user_data,
-      const char *id, pndman_version *version, time_t date)
+static void dl_history_cb(pndman_curl_code code,
+      pndman_api_history_packet *p)
 {
+   if (code == PNDMAN_CURL_FAIL) {
+      puts(p->error);
+      return;
+   }
+
    puts("");
    printf("-- Download History --\n");
-   printf("%s [%lu] (%s.%s.%s.%s)\n", id, date,
-         version->major, version->minor,
-         version->release, version->build);
+   printf("%s [%lu] (%s.%s.%s.%s)\n", p->id, p->download_date,
+         p->version->major,p->version->minor,
+         p->version->release, p->version->build);
 }
 
 /* callback for our comment list api call */
-static void comment_cb(void *user_data,
-      pndman_package *pnd, pndman_version *version, time_t date,
-      const char *username, const char *comment)
+static void comment_cb(pndman_curl_code code,
+      pndman_api_comment_packet *p)
 {
+   if (code == PNDMAN_CURL_FAIL) {
+      puts(p->error);
+      return;
+   }
+
    puts("");
    printf("-- Comment List --\n");
-   printf("%s [%lu] (%s.%s.%s.%s) // %s: %s\n", pnd->id, date,
-         version->major, version->minor,
-         version->release, version->build,
-         username, comment);
+   printf("%s [%lu] (%s.%s.%s.%s) // %s: %s\n",
+         p->pnd->id, p->date,
+         p->version->major, p->version->minor,
+         p->version->release, p->version->build,
+         p->username, p->comment);
 }
 
 /* callback for our archived packages api call */
-static void archived_cb(void *user_data, pndman_package *pnd)
+static void archived_cb(pndman_curl_code code,
+      pndman_api_archived_packet *p)
 {
-   pndman_package *p;
+   if (code == PNDMAN_CURL_FAIL) {
+      puts(p->error);
+      return;
+   }
+
+   pndman_package *pp;
    puts("");
    printf("-- Archieved Packages --\n");
-   for (p = pnd->next_installed; p; p = p->next_installed)
-      printf("%s [%lu] (%s.%s.%s.%s)\n", p->id, p->modified_time,
-            p->version.major,   p->version.minor,
-            p->version.release, p->version.build);
+   for (pp = p->pnd->next_installed; pp; pp = pp->next_installed)
+      printf("%s [%lu] (%s.%s.%s.%s)\n", pp->id, pp->modified_time,
+            pp->version.major,   pp->version.minor,
+            pp->version.release, pp->version.build);
+}
+
+/* callback for generic api requests */
+static void generic_cb(pndman_curl_code code,
+      const char *info, void *user_data) {
+   if (code == PNDMAN_CURL_FAIL)
+      puts(info);
 }
 
 /* main */

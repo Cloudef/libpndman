@@ -1,30 +1,53 @@
 #include "pndman.h"
 #include "common.h"
 
-static void comment_pull_cb(void *user_data,
-      pndman_package *pnd, pndman_version *version, time_t date,
-      const char *username, const char *comment)
+static void comment_pull_cb(pndman_curl_code code,
+      pndman_api_comment_packet *p)
 {
-   printf("%s [%lu] (%s.%s.%s.%s) // %s: %s\n", pnd->id, date,
-         version->major, version->minor, version->release, version->build,
-         username, comment);
+   if (code == PNDMAN_CURL_FAIL) {
+      puts(p->error);
+      return;
+   }
+
+   printf("%s [%lu] (%s.%s.%s.%s) // %s: %s\n",
+         p->pnd->id, p->date,
+         p->version->major, p->version->minor,
+         p->version->release, p->version->build,
+         p->username, p->comment);
 }
 
-static void history_cb(void *user_data,
-      const char *id, pndman_version *version, time_t date)
+static void history_cb(pndman_curl_code code,
+      pndman_api_history_packet *p)
 {
-   printf("%s [%lu] (%s.%s.%s.%s)\n", id, date,
-         version->major, version->minor, version->release, version->build);
+   if (code == PNDMAN_CURL_FAIL) {
+      puts(p->error);
+      return;
+   }
+
+   printf("%s [%lu] (%s.%s.%s.%s)\n", p->id, p->download_date,
+         p->version->major,p->version->minor,
+         p->version->release, p->version->build);
 }
 
-static void archive_cb(void *user_data, pndman_package *pnd)
+static void archive_cb(pndman_curl_code code,
+      pndman_api_archived_packet *p)
 {
-   pndman_package *p;
-   printf("got archive data for: %s\n", pnd->id);
-   for (p = pnd->next_installed; p; p = p->next_installed)
-      printf("%s [%lu] (%s.%s.%s.%s)\n", p->id, p->modified_time,
-            p->version.major,   p->version.minor,
-            p->version.release, p->version.build);
+   if (code == PNDMAN_CURL_FAIL) {
+      puts(p->error);
+      return;
+   }
+
+   pndman_package *pp;
+   for (pp = p->pnd->next_installed; pp; pp = pp->next_installed)
+      printf("%s [%lu] (%s.%s.%s.%s)\n", pp->id, pp->modified_time,
+            pp->version.major,   pp->version.minor,
+            pp->version.release, pp->version.build);
+}
+
+static void generic_cb(pndman_curl_code code,
+      const char *info, void *user_data) {
+   if (code == PNDMAN_CURL_FAIL)
+      puts(info);
 }
 
 int main(int argc, char **argv)
@@ -82,8 +105,8 @@ int main(int argc, char **argv)
    if (!pnd) puts("no milkyhelper pnd found, skipping test");
 
    if (pnd) {
-      // pndman_api_comment_pnd(pnd, repo, "test comment from libpndman");
-      // pndman_api_rate_pnd(pnd, repo, 100);
+      pndman_api_comment_pnd(NULL, pnd, repo, "test comment from libpndman", generic_cb);
+      pndman_api_rate_pnd(NULL, pnd, repo, 100, generic_cb);
       pndman_api_comment_pnd_pull(NULL, pnd, repo, comment_pull_cb);
       pndman_api_download_history(NULL, repo, history_cb);
       pndman_api_archived_pnd(NULL, pnd, repo, archive_cb);

@@ -321,18 +321,71 @@ typedef struct pndman_sync_handle
    void *data;
 } pndman_sync_handle;
 
+/* forward declarations */
+struct pndman_api_comment_packet;
+struct pndman_api_history_packet;
+struct pndman_api_archived_packet;
+
+/* \brief generic callback for repo api access */
+typedef void (*pndman_api_generic_callback)(
+      pndman_curl_code code, const char *info, void *user_data);
+
 /* \brief callback for comment pull */
-typedef void (*pndman_api_comment_callback)(void *user_data,
-      pndman_package *pnd, pndman_version *version,
-      time_t date, const char *username, const char *comment);
+typedef void (*pndman_api_comment_callback)(
+      pndman_curl_code code, struct pndman_api_comment_packet *packet);
 
 /* \brief callback for download history */
-typedef void (*pndman_api_history_callback)(void *user_data,
-      const char *id, pndman_version *version, time_t download_date);
+typedef void (*pndman_api_history_callback)(
+      pndman_curl_code code, struct pndman_api_history_packet *packet);
 
 /* \brief callback for archived pnd's */
-typedef void (*pndman_api_archived_callback)(void *user_data,
-      pndman_package *pnd);
+typedef void (*pndman_api_archived_callback)(
+      pndman_curl_code code, struct pndman_api_archived_packet *packet);
+
+/* \brief generic callback packet */
+typedef struct pndman_api_generic_packet
+{
+   char error[PNDMAN_STR];
+
+   /* your data returned */
+   void *user_data;
+} pndman_api_generic_packet;
+
+/* \brief comment pull callback packet */
+typedef struct pndman_api_comment_packet
+{
+   char error[PNDMAN_STR];
+   pndman_package *pnd;
+   pndman_version *version;
+   time_t date;
+   const char *username;
+   const char *comment;
+
+   /* your data returned */
+   void *user_data;
+} pndman_api_comment_packet;
+
+/* \brief download history callback packet */
+typedef struct pndman_api_history_packet
+{
+   char error[PNDMAN_STR];
+   const char *id;
+   pndman_version *version;
+   time_t download_date;
+
+   /* your data returned */
+   void *user_data;
+} pndman_api_history_packet;
+
+/* \brief archived callback packet */
+typedef struct pndman_api_archived_packet
+{
+   char error[PNDMAN_STR];
+   pndman_package *pnd;
+
+   /* your data returned */
+   void *user_data;
+} pndman_api_archived_packet;
 
 /* \brief get git head */
 PNDMANAPI const char* pndman_git_head(void);
@@ -526,8 +579,9 @@ PNDMANAPI void pndman_sync_handle_free(
 /* \brief comment on package at repository,
  * you need to pass the repository as well.
  * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_api_comment_pnd(pndman_package *pnd,
-      pndman_repository *repository, const char *comment);
+PNDMANAPI int pndman_api_comment_pnd(void *user_data,
+      pndman_package *pnd, pndman_repository *repository,
+      const char *comment, pndman_api_generic_callback callback);
 
 /* \brief get comments from package on repository,
  * comment data is retivied through
@@ -541,8 +595,9 @@ PNDMANAPI int pndman_api_comment_pnd_pull(void *user_data,
 
 /* \brief rate the package on repository.
  * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_api_rate_pnd(pndman_package *pnd,
-      pndman_repository *repository, int rate);
+PNDMANAPI int pndman_api_rate_pnd(void *user_data,
+      pndman_package *pnd, pndman_repository *repository,
+      int rate, pndman_api_generic_callback callback);
 
 /* \brief get download history from repository
  * history is retivied through
