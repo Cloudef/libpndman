@@ -72,7 +72,7 @@
 #define HANDLE_NO_DST            "Handle has no destination, nor the PND has upgrade."
 #define HANDLE_WTF               "WTF. Something that should never happen, just happened!"
 #define HANDLE_HEADER_FAIL       "Failed to parse filename from HTTP header."
-#define JSON_BAD_JSON            "Bad json data, won't process sync for: %s"
+#define JSON_BAD_JSON            "JSON fail: \"%s\"\n\tWon't process sync for: %s"
 #define JSON_NO_P_ARRAY          "No packages array for: %s"
 #define JSON_NO_R_HEADER         "No repo header for: %s"
 #define JSON_NO_V_ARRAY          "No versions array for: %s"

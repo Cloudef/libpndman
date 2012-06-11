@@ -281,7 +281,6 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
    }
 
    /* process and close */
-   fflush(f2);
    _pndman_json_process(repo, NULL, f2);
    fclose(f2); fclose(f);
    return RETURN_OK;

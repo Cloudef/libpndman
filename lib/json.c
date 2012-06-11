@@ -303,8 +303,7 @@ int _pndman_json_client_api_return(void *file, pndman_api_status *status)
    memset(status, 0, sizeof(pndman_api_status));
 
    /* flush and reset to beginning */
-   fflush(file);
-   fseek(file, 0L, SEEK_SET);
+   fflush(file); fseek(file, 0L, SEEK_SET);
    if (!(root = json_loadf(file, 0, &error)))
       goto fail;
 
@@ -337,8 +336,7 @@ int _pndman_json_get_value(const char *key, char *value,
    memset(value, 0, size);
 
    /* flush and reset to beginning */
-   fflush(file);
-   fseek(file, 0L, SEEK_SET);
+   fflush(file); fseek(file, 0L, SEEK_SET);
    if (!(root = json_loadf(file, 0, &error)))
       goto bad_json;
 
@@ -347,7 +345,7 @@ int _pndman_json_get_value(const char *key, char *value,
    return RETURN_OK;
 
 bad_json:
-   DEBFAIL(JSON_BAD_JSON, "client api");
+   DEBFAIL(JSON_BAD_JSON, error.text, "client api");
    IFDO(json_decref, root);
    return RETURN_FAIL;
 }
@@ -371,8 +369,7 @@ int _pndman_json_comment_pull(void *user_data,
    assert(file && callback);
 
    /* flush and reset to beginning */
-   fflush(file);
-   fseek(file, 0L, SEEK_SET);
+   fflush(file); fseek(file, 0L, SEEK_SET);
    if (!(root = json_loadf(file, 0, &error)))
       goto bad_json;
 
@@ -401,7 +398,7 @@ int _pndman_json_comment_pull(void *user_data,
    return RETURN_OK;
 
 bad_json:
-   DEBFAIL(JSON_BAD_JSON, "comment pull");
+   DEBFAIL(JSON_BAD_JSON, error.text, "comment pull");
    IFDO(json_decref, root);
    return RETURN_FAIL;
 }
@@ -421,8 +418,7 @@ int _pndman_json_download_history(void *user_data,
    assert(file && callback);
 
    /* flush and reset to beginning */
-   fflush(file);
-   fseek(file, 0L, SEEK_SET);
+   fflush(file); fseek(file, 0L, SEEK_SET);
    if (!(root = json_loadf(file, 0, &error)))
       goto bad_json;
 
@@ -448,7 +444,7 @@ int _pndman_json_download_history(void *user_data,
    return RETURN_OK;
 
 bad_json:
-   DEBFAIL(JSON_BAD_JSON, "download history");
+   DEBFAIL(JSON_BAD_JSON, error.text, "download history");
    IFDO(json_decref, root);
    return RETURN_FAIL;
 }
@@ -465,8 +461,7 @@ int _pndman_json_archived_pnd(
    assert(pnd && file);
 
    /* flush and reset to beginning */
-   fflush(file);
-   fseek(file, 0L, SEEK_SET);
+   fflush(file); fseek(file, 0L, SEEK_SET);
    if (!(root = json_loadf(file, 0, &error)))
       goto bad_json;
 
@@ -496,7 +491,7 @@ int _pndman_json_archived_pnd(
    return RETURN_OK;
 
 bad_json:
-   DEBFAIL(JSON_BAD_JSON, "archieved pnd");
+   DEBFAIL(JSON_BAD_JSON, error.text, "archieved pnd");
    IFDO(json_decref, root);
    return RETURN_FAIL;
 }
@@ -514,8 +509,7 @@ int _pndman_json_process(pndman_repository *repo,
    assert(repo && file);
 
    /* flush and reset to beginning */
-   fflush(file);
-   fseek(file, 0L, SEEK_SET);
+   fflush(file); fseek(file, 0L, SEEK_SET);
    if (!(root = json_loadf(file, 0, &error)))
       goto bad_json;
 
@@ -533,7 +527,7 @@ int _pndman_json_process(pndman_repository *repo,
    return RETURN_OK;
 
 bad_json:
-   DEBFAIL(JSON_BAD_JSON, repo->url);
+   DEBFAIL(JSON_BAD_JSON, error.text, repo->url);
    IFDO(json_decref, root);
    return RETURN_FAIL;
 }
@@ -566,7 +560,7 @@ static void _fkeyf(FILE *f, char *key, char *value, int delim)
    assert(f && key && value);
    fprintf(f, "\"%s\":\"", key);
    _cfprintf(f, value);
-   fprintf(f, "\"%s", delim ? "," : "");
+   fprintf(f, "\"%s\n", delim ? "," : "");
 }
 
 /* \brief print json string to file */
@@ -590,15 +584,15 @@ int _pndman_json_commit(pndman_repository *r,
    int found = 0, delim = 0;
    assert(f && d && r);
 
-   fprintf(f, "{"); /* start */
-   fprintf(f, "\"repository\":{");
+   fprintf(f, "{\n"); /* start */
+   fprintf(f, "\"repository\":{\n");
    _fkeyf(f, "name", r->name, 1);
    _fkeyf(f, "version", r->version, r->prev?1:0);
 
    /* non local repository */
    if (r->prev) {
       _fkeyf(f, "updates", r->updates, 1);
-      fprintf(f, "\"timestamp\":%lu,", r->timestamp);
+      fprintf(f, "\"timestamp\":%lu,\n", r->timestamp);
       _fkeyf(f, "client_api", r->api.root, r->api.store_credentials?1:0);
       if (r->api.store_credentials) {
          _fkeyf(f, "username", r->api.username, 1);
@@ -606,14 +600,14 @@ int _pndman_json_commit(pndman_repository *r,
       }
    }
 
-   fprintf(f, "},");
-   fprintf(f, "\"packages\":["); /* packages */
+   fprintf(f, "},\n");
+   fprintf(f, "\"packages\":[\n"); /* packages */
    for (p = r->pnd; p; p = p->next) {
       /* this pnd doesn't belong to this device */
       if (!r->prev && strcmp(p->mount, d->mount))
          continue;
 
-      fprintf(f, "%s{", delim?",":""); delim = 1;
+      fprintf(f, "%s{\n", delim?",":""); delim = 1;
 
       /* local repository */
       if (!r->prev) {
@@ -623,9 +617,10 @@ int _pndman_json_commit(pndman_repository *r,
 
       _fkeyf(f, "id", p->id, 1);
       _fkeyf(f, "uri", p->url, 1);
+      fprintf(f, "\"commercial\":%d,\n", p->commercial);
 
       /* version object */
-      fprintf(f, "\"version\":{");
+      fprintf(f, "\"version\":{\n");
       _fkeyf(f, "major", p->version.major, 1);
       _fkeyf(f, "minor", p->version.minor, 1);
       _fkeyf(f, "release", p->version.release, 1);
@@ -633,10 +628,10 @@ int _pndman_json_commit(pndman_repository *r,
       _fkeyf(f, "type",
             p->version.type == PND_VERSION_BETA    ? "beta"    :
             p->version.type == PND_VERSION_ALPHA   ? "alpha"   : "release", 0);
-      fprintf(f, "},");
+      fprintf(f, "},\n");
 
       /* localization object */
-      fprintf(f, "\"localizations\":{");
+      fprintf(f, "\"localizations\":{\n");
       for (t = p->title; t; t = t->next) {
          found = 0;
          for (td = p->description; td ; td = td->next)
@@ -645,52 +640,52 @@ int _pndman_json_commit(pndman_repository *r,
                break;
             }
 
-         fprintf(f, "\"%s\":{", t->lang);
+         fprintf(f, "\"%s\":{\n", t->lang);
          _fkeyf(f, "title", t->string, 1);
          _fkeyf(f, "description", found ? td->string : "", 0);
-         fprintf(f, "}%s", t->next ? "," : "");
+         fprintf(f, "}%s\n", t->next ? "," : "");
       }
 
       /* fallback */
       if (!p->title)
-         fprintf(f, "\"en_US\":{\"title\":\"\",\"description\":\"\"}");
-      fprintf(f, "},");
+         fprintf(f, "\"en_US\":{\"title\":\"\",\"description\":\"\"}\n");
+      fprintf(f, "},\n");
 
       _fkeyf(f, "info", p->info, 1);
 
-      fprintf(f, "\"size\":%zu,", p->size);
+      fprintf(f, "\"size\":%zu,\n", p->size);
       _fkeyf(f, "md5", p->md5, 1);
-      fprintf(f, "\"modified-time\":%lu,", p->modified_time);
-      fprintf(f, "\"rating\":%d,", p->rating);
+      fprintf(f, "\"modified-time\":%lu,\n", p->modified_time);
+      fprintf(f, "\"rating\":%d,\n", p->rating);
 
       /* author object */
-      fprintf(f, "\"author\":");
-      fprintf(f, "{");
+      fprintf(f, "\"author\":\n");
+      fprintf(f, "{\n");
       _fkeyf(f, "name", p->author.name, 1);
       _fkeyf(f, "website", p->author.website, 1);
       _fkeyf(f, "email", p->author.email, 0);
-      fprintf(f, "},");
+      fprintf(f, "},\n");
 
       _fkeyf(f, "vendor", p->vendor, 1);
       _fkeyf(f, "icon", p->icon, 1);
 
       /* previewpics array */
-      fprintf(f, "\"previewpics\":[");
+      fprintf(f, "\"previewpics\":[\n");
       for (pic = p->previewpic; pic; pic = pic->next)
          _fstrf(f, pic->src, pic->next ? 1 : 0);
-      fprintf(f, "],");
+      fprintf(f, "],\n");
 
       /* licenses array */
-      fprintf(f, "\"licenses\":[");
+      fprintf(f, "\"licenses\":[\n");
       for (l = p->license; l; l = l->next)
          _fstrf(f, l->name, l->next ? 1 : 0);
-      fprintf(f, "],");
+      fprintf(f, "],\n");
 
       /* sources array */
-      fprintf(f, "\"source\":[");
+      fprintf(f, "\"source\":[\n");
       for (l = p->license; l; l = l->next)
          _fstrf(f, l->sourcecodeurl, l->next ? 1 : 0);
-      fprintf(f, "],");
+      fprintf(f, "],\n");
 
       /* categories array */
       fprintf(f, "\"categories\":[");
@@ -698,10 +693,11 @@ int _pndman_json_commit(pndman_repository *r,
          _fstrf(f, c->main, 1);
          _fstrf(f, c->sub, c->next ? 1 : 0);
       }
-      fprintf(f, "]");
-      fprintf(f, "}");
+      fprintf(f, "]\n");
+      fprintf(f, "}\n");
    }
    fprintf(f, "]}\n"); /* end */
+   fflush(f);
 
    return RETURN_OK;
 }
