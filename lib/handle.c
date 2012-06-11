@@ -114,13 +114,13 @@ fail:
 }
 
 /* \brief check conflicts */
-static int _conflict(char *id, char *path, pndman_repository *local)
+static int _conflict(char *id, char *path, pndman_device *device, pndman_repository *local)
 {
    pndman_package *pnd;
    assert(id && path && local);
 
    for (pnd = local->pnd; pnd; pnd = pnd->next)
-      if (strcmp(id,pnd->id) && !strcmp(path, pnd->path)) {
+      if (strcmp(id,pnd->id) && !strcmp(path, pnd->path) && !strcmp(device->mount, pnd->mount)) {
          DEBUG(PNDMAN_LEVEL_CRAP, "CONFLICT: %s - %s", pnd->id, pnd->path);
          return RETURN_TRUE;
       }
@@ -252,7 +252,7 @@ static int _pndman_package_handle_install(pndman_package_handle *object,
    char install[PNDMAN_PATH];
    char relative[PNDMAN_PATH];
    char filename[PNDMAN_PATH];
-   char tmp[PNDMAN_PATH];
+   char tmp[PNDMAN_PATH], tmp2[PNDMAN_PATH];
    char *appdata, *md5 = NULL;
    int uniqueid = 0;
    pndman_package *pnd, *oldp;
@@ -275,6 +275,7 @@ static int _pndman_package_handle_install(pndman_package_handle *object,
    memset(install, 0, PNDMAN_PATH);
    memset(filename, 0, PNDMAN_PATH);
    memset(tmp, 0, PNDMAN_PATH);
+   memset(tmp2, 0, PNDMAN_PATH);
 
    /* check appdata */
    appdata = _pndman_device_get_appdata(object->device);
@@ -330,18 +331,22 @@ static int _pndman_package_handle_install(pndman_package_handle *object,
          oldp = pnd;
 
    /* temporary path used for conflict checking */
-   strncpy(tmp, relative, PNDMAN_PATH-1);
+   strncpy(tmp, object->device->mount, PNDMAN_PATH-1);
+   strncat(tmp, "/", PNDMAN_PATH-1);
+   strncat(tmp, relative, PNDMAN_PATH-1);
    strncat(tmp, "/", PNDMAN_PATH-1);
    strncat(tmp, filename, PNDMAN_PATH-1);
 
    /* if there is conflict use pnd id as filename */
-   if ((!oldp || _conflict(object->pnd->id, tmp, local)) && _file_exist(tmp)) {
+   if ((!oldp || _conflict(object->pnd->id, relative, object->device, local)) && _file_exist(tmp)) {
       strncat(relative, "/", PNDMAN_PATH-1);
       strncat(relative, object->pnd->id, PNDMAN_PATH-1);
       snprintf(tmp, PNDMAN_PATH-1, "%s.pnd", relative);
-      while (_file_exist(tmp) && strcmp(tmp, oldp?oldp->path:"/dev/null")) {
+      snprintf(tmp2, PNDMAN_PATH-1, "%s/%s", object->device->mount, tmp);
+      while (_file_exist(tmp2) && strcmp(relative, oldp?oldp->path:"/dev/null")) {
          uniqueid++;
          snprintf(tmp, PNDMAN_PATH-1, "%s_%d.pnd", relative, uniqueid);
+         snprintf(tmp2, PNDMAN_PATH-1, "%s/%s", object->device->mount, tmp);
       }
       strncpy(relative, tmp, PNDMAN_PATH-1);
    } else {
