@@ -982,7 +982,7 @@ static int mkconfig(const char *path)
    fputs("\n# Colored output\n", f);
    fputs("# color 1\n", f);
    fputs("\n# milkshake's repo is enabled by default\n", f);
-   fputs("repository \"http://repo.openpandora.org/client/masterlist\"\n",f );
+   fputs("repository \"http://repo.openpandora.org/client/masterlist?com=true\"\n",f );
    fclose(f);
    return RETURN_OK;
 }
@@ -1107,10 +1107,10 @@ static void filltitle(pndman_package *pnd, char *buffer)
 {
    memset(buffer, 0, LINE_MAX-1);
    if (!pnd) return;
-   snprintf(buffer, LINE_MAX-1, "\4%s\5/\2%s\7",
+   snprintf(buffer, LINE_MAX-1, "\4%s\5/%s%s\7",
          pnd->category ? strlen(pnd->category->sub) ?
          pnd->category->sub : pnd->category->main : "nogroup",
-         pnd->id);
+         pnd->commercial?"\1":"\2", pnd->id);
 }
 
 /* repoinfo */
@@ -1164,7 +1164,7 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data, size_t longest_title)
 
    /* info style */
    if (data->flags & A_INFO) {
-      _printf("\2ID            \5: %s", pnd->id);
+      _printf("\2ID            \5: %s%s", pnd->commercial?"\1":"\2", pnd->id);
       _printf("\2Installed     \5: %s", pndinstalled(pnd, data)?"Yes":"No");
       if ((data->flags & OP_QUERY)) {
          _printf("\2Path          \5: %s", pnd->path);
@@ -2328,6 +2328,7 @@ fail:
    return RETURN_FAIL;
 }
 
+/* type ids for genericcb */
 #define _ID_COMMENT "comment"
 #define _ID_RATE    "rate"
 
@@ -2401,7 +2402,8 @@ static void repoapihistorycb(pndman_curl_code code, pndman_api_history_packet *p
    char *nao;
    /* pndman_repository *r = (pndman_repository*)user_data; */
    nao = gettime(p->download_date);
-   _printf("\2%s \5(\4%s.%s.%s.%s\5) \3- \5%s", p->id,
+   _printf("\2%s \5(\4%s.%s.%s.%s\5)\n"
+           "\1 └─\5%s", p->id,
          p->version->major, p->version->minor,
          p->version->release, p->version->build,
          nao?nao:"herp derp");
