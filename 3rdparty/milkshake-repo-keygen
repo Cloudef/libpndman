@@ -41,7 +41,7 @@ function generateKey () {                               # $1 = password
     if ! [ "$API_KEY" ]; then
         echo "Invalid username or password."
      else
-        echo "http://repo.openpandora.org/client/masterlist"
+        echo "milkshakes-repo"
         echo "$USERNAME"
         echo "$API_KEY"
     fi
