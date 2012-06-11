@@ -309,7 +309,7 @@ static void _pndman_sync_done(pndman_curl_code code, void *data, const char *inf
          handle->repository->timestamp = time(0);
       else {
          strncpy(handle->error, "json parse failed", PNDMAN_STR-1);
-         handle->progress.done = 0;
+         code = PNDMAN_CURL_FAIL;
       }
    }
 
