@@ -61,15 +61,16 @@ void* _pndman_get_tmp_file()
    /* why won't this work on windows 7 correctly :/ */
    if (!(tmp = tmpfile()))
       goto fail;
+   DEBUG(PNDMAN_LEVEL_CRAP, "Created temporary file.");
 #else
    char* name;
-   if (!(name = _tempnam( NULL, NULL )))
+   if (!(name = _tempnam(NULL, NULL)))
       goto fail;
    if (!(tmp = fopen(name, "wb+TD")))
       goto fail;
    free(name);
+   DEBUG(PNDMAN_LEVEL_CRAP, "Created temporary file: %s", name);
 #endif
-   DEBUG(PNDMAN_LEVEL_CRAP, "Created temporary file.");
    return tmp;
 
 fail:
