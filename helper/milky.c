@@ -1551,7 +1551,7 @@ static int syncrepos(pndman_repository *rs, _USR_DATA *data)
 {
    pndman_repository *r;
    float tdl, ttdl; /* total download, total total to download */
-   int ret;
+   int ret, nonl;
    unsigned int c = 0;
 
    for (r = rs; r; r = r->next) ++c;
@@ -1567,15 +1567,15 @@ static int syncrepos(pndman_repository *rs, _USR_DATA *data)
    tdl = 0; ttdl = 1;
    while ((ret = pndman_curl_process() > 0)) {
       if (!(data->flags & GB_NOBAR) && tdl < ttdl) progressbar(tdl, ttdl);
-      r = rs; tdl = 0; ttdl = 0;
+      r = rs; tdl = 0; ttdl = 0; nonl = 0;
       for (c = 0; r; r = r->next) {
          tdl   += (float)handle[c].progress.download;
          ttdl  += (float)handle[c].progress.total_to_download;
          if (ttdl < tdl) ttdl = tdl+1; /* fake progress */
          if (handle[c].progress.done && !done[c]) {
-            if (!(data->flags & GB_NOBAR)) NEWLINE();
+            if (!(data->flags & GB_NOBAR) && !nonl) NEWLINE();
             _printf(_REPO_SYNCED, handle[c].repository->name);
-            done[c] = 1;
+            done[c] = 1; nonl = 1;
          }
          ++c;
       }
@@ -1814,12 +1814,10 @@ static void commithandle(_USR_DATA *data, pndman_package_handle *handle)
 {
    assert(data && handle);
    if (strlen(handle->error)) {
-      _printf("%s", handle->error);
+      _printf(_D"\4%s \1failed with: \1%s", handle->name, handle->error);
       return;
    }
-   if (!handle->progress.done && !(data->flags & OP_REMOVE))
-      _printf(opstrfromflags(0,data->flags), handle->name);
-   else if (pndman_package_handle_commit(handle, data->rlist) != RETURN_OK)
+   if (pndman_package_handle_commit(handle, data->rlist) != RETURN_OK)
       _printf(opstrfromflags(0,data->flags), handle->name);
    else
       _printf(opstrfromflags(1,data->flags), handle->name);
@@ -1916,7 +1914,7 @@ static int targetperform(_USR_DATA *data)
 {
    _USR_TARGET *t;
    float tdl, ttdl = 0; /* total download, total total to download */
-   int ret;
+   int ret, nonl;
    unsigned int c = 0, count = 0;
    assert(data);
 
@@ -1942,17 +1940,17 @@ static int targetperform(_USR_DATA *data)
    tdl = 0; /* ttdl = 0; */
    while ((ret = pndman_curl_process()) > 0) {
       if (!(data->flags & GB_NOBAR) && tdl < ttdl) progressbar(tdl, ttdl);
-      t = data->tlist; tdl = 0; /* ttdl = 0; */
+      t = data->tlist; tdl = 0; /* ttdl = 0; */ nonl = 0;
       for (c = 0; t; t = t->next) {
          if (!handle[c].flags) { ++c; continue; } /* failed perform */
          tdl  += (float)handle[c].progress.download;
          /* ttdl += (float)handle[c].progress.total_to_download; */
          if (ttdl < tdl) ttdl = tdl+1; /* fake progress */
          if ((handle[c].progress.done || strlen(handle->error)) && !done[c]) {
-            if (!(data->flags & GB_NOBAR)) NEWLINE();
+            if (!(data->flags & GB_NOBAR) && !nonl) NEWLINE();
             /* commit to repository */
             commithandle(data, &handle[c]);
-            done[c] = 1;
+            done[c] = 1; nonl = 1;
          }
          if (count < _QUEUE && !start[c]) {
             if (pndman_package_handle_perform(&handle[c]) != RETURN_OK)
