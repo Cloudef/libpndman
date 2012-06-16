@@ -90,7 +90,7 @@ typedef struct _USR_DATA
    _USR_IGNORE       *ilist;
    char              *no_action;
    char              syslc[6];
-   float tdl, ttdl;
+   double tdl, ttdl;
 } _USR_DATA;
 
 /* initialize _USR_DATA struct */
@@ -1409,14 +1409,14 @@ static int _yesno_base(int noconfirm, int yn, char *fmt, ...)
 }
 
 /* show progressbar, shows dots instead when total_to_download is not known */
-static void progressbar(float downloaded, float total_to_download)
+static void progressbar(double downloaded, double total_to_download)
 {
-   unsigned int dots, i, pwdt;
-   float fraction;
+   size_t dots, i, pwdt;
+   double fraction;
 
    pwdt = 40; /* width */
-   if (total_to_download < downloaded) total_to_download = downloaded + 1000;
-   fraction = (float)downloaded / (float)total_to_download;
+   if (total_to_download <= downloaded) total_to_download = downloaded + 1;
+   fraction = downloaded/total_to_download;
    dots     = round(fraction * pwdt);
 
    _printf("\4%3.0f%% \5[\7", fraction * 100);
@@ -1557,8 +1557,10 @@ static void synccallback(pndman_curl_code code, pndman_sync_handle *handle)
    _USR_DATA *data = (_USR_DATA*)handle->user_data;
 
    if (code == PNDMAN_CURL_PROGRESS) {
-      data->tdl  = handle->progress.download;
-      data->ttdl = handle->progress.total_to_download;
+      if (handle->progress.done == 2) return; /* silly hack */
+      data->tdl  += handle->progress.download;
+      data->ttdl += handle->progress.total_to_download;
+      handle->progress.done = 2; /* mark as processed */
    }
 
    if (code != PNDMAN_CURL_FAIL &&
@@ -1583,6 +1585,7 @@ static int syncrepos(pndman_repository *rs, _USR_DATA *data)
    unsigned int c = 0;
    int ret;
 
+   data->tdl = 0; data->ttdl = 0;
    for (r = rs; r; r = r->next) ++c;
    pndman_sync_handle handle[c]; r = rs;
    for (c = 0; r; r = r->next) {
@@ -1595,8 +1598,12 @@ static int syncrepos(pndman_repository *rs, _USR_DATA *data)
    }
 
    while ((ret = pndman_curl_process() > 0)) {
+      for (r = rs, c = 0; r; r = r->next) {
+         if (handle[c].progress.done == 2) handle[c].progress.done = 0; /* clear our hack */
+         if (handle[c].progress.done) data->tdl += handle[c].progress.total_to_download;
+      }
       if (!(data->flags & GB_NOBAR)) progressbar(data->tdl, data->ttdl);
-      usleep(1000);
+      usleep(1000); data->tdl = 0; data->ttdl = 0;
    }
    if (ret == -1) _printf(_INTERNAL_CURL_FAIL);
 
@@ -1926,14 +1933,21 @@ static void packagecallback(pndman_curl_code code,
 {
    _USR_DATA *data = (_USR_DATA*)handle->user_data;
 
-   if (code == PNDMAN_CURL_PROGRESS)
-      data->tdl = handle->progress.download;
+   if (code == PNDMAN_CURL_PROGRESS) {
+      if (handle->progress.done == 2) return; /* dirty hack */
+      data->tdl += handle->progress.download;
+      // data->ttdl += handle->progress.total_to_download;
+      handle->progress.done = 2; /* we know this is already processed */
+   }
 
    if (code != PNDMAN_CURL_FAIL &&
        code != PNDMAN_CURL_DONE) return;
 
    ERASE(); commithandle(data, handle);
-   if (code == PNDMAN_CURL_FAIL) data->ttdl -= handle->pnd->size;
+   if (code == PNDMAN_CURL_FAIL) {
+      data->ttdl -= handle->pnd->size;
+      handle->progress.done = 0;
+   }
 
    /* we can free this already */
    pndman_package_handle_free(handle);
@@ -1969,13 +1983,19 @@ static int targetperform(_USR_DATA *data)
    }
 
    while ((ret = pndman_curl_process()) > 0) {
-      if (!(data->flags & GB_NOBAR)) progressbar(data->tdl, data->ttdl);
-
       /* check active transmissions */
       for (c = 0, count = 0, t = data->tlist; t; t = t->next) {
-         if (!handle[c].flags) { ++c; continue; } /* failed perform */
-         if (!handle[c].progress.done) ++count;   /* active transmissions */
+         if (!handle[c].flags) { ++c; continue; }              /* failed perform */
+         if (!handle[c].progress.done && start[c]) ++count;    /* active transmissions */
+         if (handle[c].progress.done == 2) handle[c].progress.done = 0; /* clear our hack */
+         if (handle[c].progress.done && start[c]) data->tdl += handle[c].pnd->size;
+         ++c;
       }
+
+      /* show progressbar */
+      if (!(data->flags & GB_NOBAR))
+         progressbar(data->tdl<data->ttdl?data->tdl:data->ttdl, data->ttdl);
+      data->tdl = 0;
 
       /* check if we should start new handle */
       for (c = 0, t = data->tlist; count < _QUEUE && t; t = t->next) {
