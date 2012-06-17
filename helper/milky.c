@@ -2497,7 +2497,7 @@ static int repoapiprocess(_USR_DATA *data)
             if (data->flags & A_RATE)    rate = strtol(t->id, (char**) NULL, 10);
             data->tlist = freetarget(t);
          }
-         if ((data->flags & A_RATE) && (!t || rate < 0 || rate > 100)) goto no_rating;
+         if ((data->flags & A_RATE) && (!t || !t->prev || rate < 0 || rate > 100)) goto no_rating;
 
          /* handle targets */
          if (!data->tlist) goto no_targets;
