@@ -149,6 +149,7 @@ static void init_usrdata(_USR_DATA *data)
 #define _PND_REINSTALL           _D"\3Package \4%s \3is already installed, reinstall?"
 #define _PND_REINSTALL_Q         _D"\4%d \3Packages are already installed, reinstall?"
 #define _NO_ROOT_YET             _D"\4Sir! You haven't selected your mount where to store packages yet."
+#define _SELECT_REPOSITORY       _D"\4Select repository."
 #define _WARNING_SKIPPING        _D"\1Warning: Skipping package \4%s"
 #define _WARNING_UPDATE          _D"\1Warning: \4%s \1is up-to-date, skipping."
 #define _WARNING_SKIPPING_Q      _D"\1Warning: Skipping \4%d \1packages."
@@ -164,8 +165,9 @@ static void init_usrdata(_USR_DATA *data)
 #define _CONFIG_READ_FAIL        _D"\1Warning: failed to read configuration from \5%s"
 #define _INTERNAL_CURL_FAIL      _D"\1Internal curl failure!"
 #define _REPO_API_KEY_ADDED      _D"\2Credentials were set succesfully!"
-#define _REPO_API_KEY_ADD_USAGE  _D"\1usage: <repository> <username> <api key>"
+#define _REPO_API_KEY_ADD_USAGE  _D"\1usage: <username> <api key> <repository>"
 #define _COULD_NOT_FIND_REPO     _D"\1No such repository: \5%s \1make sure it's in your repository list."
+#define _NO_REMOTE_REPOS         _D"\1You have no remote repositories defined in configuration file."
 #define _REPO_API_FORGOT_RATING  _D"\1You forgot to give your rating [0-100]"
 #define _REPO_API_NO_PACKAGES    _D"\1No packages given to perform this action on."
 #define _YAOURT_DIALOG           "\4Enter number of packages to be installed \5(\2ex: 1 2 3\5)"
@@ -1263,6 +1265,39 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data, size_t longest_title)
    if (desc) free(desc);
 }
 
+/* dialog for repository selection */
+static pndman_repository* repositorydialog(_USR_DATA *data)
+{
+   unsigned int i, s;
+   char response[32];
+   pndman_repository *r;
+   assert(data);
+
+   if (!data->rlist->next)
+      return NULL;
+
+   i = 0;
+   fflush(stdout);
+   _printf(_SELECT_REPOSITORY);
+   for (r = data->rlist->next; r; r = r->next)
+      _printf("\4%d. \5%s", ++i, strlen(r->name)?r->name:r->url);
+   _printf(_INPUT_LINE"\7");
+   fflush(stdout);
+
+   if (!fgets(response, sizeof(response), stdin))
+      return NULL;
+
+   if (!strtrim(response)) return NULL;
+   if ((s = strtol(response, (char **) NULL, 10)) <= 0)
+      return NULL;
+
+   /* good answer got, return repository */
+   for (i = 0, r = data->rlist->next; r; r = r->next)
+      if (++i==s) return r;
+
+   return NULL;
+}
+
 /* dialog for asking root device where to perform operations on, when no such device isn't available yet */
 static int rootdialog(_USR_DATA *data)
 {
@@ -2346,17 +2381,34 @@ static int setrepocredentials(_USR_DATA *data)
    }
 #endif /* POSIX */
 
-   if (count < 3) goto usage;
-   repository  = (t = data->tlist)->id;
-   username    = (t = t->next)->id;
+   if (count < 2) goto usage;
+   username    = (t = data->tlist)->id;
    key         = (t = t->next)->id;
+   if (count > 2) repository  = (t = t->next)->id;
 
-   /* check if repository is valid */
-   for (r = data->rlist; r; r = r->next)
-      if (!strcmp(repository, r->url)      ||
-          !strcmp(repository, r->api.root) ||
-          (strlen(r->name) && !strcmp(repository, r->name)))
-         break;
+   /* check remote repositories */
+   if (!data->rlist->next)
+      goto no_repos;
+
+   /* show repository selection */
+   if (count < 3) {
+      r = repositorydialog(data);
+   } else {
+      /* check if repository is valid */
+      for (r = data->rlist->next; r; r = r->next)
+         if (!strcmp(repository, r->url)      ||
+             !strcmp(repository, r->api.root) ||
+             (strlen(r->name) && !strcmp(repository, r->name)))
+            break;
+
+      /* try strstr instead */
+      if (!r) {
+         for (r = data->rlist->next; r; r = r->next)
+            if (strlen(r->name) && strstr(r->name, repository)) break;
+      }
+   }
+
+   /* nothing found, fail */
    if (!r) goto repo_fail;
 
    /* set credentials */
@@ -2365,6 +2417,9 @@ static int setrepocredentials(_USR_DATA *data)
    repoinfo(r, data);
    return RETURN_OK;
 
+no_repos:
+   _printf(_NO_REMOTE_REPOS);
+   goto fail;
 repo_fail:
    _printf(_COULD_NOT_FIND_REPO, repository);
    goto fail;
