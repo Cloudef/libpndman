@@ -178,7 +178,7 @@ static void init_usrdata(_USR_DATA *data)
 #define _REPO_API_KEY_ADD_USAGE  _D"\1usage: <username> <api key> <repository>"
 #define _COULD_NOT_FIND_REPO     _D"\1No such repository: \5%s \1make sure it's in your repository list."
 #define _NO_REMOTE_REPOS         _D"\1You have no remote repositories defined in configuration file."
-#define _REPO_API_FORGOT_RATING  _D"\1You forgot to give your rating [0-100]"
+#define _REPO_API_FORGOT_RATING  _D"\1You forgot to give your rating [1-5]"
 #define _REPO_API_NO_PACKAGES    _D"\1No packages given to perform this action on."
 #define _COMMENT_LENGTH_WARN     _D"\1Your comment is over 300 characters, it will be truncated."
 #define _COMMENTS_FOR_PACKAGE    _D"\2Comments for \4%s\5:"
@@ -2467,8 +2467,9 @@ static int repoapiratecomment(_USR_DATA *data, const char *comment, unsigned int
       _printf(_TARGET_LINE"\7", count);
       for (t = data->tlist; t; t = t->next) _printf("\4%s\5%s\7", t->pnd->id, t->next?", ":"");
       NEWLINE();
-      if (strlen(comment) > 300)
-        _printf(_COMMENT_LENGTH_WARN);
+
+      if ((data->flags & A_COMMENT) && strlen(comment) > 300)
+         _printf(_COMMENT_LENGTH_WARN);
    }
    if (data->flags & A_COMMENT) {
       if (!yesno(data, _SEND_COMMENT))    return RETURN_FAIL;
@@ -2610,7 +2611,7 @@ static int repoapiprocess(_USR_DATA *data)
             if (data->flags & A_RATE)    rate = strtol(t->id, (char**) NULL, 10);
             data->tlist = freetarget(t);
          }
-         if ((data->flags & A_RATE) && (!t || !t->prev || rate < 0 || rate > 100)) goto no_rating;
+         if ((data->flags & A_RATE) && (!data->tlist || rate < 1 || rate > 5)) goto no_rating;
 
          /* handle targets */
          if (!data->tlist) goto no_targets;
@@ -2766,7 +2767,7 @@ static int help(_USR_DATA *data)
       _printf("\5  -A : <username> <api key> [repo name/url] syntax to add credentials.");
       _printf("\5  -c : Get comments from package.");
       _printf("\5       Send new comment for package.              (with argument)");
-      _printf("\5  -p : Rate package.                              (0-100 rating)");
+      _printf("\5  -p : Rate package.                              (1-5 rating)");
       _printf("\5  -d : Get download history.");
    } else {
       _printf("\1This operation has no arguments.");
