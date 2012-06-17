@@ -82,7 +82,7 @@ typedef struct _USR_IGNORE
 typedef struct _USR_DATA
 {
    char              *bin;
-   unsigned long     flags;
+   unsigned long long flags;
    pndman_device     *dlist;
    pndman_device     *root;
    pndman_repository *rlist;
@@ -2468,27 +2468,81 @@ static int repoapiratecomment(_USR_DATA *data, const char *comment, unsigned int
    return RETURN_OK;
 }
 
+typedef struct _comment_data {
+   char *username;
+   char *comment;
+   struct _comment_data *next;
+} _comment_data;
+
+typedef struct _comment_pull_struct {
+   _comment_data *comment;
+} _comment_pull_struct;
+
 /* comment callback */
 static void repoapicommentcb(pndman_curl_code code, pndman_api_comment_packet *p)
 {
+   _comment_data *d;
+   _comment_pull_struct *s = (_comment_pull_struct*)p->user_data;
+
    if (code == PNDMAN_CURL_FAIL) {
       _printf(_D"\1%s", p->error);
       return;
    }
 
-   pndman_repository *r = (pndman_repository*)p->user_data;
-   _printf(_D"%s%s\t\5: %s",
-         !strcmp(r->api.username, p->username)?"\4":"\1",
-         p->username, p->comment);
+   if (!s->comment) d = s->comment = malloc(sizeof(_comment_data));
+   else {
+      for (d = s->comment; d && d->next; d = d->next);
+      d = d->next = malloc(sizeof(_comment_data));
+   }
+
+   if (!d) return;
+   memset(d, 0, sizeof(_comment_data));
+   d->username = strdup(p->username);
+   d->comment  = strdup(p->comment);
+}
+
+/* process and free comment pull struct */
+static void processcommentpull(pndman_repository *r, _comment_pull_struct *s)
+{
+   _comment_data *d, *dn;
+   size_t longest_user = 0, len;
+
+   /* get longest user */
+   for (d = s->comment; d; d = d->next)
+      if ((len = strlen(d->username)) > longest_user)
+          longest_user = len;
+
+   /* print */
+   for (d = s->comment; d; d = d->next) {
+      _printf(_D"%s%s\5\7",
+            !strcmp(r->api.username, d->username)?"\4":"\1",
+             d->username);
+      for (len = longest_user-strlen(d->username);
+           len; --len)
+         printf(" ");
+      _printf(": %s", d->comment);
+   }
+
+   /* free */
+   for (d = s->comment; d; d = dn) {
+      free(d->username); free(d->comment);
+      dn = d->next; free(d);
+   }
 }
 
 /* get comments for package */
 static int repoapicommentpull(_USR_DATA *data)
 {
    _USR_TARGET *t;
-   for (t = data->tlist; t; t = t->next)
-      pndman_api_comment_pnd_pull(t->repository, t->pnd, t->repository, repoapicommentcb);
-   while (pndman_curl_process() > 0) usleep(1000);
+   _comment_pull_struct s;
+   for (t = data->tlist; t; t = t->next) {
+      if (t->prev) NEWLINE();
+      _printf(_D"\2Comments for \4%s\5:", t->pnd->id);
+      memset(&s, 0, sizeof(_comment_pull_struct));
+      pndman_api_comment_pnd_pull(&s, t->pnd, t->repository, repoapicommentcb);
+      while (pndman_curl_process() > 0) usleep(1000);
+      processcommentpull(t->repository, &s);
+   }
    return RETURN_OK;
 }
 
