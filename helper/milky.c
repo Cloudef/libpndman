@@ -2647,6 +2647,7 @@ static int help(_USR_DATA *data)
       _printf("\2~ Repository API arguments:");
       _printf("\5  If you specify -A only, you can add your credentials to libpndman.");
       _printf("\5  Package specific functions are executed on each repository that has the package.");
+      _printf("\5  -A : <username> <api key> [repo name/url] syntax to add credentials.");
       _printf("\5  -c : Get comments from package.");
       _printf("\5       Send new comment for package.              (with argument)");
       _printf("\5  -p : Rate package.                              (0-100 rating)");
