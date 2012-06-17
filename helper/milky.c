@@ -2398,7 +2398,7 @@ static int repoapiratecomment(_USR_DATA *data, const char *comment, unsigned int
    if (_QUIET < 2) {
       for (t = data->tlist, count = 0; t; t = t->next); ++count;
       _printf(_TARGET_LINE"\7", count);
-      for (t = data->tlist; t; t = t->next) _printf("\4%s\5%s\7", t->id, t->next?", ":"");
+      for (t = data->tlist; t; t = t->next) _printf("\4%s\5%s\7", t->pnd->id, t->next?", ":"");
       NEWLINE();
    }
    if (data->flags & A_COMMENT) {
