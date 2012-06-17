@@ -224,7 +224,7 @@ int _pndman_curl_handle_perform(pndman_curl_handle *handle)
    }
 
    curl_easy_setopt(handle->curl, CURLOPT_HEADERFUNCTION, _pndman_curl_write_header);
-   curl_easy_setopt(handle->curl, CURLOPT_CONNECTTIMEOUT, PNDMAN_CURL_TIMEOUT);
+   curl_easy_setopt(handle->curl, CURLOPT_CONNECTTIMEOUT, pndman_get_curl_timeout());
    curl_easy_setopt(handle->curl, CURLOPT_NOPROGRESS, handle->progress?0:1);
    curl_easy_setopt(handle->curl, CURLOPT_PROGRESSFUNCTION, _pndman_curl_progress_func);
    curl_easy_setopt(handle->curl, CURLOPT_HEADERDATA, handle);

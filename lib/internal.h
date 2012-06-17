@@ -38,7 +38,6 @@
                                        PNDMAN_LEVEL_ERROR, fmt, ##__VA_ARGS__)
 
 /* etc.. */
-#define PNDMAN_CURL_TIMEOUT   15L
 #define PNDMAN_CURL_CHUNK     1024
 #define PNDMAN_CURL_MAX_RETRY 5
 

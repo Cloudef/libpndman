@@ -404,6 +404,12 @@ PNDMANAPI void pndman_set_debug_hook(
 /* \brief get current verbose level */
 PNDMANAPI int pndman_get_verbose(void);
 
+/* \brief set internal curl timeout for libpndman */
+PNDMANAPI void pndman_set_curl_timeout(int timeout);
+
+/* \brief get internal curl timeout for libpndman */
+PNDMANAPI int pndman_get_curl_timeout(void);
+
 /* \brief colored put function
  * this is manily provided public to milkyhelper,
  * to avoid some code duplication.

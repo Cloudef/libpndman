@@ -13,6 +13,9 @@ static int _PNDMAN_VERBOSE = 0;
 /* \brief internal color output */
 static int _PNDMAN_COLOR = 1;
 
+/* \brief curl timeout */
+static int _PNDMAN_CURL_TIMEOUT = 15;
+
 /* \brief internal debug hook function */
 static PNDMAN_DEBUG_HOOK_FUNC _PNDMAN_DEBUG_HOOK = NULL;
 
@@ -278,6 +281,18 @@ PNDMANAPI void pndman_set_color(int use_color)
 {
    if (!use_color) _pndman_normal();
    _PNDMAN_COLOR = use_color;
+}
+
+/* \brief set internal curl timeout for libpndman */
+PNDMANAPI void pndman_set_curl_timeout(int timeout)
+{
+   if (timeout >= 0) _PNDMAN_CURL_TIMEOUT = timeout;
+}
+
+/* \brief get internal curl timeout for libpndman */
+PNDMANAPI int pndman_get_curl_timeout(void)
+{
+   return _PNDMAN_CURL_TIMEOUT;
 }
 
 /* vim: set ts=8 sw=3 tw=0 :*/
