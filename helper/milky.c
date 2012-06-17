@@ -62,7 +62,7 @@ typedef enum _RETURN_STATUS
    RETURN_FALSE   = !RETURN_TRUE
 } _RETURN_STATUS;
 
-#define PND_ID 256
+#define PND_ID 302
 typedef struct _USR_TARGET
 {
    char                 id[PND_ID];
@@ -180,6 +180,8 @@ static void init_usrdata(_USR_DATA *data)
 #define _NO_REMOTE_REPOS         _D"\1You have no remote repositories defined in configuration file."
 #define _REPO_API_FORGOT_RATING  _D"\1You forgot to give your rating [0-100]"
 #define _REPO_API_NO_PACKAGES    _D"\1No packages given to perform this action on."
+#define _COMMENT_LENGTH_WARN     _D"\1Your comment is over 300 characters, it will be truncated."
+#define _COMMENTS_FOR_PACKAGE    _D"\2Comments for \4%s\5:"
 #define _YAOURT_DIALOG           "\4Enter number of packages to be installed \5(\2ex: 1 2 3\5)"
 #define _TARGET_MEDIA            "\4Target media  \5: %s"
 #define _TARGET_PATH             "\4Target path   \5: %s"
@@ -2465,6 +2467,8 @@ static int repoapiratecomment(_USR_DATA *data, const char *comment, unsigned int
       _printf(_TARGET_LINE"\7", count);
       for (t = data->tlist; t; t = t->next) _printf("\4%s\5%s\7", t->pnd->id, t->next?", ":"");
       NEWLINE();
+      if (strlen(comment) > 300)
+        _printf(_COMMENT_LENGTH_WARN);
    }
    if (data->flags & A_COMMENT) {
       if (!yesno(data, _SEND_COMMENT))    return RETURN_FAIL;
@@ -2537,7 +2541,7 @@ static int repoapicommentpull(_USR_DATA *data)
    _comment_pull_struct s;
    for (t = data->tlist; t; t = t->next) {
       if (t->prev) NEWLINE();
-      _printf(_D"\2Comments for \4%s\5:", t->pnd->id);
+      _printf(_COMMENTS_FOR_PACKAGE, t->pnd->id);
       memset(&s, 0, sizeof(_comment_pull_struct));
       pndman_api_comment_pnd_pull(&s, t->pnd, t->repository, repoapicommentcb);
       while (pndman_curl_process() > 0) usleep(1000);
