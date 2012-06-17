@@ -2560,6 +2560,9 @@ static int repoapiprocess(_USR_DATA *data)
       }
    }
 
+   /* set longer timeout for repo api stuff */
+   pndman_set_curl_timeout(30);
+
    /* comment on package or pull comments */
    if (data->flags & A_COMMENT) {
       if (strlen(comment)) return repoapiratecomment(data, comment, 0);
