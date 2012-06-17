@@ -41,9 +41,9 @@ function generateKey () {                               # $1 = password
     if ! [ "$API_KEY" ]; then
         echo "Invalid username or password."
      else
-        echo "milkshakes-repo"
         echo "$USERNAME"
         echo "$API_KEY"
+        echo "milkshakes-repo"
     fi
 }
 
