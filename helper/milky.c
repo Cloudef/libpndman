@@ -1605,6 +1605,7 @@ static int syncrepos(pndman_repository *rs, _USR_DATA *data)
       if (!(data->flags & GB_NOBAR)) progressbar(data->tdl, data->ttdl);
       usleep(1000); data->tdl = 0; data->ttdl = 0;
    }
+   ERASE();
    if (ret == -1) _printf(_INTERNAL_CURL_FAIL);
 
    for (r = rs, c = 0; r; r = r->next) {
@@ -2009,6 +2010,7 @@ static int targetperform(_USR_DATA *data)
       }
       usleep(1000);
    }
+   ERASE();
    if (ret == -1) _printf(_INTERNAL_CURL_FAIL);
 
    /* free handles */
