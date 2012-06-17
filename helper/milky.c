@@ -93,6 +93,16 @@ typedef struct _USR_DATA
    double tdl, ttdl;
 } _USR_DATA;
 
+typedef struct _comment_data {
+   char *username;
+   char *comment;
+   struct _comment_data *next;
+} _comment_data;
+
+typedef struct _comment_pull_struct {
+   _comment_data *comment;
+} _comment_pull_struct;
+
 /* initialize _USR_DATA struct */
 static void init_usrdata(_USR_DATA *data)
 {
@@ -2467,16 +2477,6 @@ static int repoapiratecomment(_USR_DATA *data, const char *comment, unsigned int
    while (pndman_curl_process() > 0) usleep(1000);
    return RETURN_OK;
 }
-
-typedef struct _comment_data {
-   char *username;
-   char *comment;
-   struct _comment_data *next;
-} _comment_data;
-
-typedef struct _comment_pull_struct {
-   _comment_data *comment;
-} _comment_pull_struct;
 
 /* comment callback */
 static void repoapicommentcb(pndman_curl_code code, pndman_api_comment_packet *p)
