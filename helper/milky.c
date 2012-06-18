@@ -103,6 +103,12 @@ typedef struct _comment_pull_struct {
    _comment_data *comment;
 } _comment_pull_struct;
 
+typedef struct _comment_rm_struct {
+   pndman_repository *repository;
+   const char *needle;
+   _USR_DATA *data;
+} _comment_rm_struct;
+
 /* initialize _USR_DATA struct */
 static void init_usrdata(_USR_DATA *data)
 {
@@ -588,7 +594,7 @@ typedef enum _HELPER_FLAGS
    A_INTEGRITY = 0x004000000, A_RM_CRPT    = 0x008000000,
    A_INST_CRPT = 0x010000000, A_QUERY_REPO = 0x020000000,
    OP_REPO_API = 0x040000000, A_COMMENT    = 0x080000000,
-   A_RATE      = 0x100000000, A_DL_HISTORY = 0x200000000
+   A_RATE      = 0x100000000, A_DL_HISTORY = 0x200000000,
 } _HELPER_FLAGS;
 typedef _HELPER_FLAGS (*_PARSE_FUNC)(char, char*, int*, _USR_DATA*); /* function prototype for parsing flags */
 
@@ -2444,6 +2450,7 @@ fail:
 /* type ids for genericcb */
 #define _ID_COMMENT "comment"
 #define _ID_RATE    "rate"
+#define _ID_CMNT_RM "commentrm"
 
 /* generic callback */
 static void repoapigenericcb(pndman_curl_code code, const char *info, void *data)
@@ -2455,6 +2462,7 @@ static void repoapigenericcb(pndman_curl_code code, const char *info, void *data
 
    if      (!strcmp((char*)data, _ID_COMMENT))   _printf(_D"\2Comment sent!");
    else if (!strcmp((char*)data, _ID_RATE))      _printf(_D"\2Rating sent!");
+   else if (!strcmp((char*)data, _ID_CMNT_RM))   _printf(_D"\2Comment removed!");
 }
 
 /* comment package */
@@ -2462,6 +2470,10 @@ static int repoapiratecomment(_USR_DATA *data, const char *comment, unsigned int
 {
    _USR_TARGET *t;
    unsigned int count;
+
+   if (comment && !strlen(comment))
+      return RETURN_FAIL;
+
    if (_QUIET < 2) {
       for (t = data->tlist, count = 0; t; t = t->next); ++count;
       _printf(_TARGET_LINE"\7", count);
@@ -2472,14 +2484,55 @@ static int repoapiratecomment(_USR_DATA *data, const char *comment, unsigned int
          _printf(_COMMENT_LENGTH_WARN);
    }
    if (data->flags & A_COMMENT) {
-      if (!yesno(data, _SEND_COMMENT))    return RETURN_FAIL;
-   } else if (!yesno(data, _SEND_RATING)) return RETURN_FAIL;
+      NEWLINE();
+      _printf("\1\"\5%s\1\"", comment);
+      if (!yesno(data, _SEND_COMMENT)) return RETURN_FAIL;
+   } else {
+      NEWLINE();
+      _printf("\3Rating: \5%d", rate);
+      if (!yesno(data, _SEND_RATING))  return RETURN_FAIL;
+   }
    for (t = data->tlist; t; t = t->next) {
       if (data->flags & A_COMMENT)
          pndman_api_comment_pnd(_ID_COMMENT, t->pnd, t->repository, comment, repoapigenericcb);
       else pndman_api_rate_pnd(_ID_RATE, t->pnd, t->repository, rate, repoapigenericcb);
    }
    while (pndman_curl_process() > 0) usleep(1000);
+   return RETURN_OK;
+}
+
+/* comment removal callback */
+static void repoapicommentrmcb(pndman_curl_code code, pndman_api_comment_packet *p)
+{
+   _comment_rm_struct *pp = (_comment_rm_struct*)p->user_data;
+   if (pp->needle && strstr(p->comment, pp->needle)) {
+      _printf(_D"\2Found match from package \4%s", p->pnd->id);
+      NEWLINE();
+      _printf("\1\"\5%s\1\"", p->comment);
+      if (yesno(pp->data, "\3Do you want to delete it?")) {
+         pndman_api_comment_pnd_delete(_ID_CMNT_RM, p->pnd, p->date, pp->repository, repoapigenericcb);
+         pp->needle = NULL;
+      }
+   }
+}
+
+/* remove comment from package */
+static int repoapicommentrm(_USR_DATA *data, const char *needle)
+{
+   _USR_TARGET *t;
+   _comment_rm_struct pp;
+
+   /* check needle */
+   if (!needle)
+      return RETURN_FAIL;
+
+   pp.data   = data;
+   pp.needle = needle;
+   for (t = data->tlist; t; t = t->next) {
+      pp.repository = t->repository;
+      pndman_api_comment_pnd_pull(&pp, t->pnd, t->repository, repoapicommentrmcb);
+      while (pndman_curl_process() > 0) usleep(1000);
+   }
    return RETURN_OK;
 }
 
@@ -2586,14 +2639,14 @@ static int repoapiprocess(_USR_DATA *data)
    _USR_TARGET *t;
    pndman_repository *rs;
    char comment[LINE_MAX];
-   int rate;
+   int rate = 0;
 
    /* repo api handler register */
    memset(comment, 0, LINE_MAX);
 
    /* if we do action, do some sanity checks */
-   if ((data->flags & A_RATE)    ||
-       (data->flags & A_COMMENT) ||
+   if ((data->flags & A_RATE)          ||
+       (data->flags & A_COMMENT)       ||
        (data->flags & A_DL_HISTORY)) {
       /* check that we aren't using local repository */
       if (!(rs = checkremoterepo("repository api", data)))
@@ -2603,19 +2656,26 @@ static int repoapiprocess(_USR_DATA *data)
       if (!checksyncedrepo(rs)) return RETURN_FAIL;
 
       /* store comment */
-      if (data->flags & A_COMMENT ||
-          data->flags & A_RATE) {
-         for (t = data->tlist; t && t->next; t = t->next);
-         if (t && t->prev) {
-            if (data->flags & A_COMMENT) strncpy(comment, t->id, LINE_MAX-1);
-            if (data->flags & A_RATE)    rate = strtol(t->id, (char**) NULL, 10);
-            data->tlist = freetarget(t);
+      if ((data->flags & A_COMMENT) ||
+          (data->flags & A_RATE)) {
+
+         if (((data->flags & A_COMMENT)      &&
+             !(data->flags & A_RATE))        ||
+             ((data->flags & A_RATE)         &&
+             !(data->flags & A_COMMENT))) {
+            for (t = data->tlist; t && t->next; t = t->next);
+            if (t && t->prev) {
+               if (data->flags & A_COMMENT)  strncpy(comment, t->id, LINE_MAX-1);
+               if (data->flags & A_RATE)     rate = strtol(t->id, (char**) NULL, 10);
+               data->tlist = freetarget(t);
+            }
+            if ((data->flags & A_RATE) && (!data->tlist || rate < 1 || rate > 5)) goto no_rating;
          }
-         if ((data->flags & A_RATE) && (!data->tlist || rate < 1 || rate > 5)) goto no_rating;
 
          /* handle targets */
          if (!data->tlist) goto no_targets;
-         if (!targetpnd(rs, data, 0)) return RETURN_FAIL;
+         if (!targetpnd(rs, data, 0))
+            return RETURN_FAIL;
       }
    }
 
@@ -2623,9 +2683,14 @@ static int repoapiprocess(_USR_DATA *data)
    pndman_set_curl_timeout(30);
 
    /* comment on package or pull comments */
-   if (data->flags & A_COMMENT) {
-      if (strlen(comment)) return repoapiratecomment(data, comment, 0);
-      else                 return repoapicommentpull(data);
+   if (data->flags & A_COMMENT &&
+       data->flags & A_RATE) { /* -cp */
+      return repoapicommentpull(data);
+   } else if (data->flags & A_COMMENT &&
+              data->flags & A_DL_HISTORY) { /* -cd */
+      return repoapicommentrm(data, comment);
+   } else if (data->flags & A_COMMENT) {
+      return repoapiratecomment(data, comment, 0);
    } else if (data->flags & A_RATE) {
       return repoapiratecomment(data, NULL, rate);
    } else if (data->flags & A_DL_HISTORY)
@@ -2765,9 +2830,10 @@ static int help(_USR_DATA *data)
       _printf("\5  If you specify -A only, you can add your credentials to libpndman.");
       _printf("\5  Package specific functions are executed on each repository that has the package.");
       _printf("\5  -A : <username> <api key> [repo name/url] syntax to add credentials.");
-      _printf("\5  -c : Get comments from package.");
-      _printf("\5       Send new comment for package.              (with argument)");
-      _printf("\5  -p : Rate package.                              (1-5 rating)");
+      _printf("\5  -c : Send new comment to packages.  <packages> <comment>");
+      _printf("\5  -cp: Get comments for packages.     <packages>");
+      _printf("\5  -cd: Delete comment from packages.  <packages> <needle>");
+      _printf("\5  -p : Rate package.                         (1-5 rating)");
       _printf("\5  -d : Get download history.");
    } else {
       _printf("\1This operation has no arguments.");

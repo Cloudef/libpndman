@@ -602,8 +602,8 @@ PNDMANAPI int pndman_api_comment_pnd_pull(void *user_data,
 /* \brief delete comment from repository.
  * takes the comment timestamp which will be removed.
  * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_api_comment_delete(void *user_data,
-      time_t timestamp, pndman_repository *repository,
+PNDMANAPI int pndman_api_comment_pnd_delete(void *user_data,
+      pndman_package *pnd, time_t timestamp, pndman_repository *repository,
       pndman_api_generic_callback callback);
 
 /* \brief rate the package on repository.

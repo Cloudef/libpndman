@@ -108,6 +108,7 @@ int main(int argc, char **argv)
       pndman_api_comment_pnd(NULL, pnd, repo, "test comment from libpndman", generic_cb);
       pndman_api_rate_pnd(NULL, pnd, repo, 100, generic_cb);
       pndman_api_comment_pnd_pull(NULL, pnd, repo, comment_pull_cb);
+      pndman_api_comment_pnd_delete(NULL, pnd, 1, repo, generic_cb);
       pndman_api_download_history(NULL, repo, history_cb);
       pndman_api_archived_pnd(NULL, pnd, repo, archive_cb);
 

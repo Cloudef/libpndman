@@ -278,8 +278,8 @@ static void _pndman_api_comment_cb(const char *info, pndman_api_request *request
    } else {
       snprintf(url, PNDMAN_URL-1, "%s/%s", packet->repository->api.root, API_COMMENT);
 
-      if (packet->pnd) snprintf(buffer, PNDMAN_POST-1, "id=%s&c=%s", packet->pnd->id, packet->comment);
-      else             snprintf(buffer, PNDMAN_POST-1, "delete=true&time=%lu", packet->timestamp);
+      if (!packet->timestamp) snprintf(buffer, PNDMAN_POST-1, "id=%s&c=%s", packet->pnd->id, packet->comment);
+      else                    snprintf(buffer, PNDMAN_POST-1, "id=%s&delete=true&time=%lu", packet->pnd->id, packet->timestamp);
       _pndman_curl_handle_set_url(request->handle, url);
       _pndman_curl_handle_set_post(request->handle, buffer);
       if (_pndman_curl_handle_perform(request->handle) == RETURN_OK) {
@@ -731,8 +731,8 @@ fail:
 }
 
 /* \brief delete comment */
-static int _pndman_api_comment_delete(void *user_data,
-      time_t timestamp, pndman_repository *repository,
+static int _pndman_api_comment_pnd_delete(void *user_data,
+      pndman_package *pnd, time_t timestamp, pndman_repository *repository,
       pndman_api_generic_callback callback)
 {
    pndman_comment_packet *packet = NULL;
@@ -742,7 +742,7 @@ static int _pndman_api_comment_delete(void *user_data,
    if (!(handle = _pndman_curl_handle_new(NULL, NULL, NULL, NULL)))
       goto fail;
 
-   if (!(packet = _pndman_api_comment_packet(repository, NULL, NULL, timestamp)))
+   if (!(packet = _pndman_api_comment_packet(repository, pnd, NULL, timestamp)))
       goto fail;
 
    packet->callback  = callback;
@@ -873,20 +873,25 @@ PNDMANAPI int pndman_api_comment_pnd_pull(void *user_data,
 }
 
 /* \brief delete comment */
-PNDMANAPI int pndman_api_comment_delete(void *user_data,
-      time_t timestamp, pndman_repository *repository,
+PNDMANAPI int pndman_api_comment_pnd_delete(void *user_data,
+      pndman_package *pnd, time_t timestamp, pndman_repository *repository,
       pndman_api_generic_callback callback)
 {
    CHECKUSE(user_data);
+   CHECKUSE(pnd);
    CHECKUSE(repository);
    CHECKUSE(callback);
    if (!repository->prev) {
       BADUSE("repository is local repository");
       return RETURN_FAIL;
    }
+   if (!timestamp) {
+      BADUSE("timestamp must not be 0");
+      return RETURN_FAIL;
+   }
 
-   return _pndman_api_comment_delete(user_data,
-         timestamp, repository, callback);
+   return _pndman_api_comment_pnd_delete(user_data,
+         pnd, timestamp, repository, callback);
 }
 
 /* \brief rate pnd */
