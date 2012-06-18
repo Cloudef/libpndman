@@ -187,6 +187,8 @@ static void init_usrdata(_USR_DATA *data)
 #define _REPO_API_FORGOT_RATING  _D"\1You forgot to give your rating [1-5]"
 #define _REPO_API_NO_PACKAGES    _D"\1No packages given to perform this action on."
 #define _COMMENT_LENGTH_WARN     _D"\1Your comment is over 300 characters, it will be truncated."
+#define _FOUND_COMMENT_MATCH     _D"\2Found match from package \4%s"
+#define _DELETE_COMMENT          _D"\3Do you want to delete it?"
 #define _COMMENTS_FOR_PACKAGE    _D"\2Comments for \4%s\5:"
 #define _YAOURT_DIALOG           "\4Enter number of packages to be installed \5(\2ex: 1 2 3\5)"
 #define _TARGET_MEDIA            "\4Target media  \5: %s"
@@ -2506,10 +2508,10 @@ static void repoapicommentrmcb(pndman_curl_code code, pndman_api_comment_packet 
 {
    _comment_rm_struct *pp = (_comment_rm_struct*)p->user_data;
    if (pp->needle && strstr(p->comment, pp->needle)) {
-      _printf(_D"\2Found match from package \4%s", p->pnd->id);
+      _printf(_FOUND_COMMENT_MATCH, p->pnd->id);
       NEWLINE();
       _printf("\1\"\5%s\1\"", p->comment);
-      if (yesno(pp->data, "\3Do you want to delete it?")) {
+      if (yesno(pp->data, _DELETE_COMMENT)) {
          pndman_api_comment_pnd_delete(_ID_CMNT_RM, p->pnd, p->date, pp->repository, repoapigenericcb);
          pp->needle = NULL;
       }
