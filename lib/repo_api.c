@@ -49,6 +49,7 @@ typedef struct pndman_comment_packet
    pndman_package *pnd;
    pndman_repository *repository;
    pndman_api_comment_callback pull_callback; /* for comment pull */
+   time_t timestamp; /* for removal */
 } pndman_comment_packet;
 
 /* \brief rate packet */
@@ -276,7 +277,9 @@ static void _pndman_api_comment_cb(const char *info, pndman_api_request *request
       _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet, info, NULL);
    } else {
       snprintf(url, PNDMAN_URL-1, "%s/%s", packet->repository->api.root, API_COMMENT);
-      snprintf(buffer, PNDMAN_POST-1, "id=%s&c=%s", packet->pnd->id, packet->comment);
+
+      if (packet->pnd) snprintf(buffer, PNDMAN_POST-1, "id=%s&c=%s", packet->pnd->id, packet->comment);
+      else             snprintf(buffer, PNDMAN_POST-1, "delete=true&time=%lu", packet->timestamp);
       _pndman_curl_handle_set_url(request->handle, url);
       _pndman_curl_handle_set_post(request->handle, buffer);
       if (_pndman_curl_handle_perform(request->handle) == RETURN_OK) {
@@ -390,7 +393,8 @@ fail:
 
 /* \brief create new comment packet */
 static pndman_comment_packet* _pndman_api_comment_packet(
-      pndman_repository *repo, pndman_package *pnd, const char *comment)
+      pndman_repository *repo, pndman_package *pnd,
+      const char *comment, time_t timestamp)
 {
    pndman_comment_packet *packet;
    if (!(packet = malloc(sizeof(pndman_comment_packet))))
@@ -398,6 +402,7 @@ static pndman_comment_packet* _pndman_api_comment_packet(
    memset(packet, 0, sizeof(pndman_comment_packet));
    packet->pnd = pnd;
    packet->repository = repo;
+   packet->timestamp = timestamp;
 
    if (comment)
       strncpy(packet->comment, comment, PNDMAN_API_COMMENT_LEN-1);
@@ -647,11 +652,9 @@ static int _pndman_api_rate_pnd(void *user_data,
       pndman_package *pnd, pndman_repository *repository, int rate,
       pndman_api_generic_callback callback)
 {
-   assert(pnd && repository);
-
    pndman_rate_packet *packet = NULL;
    pndman_curl_handle *handle;
-   assert(pnd && repository);
+   assert(pnd && repository && callback);
 
    if (!(handle = _pndman_curl_handle_new(NULL, NULL, NULL, NULL)))
       goto fail;
@@ -676,12 +679,12 @@ static int _pndman_api_comment_pnd(void *user_data,
 {
    pndman_comment_packet *packet = NULL;
    pndman_curl_handle *handle;
-   assert(pnd && repository && comment);
+   assert(pnd && repository && comment && callback);
 
    if (!(handle = _pndman_curl_handle_new(NULL, NULL, NULL, NULL)))
       goto fail;
 
-   if (!(packet = _pndman_api_comment_packet(repository, pnd, comment)))
+   if (!(packet = _pndman_api_comment_packet(repository, pnd, comment, 0)))
       goto fail;
 
    packet->callback  = callback;
@@ -703,12 +706,13 @@ static int _pndman_api_comment_pnd_pull(void *user_data,
    char buffer[PNDMAN_POST];
    pndman_comment_packet *packet = NULL;
    pndman_curl_handle *handle;
+   assert(pnd && repository && callback);
 
    if (!(handle = _pndman_curl_handle_new(NULL, NULL,
                _pndman_api_comment_pull_cb, NULL)))
       goto fail;
 
-   if (!(packet = _pndman_api_comment_packet(repository, pnd, NULL)))
+   if (!(packet = _pndman_api_comment_packet(repository, pnd, NULL, 0)))
       goto fail;
 
    snprintf(url, PNDMAN_URL-1, "%s/%s", repository->api.root, API_COMMENT);
@@ -726,12 +730,38 @@ fail:
    return RETURN_FAIL;
 }
 
+/* \brief delete comment */
+static int _pndman_api_comment_delete(void *user_data,
+      time_t timestamp, pndman_repository *repository,
+      pndman_api_generic_callback callback)
+{
+   pndman_comment_packet *packet = NULL;
+   pndman_curl_handle *handle;
+   assert(repository && callback);
+
+   if (!(handle = _pndman_curl_handle_new(NULL, NULL, NULL, NULL)))
+      goto fail;
+
+   if (!(packet = _pndman_api_comment_packet(repository, NULL, NULL, timestamp)))
+      goto fail;
+
+   packet->callback  = callback;
+   packet->user_data = user_data;
+   return _pndman_api_handshake(handle, repository,
+         _pndman_api_comment_cb, packet);
+
+fail:
+   IFDO(_pndman_curl_handle_free, handle);
+   return RETURN_FAIL;
+}
+
 /* \brief get download history */
 static int _pndman_api_download_history(void *user_data,
       pndman_repository *repository, pndman_api_history_callback callback)
 {
    pndman_history_packet *packet = NULL;
    pndman_curl_handle *handle;
+   assert(repository && callback);
 
    if (!(handle = _pndman_curl_handle_new(NULL, NULL, NULL, NULL)))
       goto fail;
@@ -757,6 +787,7 @@ static int _pndman_api_archived_pnd(void *user_data,
    char buffer[PNDMAN_POST];
    pndman_archived_packet *packet = NULL;
    pndman_curl_handle *handle;
+   assert(pnd && repository && callback);
 
    if (!(handle = _pndman_curl_handle_new(NULL, NULL,
                _pndman_api_archived_cb, NULL)))
@@ -787,7 +818,7 @@ int _pndman_api_commercial_download(pndman_curl_handle *handle,
       pndman_package_handle *package)
 {
    pndman_download_packet *packet;
-   assert(package->repository);
+   assert(handle && package && package->repository);
 
    if (!package->repository->prev) {
       BADUSE("repository is local repository");
@@ -839,6 +870,23 @@ PNDMANAPI int pndman_api_comment_pnd_pull(void *user_data,
 
    return _pndman_api_comment_pnd_pull(user_data,
          pnd, repository, callback);
+}
+
+/* \brief delete comment */
+PNDMANAPI int pndman_api_comment_delete(void *user_data,
+      time_t timestamp, pndman_repository *repository,
+      pndman_api_generic_callback callback)
+{
+   CHECKUSE(user_data);
+   CHECKUSE(repository);
+   CHECKUSE(callback);
+   if (!repository->prev) {
+      BADUSE("repository is local repository");
+      return RETURN_FAIL;
+   }
+
+   return _pndman_api_comment_delete(user_data,
+         timestamp, repository, callback);
 }
 
 /* \brief rate pnd */
