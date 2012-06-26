@@ -21,7 +21,7 @@
 #endif
 
 #include <time.h> /* for time_t */
-#ifdef __linux__
+#ifndef _WIN32
 #  include <limits.h> /* for LINE_MAX, PATH_MAX */
 #endif
 

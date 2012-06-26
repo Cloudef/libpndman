@@ -1,7 +1,7 @@
 #include "internal.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <malloc.h>
 #include <unistd.h>
 #include <assert.h>
 #include <errno.h>
@@ -12,7 +12,20 @@
 #  include <sys/vfs.h>
 #  include <sys/stat.h>
 #  include <sys/statvfs.h>
-#  define LINUX_MTAB "/etc/mtab"
+#  define LINUX_MTAB "/etc/mtab" /* "/proc/mounts" */
+#endif
+
+#ifdef __APPLE__
+#  include <dirent.h>
+#  include <sys/stat.h>
+#  include <sys/statvfs.h>
+#  define MAC_VOLUMES "/Volumes"
+#endif
+
+#ifdef __APPLE__
+#  include <malloc/malloc.h>
+#else
+#  include <malloc.h>
 #endif
 
 /* \brief creates new device */
@@ -474,7 +487,8 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
       while (*p++);
    }
 #else
-#  error "No device support for your OS"
+   DEBUG(PNDMAN_LEVEL_ERROR, "No device support for your OS yet.");
+   first = NULL;
 #endif
 
    if (first && first->next)  first = first->next;

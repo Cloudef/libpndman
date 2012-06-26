@@ -8,7 +8,7 @@
 
 #ifdef _WIN32
 #  define getcwd _getcwd
-#elif __linux__
+#else
 #  include <sys/stat.h>
 #  include <dirent.h>
 #endif

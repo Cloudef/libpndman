@@ -1,10 +1,16 @@
 #include "internal.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <malloc.h>
 #include <stdint.h>
 #include <unistd.h>
+
+#ifdef __APPLE__
+#  include <malloc/malloc.h>
+#else
+#  include <malloc.h>
+#endif
 
 #define BLOCK_FD   FILE*
 #define BLOCK_INIT NULL

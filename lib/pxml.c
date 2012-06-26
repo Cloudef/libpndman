@@ -1184,10 +1184,10 @@ static int _pndman_crawl_dir(const char *path,
    pndman_package *pnd, *p;
    int ret;
 
-#ifdef __linux__
+#ifndef _WIN32
    DIR *dp;
    struct dirent *ep;
-#elif _WIN32
+#else
    WIN32_FIND_DATA dp;
    HANDLE hFind;
 #endif

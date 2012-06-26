@@ -2,8 +2,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <malloc.h>
 #include <assert.h>
+
+#ifdef __APPLE__
+#  include <malloc/malloc.h>
+#else
+#  include <malloc.h>
+#endif
 
 /* \brief initialize repository struct */
 static pndman_repository* _pndman_repository_init()

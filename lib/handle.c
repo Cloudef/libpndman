@@ -7,7 +7,7 @@
 #include <libgen.h>
 #include <assert.h>
 
-#ifdef __linux__
+#ifndef _WIN32
 #  include <sys/stat.h>
 #endif
 

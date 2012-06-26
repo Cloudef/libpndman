@@ -1,8 +1,14 @@
 #include "internal.h"
 #include <stdio.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <string.h>
 #include <openssl/md5.h>
+
+#ifdef __APPLE__
+#  include <malloc/malloc.h>
+#else
+#  include <malloc.h>
+#endif
 
 static int _pndman_md5file(FILE *file, unsigned char *digest)
 {

@@ -3,7 +3,7 @@
 
 int main(int argc, char **argv)
 {
-#ifdef __linux__
+#ifndef _WIN32
    DIR *dp;
    struct dirent *ep;
 #else
@@ -20,7 +20,7 @@ int main(int argc, char **argv)
 
    pndman_set_verbose(PNDMAN_LEVEL_CRAP);
    cwd = common_get_path_to_fake_device();
-#ifdef __linux__
+#ifndef _WIN32
    /* copy path */
    strncpy(path1, cwd, PATH_MAX-1);
    strncat(path1, "/pandora/menu/", PATH_MAX-1);
@@ -40,7 +40,7 @@ int main(int argc, char **argv)
    }
 
    closedir(dp);
-#elif _WIN32
+#else
    sprintf(path1, "%s/pandora/menu/*.pnd", cwd);
 
    if ((hFind = FindFirstFile(path1, &dp)) == INVALID_HANDLE_VALUE)

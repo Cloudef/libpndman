@@ -3,7 +3,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <malloc.h>
+
+#ifdef __APPLE__
+#  include <malloc/malloc.h>
+#else
+#  include <malloc.h>
+#endif
 
 /* \brief compare package versions, return 1 on newer, 0 otherwise
  * NOTE: lp == package to use as base, rp == package to compare against
