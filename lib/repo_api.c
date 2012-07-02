@@ -824,6 +824,14 @@ int _pndman_api_commercial_download(pndman_curl_handle *handle,
       BADUSE("repository is local repository");
       return RETURN_FAIL;
    }
+   if (!strlen(package->repository->api.root)) {
+      BADUSE("the repository is not loaded/synced, or does not support client api.");
+      return RETURN_FAIL;
+   }
+   if (!package->repository->pnd) {
+      BADUSE("repository has no packages");
+      return RETURN_FAIL;
+   }
 
    if (!(packet = _pndman_api_download_packet(handle->path, package)))
       goto fail;
@@ -850,6 +858,14 @@ PNDMANAPI int pndman_api_comment_pnd(void *user_data,
       BADUSE("repository is local repository");
       return RETURN_FAIL;
    }
+   if (!strlen(repository->api.root)) {
+      BADUSE("the repository is not loaded/synced, or does not support client api.");
+      return RETURN_FAIL;
+   }
+   if (!repository->pnd) {
+      BADUSE("repository has no packages");
+      return RETURN_FAIL;
+   }
 
    return _pndman_api_comment_pnd(user_data, pnd,
          repository, comment, callback);
@@ -865,6 +881,14 @@ PNDMANAPI int pndman_api_comment_pnd_pull(void *user_data,
    CHECKUSE(callback);
    if (!repository->prev) {
       BADUSE("repository is local repository");
+      return RETURN_FAIL;
+   }
+   if (!strlen(repository->api.root)) {
+      BADUSE("the repository is not loaded/synced, or does not support client api.");
+      return RETURN_FAIL;
+   }
+   if (!repository->pnd) {
+      BADUSE("repository has no packages");
       return RETURN_FAIL;
    }
 
@@ -883,6 +907,14 @@ PNDMANAPI int pndman_api_comment_pnd_delete(void *user_data,
    CHECKUSE(callback);
    if (!repository->prev) {
       BADUSE("repository is local repository");
+      return RETURN_FAIL;
+   }
+   if (!strlen(repository->api.root)) {
+      BADUSE("the repository is not loaded/synced, or does not support client api.");
+      return RETURN_FAIL;
+   }
+   if (!repository->pnd) {
+      BADUSE("repository has no packages");
       return RETURN_FAIL;
    }
    if (!timestamp) {
@@ -906,6 +938,14 @@ PNDMANAPI int pndman_api_rate_pnd(void *user_data,
       BADUSE("repository is local repository");
       return RETURN_FAIL;
    }
+   if (!strlen(repository->api.root)) {
+      BADUSE("the repository is not loaded/synced, or does not support client api.");
+      return RETURN_FAIL;
+   }
+   if (!repository->pnd) {
+      BADUSE("repository has no packages");
+      return RETURN_FAIL;
+   }
 
    return _pndman_api_rate_pnd(user_data, pnd, repository, rate, callback);
 }
@@ -918,6 +958,14 @@ PNDMANAPI int pndman_api_download_history(void *user_data,
    CHECKUSE(callback);
    if (!repository->prev) {
       BADUSE("repository is local repository");
+      return RETURN_FAIL;
+   }
+   if (!strlen(repository->api.root)) {
+      BADUSE("the repository is not loaded/synced, or does not support client api.");
+      return RETURN_FAIL;
+   }
+   if (!repository->pnd) {
+      BADUSE("repository has no packages");
       return RETURN_FAIL;
    }
 
@@ -933,6 +981,14 @@ PNDMANAPI int pndman_api_archived_pnd(void *user_data,
 {
    if (!repository->prev) {
       BADUSE("repository is local repository");
+      return RETURN_FAIL;
+   }
+   if (!strlen(repository->api.root)) {
+      BADUSE("the repository is not loaded/synced, or does not support client api.");
+      return RETURN_FAIL;
+   }
+   if (!repository->pnd) {
+      BADUSE("repository has no packages");
       return RETURN_FAIL;
    }
 
