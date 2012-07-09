@@ -76,6 +76,7 @@ static void common_create_sync_handles(pndman_sync_handle *handle,
          err("pndman_sync_handle_init failed");
       handle[i].callback   = cb;
       handle[i].flags      = flags;
+      handle[i].repository = r;
       pndman_sync_handle_perform(&handle[i]);
    }
 }
