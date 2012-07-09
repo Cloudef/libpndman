@@ -231,6 +231,7 @@ typedef struct pndman_package
    struct pndman_package *next_installed;
    struct pndman_package *next;
    int commercial;
+   struct pndman_repository *repositoryptr;
 } pndman_package;
 
 /*! \brief struct representing client api access */
@@ -291,7 +292,6 @@ typedef struct pndman_package_handle
    char error[PNDMAN_STR];
    pndman_package *pnd;
    pndman_device  *device;
-   pndman_repository *repository;
    unsigned int flags;
    pndman_curl_progress progress;
    pndman_package_handle_callback callback;
@@ -585,8 +585,7 @@ PNDMANAPI void pndman_sync_handle_free(
 /* \brief comment on package at repository,
  * you need to pass the repository as well.
  * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_api_comment_pnd(void *user_data,
-      pndman_package *pnd, pndman_repository *repository,
+PNDMANAPI int pndman_api_comment_pnd(void *user_data, pndman_package *pnd,
       const char *comment, pndman_api_generic_callback callback);
 
 /* \brief get comments from package on repository,
@@ -595,21 +594,19 @@ PNDMANAPI int pndman_api_comment_pnd(void *user_data,
  * user_data pointer is for your own data,
  * which is passed back on callback.
  * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_api_comment_pnd_pull(void *user_data,
-      pndman_package *pnd, pndman_repository *repository,
+PNDMANAPI int pndman_api_comment_pnd_pull(void *user_data, pndman_package *pnd,
       pndman_api_comment_callback callback);
 
 /* \brief delete comment from repository.
  * takes the comment timestamp which will be removed.
  * returns 0 on success, -1 on failure */
 PNDMANAPI int pndman_api_comment_pnd_delete(void *user_data,
-      pndman_package *pnd, time_t timestamp, pndman_repository *repository,
+      pndman_package *pnd, time_t timestamp,
       pndman_api_generic_callback callback);
 
 /* \brief rate the package on repository.
  * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_api_rate_pnd(void *user_data,
-      pndman_package *pnd, pndman_repository *repository,
+PNDMANAPI int pndman_api_rate_pnd(void *user_data, pndman_package *pnd,
       int rate, pndman_api_generic_callback callback);
 
 /* \brief get download history from repository
@@ -624,8 +621,7 @@ PNDMANAPI int pndman_api_download_history(void *user_data,
  * user_data pointer is for your own data,
  * which is passed back on callback.
  * returns 0 on success, -1 on failure */
-PNDMANAPI int pndman_api_archived_pnd(void *user_data,
-      pndman_package *pnd, pndman_repository *repository,
+PNDMANAPI int pndman_api_archived_pnd(void *user_data, pndman_package *pnd,
       pndman_api_archived_callback callback);
 
 /* \brief perform curl operation

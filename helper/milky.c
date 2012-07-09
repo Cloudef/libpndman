@@ -67,7 +67,6 @@ typedef struct _USR_TARGET
 {
    char                 id[PND_ID];
    pndman_package       *pnd;
-   pndman_repository    *repository;
    struct _USR_TARGET   *next;
    struct _USR_TARGET   *prev;
 } _USR_TARGET;
@@ -101,10 +100,10 @@ typedef struct _comment_data {
 
 typedef struct _comment_pull_struct {
    _comment_data *comment;
+   pndman_package *pnd;
 } _comment_pull_struct;
 
 typedef struct _comment_rm_struct {
-   pndman_repository *repository;
    const char *needle;
    _USR_DATA *data;
 } _comment_rm_struct;
@@ -1772,11 +1771,8 @@ static int targetpnd(pndman_repository *rs, _USR_DATA *data, int up)
                if (t->pnd && (tn = addtarget(p->id, &data->tlist))) {
                   if (!ts) ts = tn;
                   tn->pnd = p;
-                  tn->repository = r;
-               } else if (!t->pnd) {
+               } else if (!t->pnd)
                   t->pnd = p;
-                  t->repository = r;
-               }
                if (!(data->flags & OP_YAOURT)) break;
             }
          if (rs == data->rlist) break; /* we only want local repository */
@@ -1793,11 +1789,8 @@ static int targetpnd(pndman_repository *rs, _USR_DATA *data, int up)
                if (t->pnd && (tn = addtarget(p->id, &data->tlist))) {
                   if (!ts) ts = tn;
                   tn->pnd = p;
-                  tn->repository = r;
-               } else if (!t->pnd) {
+               } else if (!t->pnd)
                   t->pnd = p;
-                  t->repository = r;
-               }
                if (!(data->flags & OP_YAOURT)) break;
             }
          if (rs == data->rlist) break; /* we only want local repository */
@@ -2030,7 +2023,6 @@ static int targetperform(_USR_DATA *data)
       handle[c].user_data  = data;
       handle[c].device     = ((data->flags & OP_UPGRADE) || (data->flags & A_UPGRADE))?data->dlist:data->root;
       handle[c].flags      = handleflagsfromflags(t->pnd, data->flags);
-      handle[c].repository = t->repository;
       start[c]             = 0;
       if (c<_QUEUE) {
          if (pndman_package_handle_perform(&handle[c]) != RETURN_OK)
@@ -2242,7 +2234,6 @@ static void handlecorrupt(pndman_package *p, pndman_package *rp,
       return;
 
    t->pnd = (data->flags & OP_SYNC)?rp:p;
-   t->repository = r;
    _printf(certain==1?_PND_IS_CORRUPT:
            certain==0?_PND_MAY_CORRUPT:_PND_DIF_CORRUPT, p->id);
 }
@@ -2504,8 +2495,8 @@ static int repoapiratecomment(_USR_DATA *data, const char *comment, unsigned int
    }
    for (t = data->tlist; t; t = t->next) {
       if (data->flags & A_COMMENT)
-         pndman_api_comment_pnd(_ID_COMMENT, t->pnd, t->repository, comment, repoapigenericcb);
-      else pndman_api_rate_pnd(_ID_RATE, t->pnd, t->repository, rate, repoapigenericcb);
+         pndman_api_comment_pnd(_ID_COMMENT, t->pnd, comment, repoapigenericcb);
+      else pndman_api_rate_pnd(_ID_RATE, t->pnd, rate, repoapigenericcb);
    }
    while (pndman_curl_process() > 0) usleep(1000);
    return RETURN_OK;
@@ -2529,7 +2520,7 @@ static void repoapicommentrmcb(pndman_curl_code code, pndman_api_comment_packet 
       NEWLINE();
       _printf("\1\"\5%s\1\"", p->comment);
       if (yesno(pp->data, _DELETE_COMMENT)) {
-         pndman_api_comment_pnd_delete(_ID_CMNT_RM, p->pnd, p->date, pp->repository, repoapigenericcb);
+         pndman_api_comment_pnd_delete(_ID_CMNT_RM, p->pnd, p->date, repoapigenericcb);
          pp->needle = NULL;
       }
    }
@@ -2548,8 +2539,7 @@ static int repoapicommentrm(_USR_DATA *data, const char *needle)
    pp.data   = data;
    pp.needle = needle;
    for (t = data->tlist; t; t = t->next) {
-      pp.repository = t->repository;
-      pndman_api_comment_pnd_pull(&pp, t->pnd, t->repository, repoapicommentrmcb);
+      pndman_api_comment_pnd_pull(&pp, t->pnd, repoapicommentrmcb);
       while (pndman_curl_process() > 0) usleep(1000);
    }
    return RETURN_OK;
@@ -2585,7 +2575,7 @@ static void repoapicommentcb(pndman_curl_code code, pndman_api_comment_packet *p
 }
 
 /* process and free comment pull struct */
-static void processcommentpull(pndman_repository *r, _comment_pull_struct *s)
+static void processcommentpull(_comment_pull_struct *s)
 {
    _comment_data *d, *dn;
    size_t longest_user = 0, len;
@@ -2603,7 +2593,7 @@ static void processcommentpull(pndman_repository *r, _comment_pull_struct *s)
    /* print */
    for (d = s->comment; d; d = d->next) {
       _printf(_D"%s%s\5\7",
-            !strcmp(r->api.username, d->username)?"\4":"\1",
+            !strcmp(s->pnd->repositoryptr->api.username, d->username)?"\4":"\1",
              d->username);
       for (len = longest_user-strlen(d->username);
            len; --len)
@@ -2626,10 +2616,10 @@ static int repoapicommentpull(_USR_DATA *data)
    for (t = data->tlist; t; t = t->next) {
       if (t->prev) NEWLINE();
       _printf(_COMMENTS_FOR_PACKAGE, t->pnd->id);
-      memset(&s, 0, sizeof(_comment_pull_struct));
-      pndman_api_comment_pnd_pull(&s, t->pnd, t->repository, repoapicommentcb);
+      memset(&s, 0, sizeof(_comment_pull_struct)); s.pnd = t->pnd;
+      pndman_api_comment_pnd_pull(&s, t->pnd, repoapicommentcb);
       while (pndman_curl_process() > 0) usleep(1000);
-      processcommentpull(t->repository, &s);
+      processcommentpull(&s);
    }
    return RETURN_OK;
 }

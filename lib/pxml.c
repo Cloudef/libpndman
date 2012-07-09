@@ -1389,6 +1389,7 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
          if (!full) _pndman_package_free_applications(pnd);
          _pndman_copy_pnd(pnd, p);
          strncpy(pnd->mount, device->mount, PNDMAN_PATH-1);
+         pnd->repositoryptr = local;
 
          /* stat for modified time */
          if (!pnd->modified_time) {

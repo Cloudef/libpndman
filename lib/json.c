@@ -494,6 +494,7 @@ int _pndman_json_archived_pnd(
             _json_set_version(&version, json_object_get(varray,"version"));
             json_fast_number(json_object_get(varray, "date"), date, time_t);
             p->next_installed->modified_time = date;
+            p->next_installed->repositoryptr = pnd->repositoryptr;
             memcpy(&p->next_installed->version, &version, sizeof(pndman_version));
             p = p->next_installed;
          }

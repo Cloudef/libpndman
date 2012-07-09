@@ -818,17 +818,17 @@ int _pndman_api_commercial_download(pndman_curl_handle *handle,
       pndman_package_handle *package)
 {
    pndman_download_packet *packet;
-   assert(handle && package && package->repository);
+   assert(handle && package && package->pnd && package->pnd->repositoryptr);
 
-   if (!package->repository->prev) {
+   if (!package->pnd->repositoryptr->prev) {
       BADUSE("repository is local repository");
       return RETURN_FAIL;
    }
-   if (!strlen(package->repository->api.root)) {
+   if (!strlen(package->pnd->repositoryptr->api.root)) {
       BADUSE("the repository is not loaded/synced, or does not support client api.");
       return RETURN_FAIL;
    }
-   if (!package->repository->pnd) {
+   if (!package->pnd->repositoryptr->pnd) {
       BADUSE("repository has no packages");
       return RETURN_FAIL;
    }
@@ -836,7 +836,7 @@ int _pndman_api_commercial_download(pndman_curl_handle *handle,
    if (!(packet = _pndman_api_download_packet(handle->path, package)))
       goto fail;
 
-   return _pndman_api_handshake(handle, package->repository,
+   return _pndman_api_handshake(handle, package->pnd->repositoryptr,
          _pndman_api_download_cb, packet);
 
 fail:
@@ -847,73 +847,72 @@ fail:
 
 /* \brief send comment to pnd */
 PNDMANAPI int pndman_api_comment_pnd(void *user_data,
-      pndman_package *pnd, pndman_repository *repository, const char *comment,
+      pndman_package *pnd, const char *comment,
       pndman_api_generic_callback callback)
 {
    CHECKUSE(pnd);
-   CHECKUSE(repository);
+   CHECKUSE(pnd->repositoryptr);
    CHECKUSE(comment);
    CHECKUSE(callback);
-   if (!repository->prev) {
+   if (!pnd->repositoryptr->prev) {
       BADUSE("repository is local repository");
       return RETURN_FAIL;
    }
-   if (!strlen(repository->api.root)) {
+   if (!strlen(pnd->repositoryptr->api.root)) {
       BADUSE("the repository is not loaded/synced, or does not support client api.");
       return RETURN_FAIL;
    }
-   if (!repository->pnd) {
+   if (!pnd->repositoryptr->pnd) {
       BADUSE("repository has no packages");
       return RETURN_FAIL;
    }
 
    return _pndman_api_comment_pnd(user_data, pnd,
-         repository, comment, callback);
+         pnd->repositoryptr, comment, callback);
 }
 
 /* \brief get comments from pnd */
-PNDMANAPI int pndman_api_comment_pnd_pull(void *user_data,
-      pndman_package *pnd, pndman_repository *repository,
+PNDMANAPI int pndman_api_comment_pnd_pull(void *user_data, pndman_package *pnd,
       pndman_api_comment_callback callback)
 {
    CHECKUSE(pnd);
-   CHECKUSE(repository);
+   CHECKUSE(pnd->repositoryptr);
    CHECKUSE(callback);
-   if (!repository->prev) {
+   if (!pnd->repositoryptr->prev) {
       BADUSE("repository is local repository");
       return RETURN_FAIL;
    }
-   if (!strlen(repository->api.root)) {
+   if (!strlen(pnd->repositoryptr->api.root)) {
       BADUSE("the repository is not loaded/synced, or does not support client api.");
       return RETURN_FAIL;
    }
-   if (!repository->pnd) {
+   if (!pnd->repositoryptr->pnd) {
       BADUSE("repository has no packages");
       return RETURN_FAIL;
    }
 
    return _pndman_api_comment_pnd_pull(user_data,
-         pnd, repository, callback);
+         pnd, pnd->repositoryptr, callback);
 }
 
 /* \brief delete comment */
 PNDMANAPI int pndman_api_comment_pnd_delete(void *user_data,
-      pndman_package *pnd, time_t timestamp, pndman_repository *repository,
+      pndman_package *pnd, time_t timestamp,
       pndman_api_generic_callback callback)
 {
    CHECKUSE(user_data);
    CHECKUSE(pnd);
-   CHECKUSE(repository);
+   CHECKUSE(pnd->repositoryptr);
    CHECKUSE(callback);
-   if (!repository->prev) {
+   if (!pnd->repositoryptr->prev) {
       BADUSE("repository is local repository");
       return RETURN_FAIL;
    }
-   if (!strlen(repository->api.root)) {
+   if (!strlen(pnd->repositoryptr->api.root)) {
       BADUSE("the repository is not loaded/synced, or does not support client api.");
       return RETURN_FAIL;
    }
-   if (!repository->pnd) {
+   if (!pnd->repositoryptr->pnd) {
       BADUSE("repository has no packages");
       return RETURN_FAIL;
    }
@@ -923,31 +922,27 @@ PNDMANAPI int pndman_api_comment_pnd_delete(void *user_data,
    }
 
    return _pndman_api_comment_pnd_delete(user_data,
-         pnd, timestamp, repository, callback);
+         pnd, timestamp, pnd->repositoryptr, callback);
 }
 
 /* \brief rate pnd */
 PNDMANAPI int pndman_api_rate_pnd(void *user_data,
-      pndman_package *pnd, pndman_repository *repository, int rate,
+      pndman_package *pnd, int rate,
       pndman_api_generic_callback callback)
 {
    CHECKUSE(pnd);
-   CHECKUSE(repository);
+   CHECKUSE(pnd->repositoryptr);
    CHECKUSE(callback);
-   if (!repository->prev) {
-      BADUSE("repository is local repository");
-      return RETURN_FAIL;
-   }
-   if (!strlen(repository->api.root)) {
+   if (!strlen(pnd->repositoryptr->api.root)) {
       BADUSE("the repository is not loaded/synced, or does not support client api.");
       return RETURN_FAIL;
    }
-   if (!repository->pnd) {
+   if (!pnd->repositoryptr->pnd) {
       BADUSE("repository has no packages");
       return RETURN_FAIL;
    }
 
-   return _pndman_api_rate_pnd(user_data, pnd, repository, rate, callback);
+   return _pndman_api_rate_pnd(user_data, pnd, pnd->repositoryptr, rate, callback);
 }
 
 /* \brief get download history */
@@ -975,23 +970,24 @@ PNDMANAPI int pndman_api_download_history(void *user_data,
 
 /* \brief get archived pnds
  * archived pnd's are store in next_installed */
-PNDMANAPI int pndman_api_archived_pnd(void *user_data,
-      pndman_package *pnd, pndman_repository *repository,
+PNDMANAPI int pndman_api_archived_pnd(void *user_data, pndman_package *pnd,
       pndman_api_archived_callback callback)
 {
-   if (!repository->prev) {
+   CHECKUSE(pnd);
+   CHECKUSE(pnd->repositoryptr);
+   if (!pnd->repositoryptr->prev) {
       BADUSE("repository is local repository");
       return RETURN_FAIL;
    }
-   if (!strlen(repository->api.root)) {
+   if (!strlen(pnd->repositoryptr->api.root)) {
       BADUSE("the repository is not loaded/synced, or does not support client api.");
       return RETURN_FAIL;
    }
-   if (!repository->pnd) {
+   if (!pnd->repositoryptr->pnd) {
       BADUSE("repository has no packages");
       return RETURN_FAIL;
    }
 
    return _pndman_api_archived_pnd(user_data,
-         pnd, repository, callback);
+         pnd, pnd->repositoryptr, callback);
 }

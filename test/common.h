@@ -74,7 +74,6 @@ static void common_create_sync_handles(pndman_sync_handle *handle,
       if (i > num) break;
       if (pndman_sync_handle_init(&handle[i]) != 0)
          err("pndman_sync_handle_init failed");
-      handle[i].repository = r;
       handle[i].callback   = cb;
       handle[i].flags      = flags;
       pndman_sync_handle_perform(&handle[i]);
@@ -89,7 +88,6 @@ static void common_create_package_handles(pndman_package_handle *handle,
    for (i = 0; i != num; ++i) {
       if (pndman_package_handle_init("noname", &handle[i]) != 0)
          err("pndman_package_handle_init failed");
-      handle[i].repository = repo;
       handle[i].device     = device;
       handle[i].callback   = cb;
    }
@@ -138,7 +136,7 @@ static void common_package_cb(pndman_curl_code code, pndman_package_handle *hand
       printf("%s : %s!\n", handle->pnd->id,
             code==PNDMAN_CURL_DONE?"DONE":handle->error);
       if (code == PNDMAN_CURL_DONE) {
-         if (pndman_package_handle_commit(handle, handle->repository) != 0)
+         if (pndman_package_handle_commit(handle, handle->pnd->repositoryptr) != 0)
             printf("commit failed for: %s\n", handle->pnd->id);
       }
       pndman_package_handle_free(handle);

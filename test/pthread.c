@@ -49,7 +49,7 @@ static void package_cb(pndman_curl_code code, pndman_package_handle *handle)
       printf("%s : %s!\n", handle->pnd->id,
             code==PNDMAN_CURL_DONE?"DONE":handle->error);
       if (code == PNDMAN_CURL_DONE) {
-         if (pndman_package_handle_commit(handle, handle->repository) != 0)
+         if (pndman_package_handle_commit(handle, handle->pnd->repositoryptr) != 0)
             printf("commit failed for: %s\n", handle->pnd->id);
       }
       pndman_package_handle_free(handle);

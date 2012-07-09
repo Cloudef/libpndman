@@ -4,8 +4,16 @@
 static void comment_pull_cb(pndman_curl_code code,
       pndman_api_comment_packet *p)
 {
+   if (code == PNDMAN_CURL_PROGRESS)
+      return;
+
    if (code == PNDMAN_CURL_FAIL) {
       puts(p->error);
+      return;
+   }
+
+   if (!p->pnd) {
+      printf("no comments\n");
       return;
    }
 
@@ -19,8 +27,16 @@ static void comment_pull_cb(pndman_curl_code code,
 static void history_cb(pndman_curl_code code,
       pndman_api_history_packet *p)
 {
+   if (code == PNDMAN_CURL_PROGRESS)
+      return;
+
    if (code == PNDMAN_CURL_FAIL) {
       puts(p->error);
+      return;
+   }
+
+   if (!strlen(p->id)) {
+      printf("no history\n");
       return;
    }
 
@@ -32,16 +48,22 @@ static void history_cb(pndman_curl_code code,
 static void archive_cb(pndman_curl_code code,
       pndman_api_archived_packet *p)
 {
+   pndman_package *pp;
+
+   if (code == PNDMAN_CURL_PROGRESS)
+      return;
+
    if (code == PNDMAN_CURL_FAIL) {
       puts(p->error);
       return;
    }
 
-   pndman_package *pp;
    for (pp = p->pnd->next_installed; pp; pp = pp->next_installed)
       printf("%s [%lu] (%s.%s.%s.%s)\n", pp->id, pp->modified_time,
             pp->version.major,   pp->version.minor,
             pp->version.release, pp->version.build);
+   if (!p->pnd->next_installed)
+      printf("no archieved pnds\n");
 }
 
 static void generic_cb(pndman_curl_code code,
@@ -105,12 +127,12 @@ int main(int argc, char **argv)
    if (!pnd) puts("no milkyhelper pnd found, skipping test");
 
    if (pnd) {
-      pndman_api_comment_pnd(NULL, pnd, repo, "test comment from libpndman", generic_cb);
-      pndman_api_rate_pnd(NULL, pnd, repo, 100, generic_cb);
-      pndman_api_comment_pnd_pull(NULL, pnd, repo, comment_pull_cb);
-      pndman_api_comment_pnd_delete(NULL, pnd, 1, repo, generic_cb);
+      pndman_api_comment_pnd(NULL, pnd, "test comment from libpndman", generic_cb);
+      pndman_api_rate_pnd(NULL, pnd, 100, generic_cb);
+      pndman_api_comment_pnd_pull(NULL, pnd, comment_pull_cb);
+      pndman_api_comment_pnd_delete(NULL, pnd, 1, generic_cb);
       pndman_api_download_history(NULL, repo, history_cb);
-      pndman_api_archived_pnd(NULL, pnd, repo, archive_cb);
+      pndman_api_archived_pnd(NULL, pnd, archive_cb);
 
       puts("");
       while (pndman_curl_process() > 0);

@@ -65,6 +65,7 @@ pndman_package* _pndman_repository_new_pnd(pndman_repository *repo)
          p = p->next = _pndman_new_pnd();
    } else p = repo->pnd = _pndman_new_pnd();
    strncpy(p->repository, repo->url, PNDMAN_STR-1);
+   p->repositoryptr = repo;
 
    return p;
 }
@@ -99,6 +100,7 @@ pndman_package* _pndman_repository_new_pnd_check(pndman_package *in_pnd,
                   DEBUG(PNDMAN_LEVEL_CRAP, "Newer : %s", path);
                }
                strncpy(pni->repository, repo->url, PNDMAN_STR-1);
+               pni->repositoryptr = repo;
                return pni;
             } else
                return pnd; /* this is the same pnd as installed locally */

@@ -175,7 +175,7 @@ static int _pndman_package_handle_download(pndman_package_handle *object)
    if (!handle) goto fail;
 
    /* commercial or logged download */
-   if (object->repository && (object->pnd->commercial ||
+   if (object->pnd->repositoryptr && (object->pnd->commercial ||
             (object->flags & PNDMAN_PACKAGE_LOG_HISTORY))) {
       return _pndman_api_commercial_download(handle, object);
    } else {

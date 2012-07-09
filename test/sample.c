@@ -9,11 +9,19 @@
  * however the code is simple so
  * you can use it to extend to other
  * platforms as well.
+ *
+ * incase you wonder why the text
+ * is so short and hard to read.
+ * it's for apocalypse reading
+ * when you have only access to
+ * so-so wide terminal and have
+ * to use this crappy library.
  */
 
 #include "pndman.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* sample  debug hook, use this to catch error
  * messages etc */
@@ -87,8 +95,16 @@ static void pkg_done_cb(pndman_curl_code code,
 static void dl_history_cb(pndman_curl_code code,
       pndman_api_history_packet *p)
 {
+   if (code == PNDMAN_CURL_PROGRESS)
+      return;
+
    if (code == PNDMAN_CURL_FAIL) {
       puts(p->error);
+      return;
+   }
+
+   if (!strlen(p->id)) {
+      printf("no history\n");
       return;
    }
 
@@ -103,8 +119,16 @@ static void dl_history_cb(pndman_curl_code code,
 static void comment_cb(pndman_curl_code code,
       pndman_api_comment_packet *p)
 {
+   if (code == PNDMAN_CURL_PROGRESS)
+      return;
+
    if (code == PNDMAN_CURL_FAIL) {
       puts(p->error);
+      return;
+   }
+
+   if (!p->pnd) {
+      printf("no comments\n");
       return;
    }
 
@@ -121,18 +145,24 @@ static void comment_cb(pndman_curl_code code,
 static void archived_cb(pndman_curl_code code,
       pndman_api_archived_packet *p)
 {
+   pndman_package *pp;
+
+   if (code == PNDMAN_CURL_PROGRESS)
+      return;
+
    if (code == PNDMAN_CURL_FAIL) {
       puts(p->error);
       return;
    }
 
-   pndman_package *pp;
    puts("");
    printf("-- Archieved Packages --\n");
    for (pp = p->pnd->next_installed; pp; pp = pp->next_installed)
       printf("%s [%lu] (%s.%s.%s.%s)\n", pp->id, pp->modified_time,
             pp->version.major,   pp->version.minor,
             pp->version.release, pp->version.build);
+   if (!p->pnd->next_installed)
+      printf("no archieved packages\n");
 }
 
 /* callback for generic api requests */
@@ -482,13 +512,13 @@ int main(int argc, char **argv)
     * for package. */
    if (pnd)
       pndman_api_comment_pnd_pull(
-            NULL, pnd, repo->next, comment_cb);
+            NULL, pnd, comment_cb);
 
    /* get archeived packages from
     * repository for package. */
    if (pnd)
       pndman_api_archived_pnd(
-            NULL, pnd, repo->next, archived_cb);
+            NULL, pnd, archived_cb);
 
    /* you can also send comment
     * or rate pnd with
@@ -510,17 +540,6 @@ int main(int argc, char **argv)
       pndman_package_handle phandle;
       pndman_package_handle_init(
          pnd->id, &phandle);
-
-      /* set the handle properties,
-       * note repository property
-       * is optional. It's only
-       * needed if you want to log
-       * the download to repository,
-       * or download a commercial
-       * package, so you'll need
-       * credentials for the repository
-       * you assign as well. */
-      phandle.repository = repo->next;
 
       /* device where the package
        * will be installed/removed */
