@@ -187,6 +187,7 @@ static void init_usrdata(_USR_DATA *data)
 #define _REPO_API_FORGOT_RATING  _D"\1You forgot to give your rating [1-5]"
 #define _REPO_API_NO_PACKAGES    _D"\1No packages given to perform this action on."
 #define _COMMENT_LENGTH_WARN     _D"\1Your comment is over 300 characters, it will be truncated."
+#define _REPO_API_NO_COMMENT     _D"\1You din't specify a comment message."
 #define _FOUND_COMMENT_MATCH     _D"\2Found match from package \4%s"
 #define _DELETE_COMMENT          _D"\3Do you want to delete it?"
 #define _COMMENTS_FOR_PACKAGE    _D"\2Comments for \4%s\5:"
@@ -2473,8 +2474,10 @@ static int repoapiratecomment(_USR_DATA *data, const char *comment, unsigned int
    _USR_TARGET *t;
    unsigned int count;
 
-   if (comment && !strlen(comment))
+   if (comment && !strlen(comment)) {
+      _printf(_REPO_API_NO_COMMENT);
       return RETURN_FAIL;
+   }
 
    if (_QUIET < 2) {
       for (t = data->tlist, count = 0; t; t = t->next); ++count;
