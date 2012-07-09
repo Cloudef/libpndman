@@ -188,6 +188,8 @@ static void init_usrdata(_USR_DATA *data)
 #define _REPO_API_NO_PACKAGES    _D"\1No packages given to perform this action on."
 #define _COMMENT_LENGTH_WARN     _D"\1Your comment is over 300 characters, it will be truncated."
 #define _REPO_API_NO_COMMENT     _D"\1You din't specify a comment message."
+#define _REPO_API_NO_COMMENTS    _D"\1No comments."
+#define _REPO_API_NO_HISTORY     _D"\1No history."
 #define _FOUND_COMMENT_MATCH     _D"\2Found match from package \4%s"
 #define _DELETE_COMMENT          _D"\3Do you want to delete it?"
 #define _COMMENTS_FOR_PACKAGE    _D"\2Comments for \4%s\5:"
@@ -2458,6 +2460,9 @@ fail:
 /* generic callback */
 static void repoapigenericcb(pndman_curl_code code, const char *info, void *data)
 {
+   if (code == PNDMAN_CURL_PROGRESS)
+      return;
+
    if (code == PNDMAN_CURL_FAIL) {
       _printf(_D"\1%s", info);
       return;
@@ -2510,6 +2515,15 @@ static int repoapiratecomment(_USR_DATA *data, const char *comment, unsigned int
 static void repoapicommentrmcb(pndman_curl_code code, pndman_api_comment_packet *p)
 {
    _comment_rm_struct *pp = (_comment_rm_struct*)p->user_data;
+
+    if (code == PNDMAN_CURL_PROGRESS)
+      return;
+
+   if (code == PNDMAN_CURL_FAIL) {
+      _printf(_D"\1%s", p->error);
+      return;
+   }
+
    if (pp->needle && strstr(p->comment, pp->needle)) {
       _printf(_FOUND_COMMENT_MATCH, p->pnd->id);
       NEWLINE();
@@ -2547,10 +2561,16 @@ static void repoapicommentcb(pndman_curl_code code, pndman_api_comment_packet *p
    _comment_data *d;
    _comment_pull_struct *s = (_comment_pull_struct*)p->user_data;
 
+   if (code == PNDMAN_CURL_PROGRESS)
+      return;
+
    if (code == PNDMAN_CURL_FAIL) {
       _printf(_D"\1%s", p->error);
       return;
    }
+
+   if (!p->pnd)
+      return;
 
    if (!s->comment) d = s->comment = malloc(sizeof(_comment_data));
    else {
@@ -2569,6 +2589,11 @@ static void processcommentpull(pndman_repository *r, _comment_pull_struct *s)
 {
    _comment_data *d, *dn;
    size_t longest_user = 0, len;
+
+   if (!s->comment) {
+      _printf(_REPO_API_NO_COMMENTS);
+      return;
+   }
 
    /* get longest user */
    for (d = s->comment; d; d = d->next)
@@ -2612,8 +2637,16 @@ static int repoapicommentpull(_USR_DATA *data)
 /* history callback */
 static void repoapihistorycb(pndman_curl_code code, pndman_api_history_packet *p)
 {
+   if (code == PNDMAN_CURL_PROGRESS)
+      return;
+
    if (code == PNDMAN_CURL_FAIL) {
       _printf(_D"\1%s", p->error);
+      return;
+   }
+
+   if (!strlen(p->id)) {
+      _printf(_REPO_API_NO_HISTORY);
       return;
    }
 

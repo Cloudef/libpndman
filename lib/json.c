@@ -365,7 +365,7 @@ int _pndman_json_comment_pull(void *user_data,
    pndman_api_comment_packet cpacket;
    json_t *root, *versions, *varray, *comments, *carray;
    json_error_t error;
-   size_t v = 0, c = 0;
+   size_t v = 0, c = 0, ncomments = 0;
    assert(file && callback);
 
    /* flush and reset to beginning */
@@ -390,9 +390,16 @@ int _pndman_json_comment_pull(void *user_data,
             cpacket.version = &version; cpacket.username = username;
             cpacket.comment = comment; cpacket.user_data = user_data;
             callback(PNDMAN_CURL_DONE, &cpacket);
+            ++ncomments;
          }
       }
    } else DEBUG(PNDMAN_LEVEL_WARN, JSON_NO_V_ARRAY, "comment pull");
+
+   /* no comments */
+   if (!ncomments) {
+      strcpy(cpacket.error, "No comments");
+      callback(PNDMAN_CURL_DONE, &cpacket);
+   }
 
    json_decref(root);
    return RETURN_OK;
@@ -414,7 +421,7 @@ int _pndman_json_download_history(void *user_data,
    pndman_api_history_packet hpacket;
    json_t *root, *history, *packages, *parray;
    json_error_t error;
-   size_t p = 0;
+   size_t p = 0, nhistory = 0;
    assert(file && callback);
 
    /* flush and reset to beginning */
@@ -436,8 +443,14 @@ int _pndman_json_download_history(void *user_data,
             hpacket.id = id; hpacket.version = &version;
             hpacket.download_date = date; hpacket.user_data = user_data;
             callback(PNDMAN_CURL_DONE, &hpacket);
+            ++nhistory;
          }
       } else DEBUG(PNDMAN_LEVEL_WARN, JSON_NO_P_ARRAY, "download history");
+   }
+
+   if (!nhistory) {
+      strcpy(hpacket.error, "No history");
+      callback(PNDMAN_CURL_DONE, &hpacket);
    }
 
    json_decref(root);
