@@ -1,6 +1,22 @@
 #include "pndman.h"
 #include "common.h"
 
+static void rate_cb(pndman_curl_code code, pndman_api_rate_packet *p)
+{
+   if (code == PNDMAN_CURL_PROGRESS)
+      return;
+
+   if (code == PNDMAN_CURL_FAIL) {
+      printf("%s", p->error);
+      return;
+   }
+
+   if (p->total_rating)
+      printf("new rating for %s is %d", p->pnd->id, p->total_rating);
+   else
+      printf("%d", p->rating);
+}
+
 static void comment_pull_cb(pndman_curl_code code,
       pndman_api_comment_packet *p)
 {
@@ -128,7 +144,8 @@ int main(int argc, char **argv)
 
    if (pnd) {
       pndman_api_comment_pnd(NULL, pnd, "test comment from libpndman", generic_cb);
-      pndman_api_rate_pnd(NULL, pnd, 100, generic_cb);
+      pndman_api_rate_pnd(NULL, pnd, 100, rate_cb);
+      pndman_api_get_own_rate_pnd(NULL, pnd, rate_cb);
       pndman_api_comment_pnd_pull(NULL, pnd, comment_pull_cb);
       pndman_api_comment_pnd_delete(NULL, pnd, 1, generic_cb);
       pndman_api_download_history(NULL, repo, history_cb);

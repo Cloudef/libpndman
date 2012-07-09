@@ -577,7 +577,7 @@ static const char* _S_ARG  = "abcdilmsuy";   /* sync operation arguments */
 static const char* _R_ARG  = "n";            /* remove operation arguments */
 static const char* _Q_ARG  = "cdilsu";       /* query operation arguments */
 static const char* _P_ARG  = "cds";          /* crawl operation arguments */
-static const char* _A_ARG  = "cdp";          /* repo api operation arguments */
+static const char* _A_ARG  = "cdgp";         /* repo api operation arguments */
 
 /* milkyhelper's operation flags */
 typedef enum _HELPER_FLAGS
@@ -599,6 +599,7 @@ typedef enum _HELPER_FLAGS
    A_INST_CRPT = 0x010000000, A_QUERY_REPO = 0x020000000,
    OP_REPO_API = 0x040000000, A_COMMENT    = 0x080000000,
    A_RATE      = 0x100000000, A_DL_HISTORY = 0x200000000,
+   A_RATE_GET  = 0x400000000
 } _HELPER_FLAGS;
 typedef _HELPER_FLAGS (*_PARSE_FUNC)(char, char*, int*, _USR_DATA*); /* function prototype for parsing flags */
 
@@ -706,6 +707,7 @@ static _HELPER_FLAGS getrepoapi(char c, char *arg, int *skipn, _USR_DATA *data)
 {
    if (c == 'c')        return A_COMMENT;
    else if (c == 'p')   return A_RATE;
+   else if (c == 'g')   return A_RATE_GET;
    else if (c == 'd')   return A_DL_HISTORY;
    return 0;
 }
@@ -2444,9 +2446,10 @@ fail:
 }
 
 /* type ids for genericcb */
-#define _ID_COMMENT "comment"
-#define _ID_RATE    "rate"
-#define _ID_CMNT_RM "commentrm"
+#define _ID_COMMENT  "comment"
+#define _ID_CMNT_RM  "commentrm"
+#define _ID_RATE_GET "rateget"
+#define _ID_RATE_PUT "rateput"
 
 /* generic callback */
 static void repoapigenericcb(pndman_curl_code code, const char *info, void *data)
@@ -2460,8 +2463,26 @@ static void repoapigenericcb(pndman_curl_code code, const char *info, void *data
    }
 
    if      (!strcmp((char*)data, _ID_COMMENT))   _printf(_D"\2Comment sent!");
-   else if (!strcmp((char*)data, _ID_RATE))      _printf(_D"\2Rating sent!");
    else if (!strcmp((char*)data, _ID_CMNT_RM))   _printf(_D"\2Comment removed!");
+}
+
+/* rating callback */
+static void repoapiratecb(pndman_curl_code code, pndman_api_rate_packet *packet)
+{
+   if (code == PNDMAN_CURL_PROGRESS)
+      return;
+
+   if (code == PNDMAN_CURL_FAIL) {
+      _printf(_D"\1%s", packet->error);
+      return;
+   }
+
+   if (!strcmp((char*)packet->user_data, _ID_RATE_PUT)) {
+      _printf(_D"\2Rating sent!");
+      _printf(_D"\2New rating for \4%s\2 is \3%d", packet->pnd->id, packet->total_rating);
+   } else {
+      _printf("%d", packet->rating);
+   }
 }
 
 /* comment package */
@@ -2475,28 +2496,32 @@ static int repoapiratecomment(_USR_DATA *data, const char *comment, unsigned int
       return RETURN_FAIL;
    }
 
-   if (_QUIET < 2) {
-      for (t = data->tlist, count = 0; t; t = t->next); ++count;
-      _printf(_TARGET_LINE"\7", count);
-      for (t = data->tlist; t; t = t->next) _printf("\4%s\5%s\7", t->pnd->id, t->next?", ":"");
-      NEWLINE();
+   if (!(data->flags & A_RATE_GET)) {
+      if (_QUIET < 2) {
+         for (t = data->tlist, count = 0; t; t = t->next); ++count;
+         _printf(_TARGET_LINE"\7", count);
+         for (t = data->tlist; t; t = t->next) _printf("\4%s\5%s\7", t->pnd->id, t->next?", ":"");
+         NEWLINE();
 
-      if ((data->flags & A_COMMENT) && strlen(comment) > 300)
-         _printf(_COMMENT_LENGTH_WARN);
-   }
-   if (data->flags & A_COMMENT) {
-      NEWLINE();
-      _printf("\1\"\5%s\1\"", comment);
-      if (!yesno(data, _SEND_COMMENT)) return RETURN_FAIL;
-   } else {
-      NEWLINE();
-      _printf("\3Rating: \5%d", rate);
-      if (!yesno(data, _SEND_RATING))  return RETURN_FAIL;
+         if ((data->flags & A_COMMENT) && strlen(comment) > 300)
+            _printf(_COMMENT_LENGTH_WARN);
+      }
+      if (data->flags & A_COMMENT) {
+         NEWLINE();
+         _printf("\1\"\5%s\1\"", comment);
+         if (!yesno(data, _SEND_COMMENT)) return RETURN_FAIL;
+      } else {
+         NEWLINE();
+         _printf("\3Rating: \5%d", rate);
+         if (!yesno(data, _SEND_RATING))  return RETURN_FAIL;
+      }
    }
    for (t = data->tlist; t; t = t->next) {
       if (data->flags & A_COMMENT)
          pndman_api_comment_pnd(_ID_COMMENT, t->pnd, comment, repoapigenericcb);
-      else pndman_api_rate_pnd(_ID_RATE, t->pnd, rate, repoapigenericcb);
+      else if (data->flags & A_RATE)
+         pndman_api_rate_pnd(_ID_RATE_PUT, t->pnd, rate, repoapiratecb);
+      else pndman_api_get_own_rate_pnd(_ID_RATE_GET, t->pnd, repoapiratecb);
    }
    while (pndman_curl_process() > 0) usleep(1000);
    return RETURN_OK;
@@ -2675,6 +2700,7 @@ static int repoapiprocess(_USR_DATA *data)
    /* if we do action, do some sanity checks */
    if ((data->flags & A_RATE)          ||
        (data->flags & A_COMMENT)       ||
+       (data->flags & A_RATE_GET)      ||
        (data->flags & A_DL_HISTORY)) {
       /* check that we aren't using local repository */
       if (!(rs = checkremoterepo("repository api", data)))
@@ -2685,7 +2711,8 @@ static int repoapiprocess(_USR_DATA *data)
 
       /* store comment */
       if ((data->flags & A_COMMENT) ||
-          (data->flags & A_RATE)) {
+          (data->flags & A_RATE)    ||
+          (data->flags & A_RATE_GET)) {
 
          if (((data->flags & A_COMMENT)      &&
              !(data->flags & A_RATE))        ||
@@ -2721,6 +2748,8 @@ static int repoapiprocess(_USR_DATA *data)
       return repoapiratecomment(data, comment, 0);
    } else if (data->flags & A_RATE) {
       return repoapiratecomment(data, NULL, rate);
+   } else if (data->flags & A_RATE_GET) {
+      return repoapiratecomment(data, NULL, 0);
    } else if (data->flags & A_DL_HISTORY)
       return repoapidlhistory(data);
 
@@ -2862,6 +2891,7 @@ static int help(_USR_DATA *data)
       _printf("\5  -cp: Get comments for packages.     <packages>");
       _printf("\5  -cd: Delete comment from packages.  <packages> <needle>");
       _printf("\5  -p : Rate package.                         (1-5 rating)");
+      _printf("\5  -g : Get own rating for package.");
       _printf("\5  -d : Get download history.");
    } else {
       _printf("\1This operation has no arguments.");
@@ -2961,6 +2991,7 @@ static int processflags(_USR_DATA *data)
       if ((data->flags & A_QUERY_REPO)) _printf("\2->QUERY_REPO");
       if ((data->flags & A_COMMENT))    _printf("\2->COMMENT");
       if ((data->flags & A_RATE))       _printf("\2->RATE");
+      if ((data->flags & A_RATE_GET))   _printf("\2->RATE_GET");
       if ((data->flags & A_DL_HISTORY)) _printf("\2->HISTORY");
       if ((data->flags & A_MENU))       _printf("\1[MENU]");
       if ((data->flags & A_DESKTOP))    _printf("\1[DESKTOP]");

@@ -325,6 +325,7 @@ typedef struct pndman_sync_handle
 struct pndman_api_comment_packet;
 struct pndman_api_history_packet;
 struct pndman_api_archived_packet;
+struct pndman_api_rate_packet;
 
 /* \brief generic callback for repo api access */
 typedef void (*pndman_api_generic_callback)(
@@ -341,6 +342,10 @@ typedef void (*pndman_api_history_callback)(
 /* \brief callback for archived pnd's */
 typedef void (*pndman_api_archived_callback)(
       pndman_curl_code code, struct pndman_api_archived_packet *packet);
+
+/* \brief callback for rate calls */
+typedef void (*pndman_api_rate_callback)(
+      pndman_curl_code code, struct pndman_api_rate_packet *packet);
 
 /* \brief generic callback packet */
 typedef struct pndman_api_generic_packet
@@ -386,6 +391,18 @@ typedef struct pndman_api_archived_packet
    /* your data returned */
    void *user_data;
 } pndman_api_archived_packet;
+
+/* \brief rating callback packet */
+typedef struct pndman_api_rate_packet
+{
+   char error[PNDMAN_STR];
+   pndman_package *pnd;
+   int rating;       /* your rating */
+   int total_rating; /* new rating on repo */
+
+   /* your data returned */
+   void *user_data;
+} pndman_api_rate_packet;
 
 /* \brief get git head */
 PNDMANAPI const char* pndman_git_head(void);
@@ -607,7 +624,12 @@ PNDMANAPI int pndman_api_comment_pnd_delete(void *user_data,
 /* \brief rate the package on repository.
  * returns 0 on success, -1 on failure */
 PNDMANAPI int pndman_api_rate_pnd(void *user_data, pndman_package *pnd,
-      int rate, pndman_api_generic_callback callback);
+      int rate, pndman_api_rate_callback callback);
+
+/* \brief get own rating for the package on repository.
+ * returns 0 on success, -1 on failure */
+PNDMANAPI int pndman_api_get_own_rate_pnd(void *user_data, pndman_package *pnd,
+      pndman_api_rate_callback callback);
 
 /* \brief get download history from repository
  * history is retivied through

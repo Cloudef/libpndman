@@ -309,8 +309,8 @@ int _pndman_json_client_api_return(void *file, pndman_api_status *status)
 
    status->status = API_ERROR;
    if (!(object = json_object_get(root, "error"))) {
-      object = json_object_get(root, "success");
-      if (!object) goto fail;
+      if (!(object = json_object_get(root, "success")))
+         goto fail;
       status->status = API_SUCCESS;
    }
 
@@ -341,6 +341,31 @@ int _pndman_json_get_value(const char *key, char *value,
       goto bad_json;
 
    _json_set_string(value, json_object_get(root, key), size);
+   json_decref(root);
+   return RETURN_OK;
+
+bad_json:
+   DEBFAIL(JSON_BAD_JSON, error.text, "client api");
+   IFDO(json_decref, root);
+   return RETURN_FAIL;
+}
+
+/* \brief get int value from single json object */
+int _pndman_json_get_int_value(const char *key, int *value,
+      void *file)
+{
+   json_t *root = NULL, *object;
+   json_error_t error;
+   assert(key && value && file);
+
+   /* flush and reset to beginning */
+   fflush(file); fseek(file, 0L, SEEK_SET);
+   if (!(root = json_loadf(file, 0, &error)))
+      goto bad_json;
+
+   if ((object = json_object_get(root, "success")))
+      _json_set_number(value, json_object_get(object, key), int);
+
    json_decref(root);
    return RETURN_OK;
 

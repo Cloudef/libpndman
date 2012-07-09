@@ -179,6 +179,8 @@ int _pndman_json_process(pndman_repository *repo,
 int _pndman_json_client_api_return(void *file, pndman_api_status *status);
 int _pndman_json_get_value(const char *key, char *value,
       size_t size, void *file);
+int _pndman_json_get_int_value(const char *key, int *value,
+      void *file);
 int _pndman_json_comment_pull(void *user_data,
       pndman_api_comment_callback callback,
       pndman_package *pnd, void *file);

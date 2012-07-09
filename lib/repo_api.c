@@ -55,7 +55,7 @@ typedef struct pndman_comment_packet
 /* \brief rate packet */
 typedef struct pndman_rate_packet
 {
-   pndman_api_generic_callback callback;
+   pndman_api_rate_callback callback;
    void *user_data;
 
    int rate;
@@ -160,7 +160,44 @@ static void _pndman_api_common_cb(pndman_curl_code code, void *data,
       packet->callback(PNDMAN_CURL_DONE, NULL, packet->user_data);
    }
 
-   /* free curl handle */
+   /* dealloc */
+   IFDO(_pndman_curl_handle_free, chandle);
+   IFDO(free, packet);
+}
+
+/* \brief rating api callback */
+static void _pndman_api_rating_cb(pndman_curl_code code, void *data,
+      const char *info, pndman_curl_handle *chandle)
+{
+   pndman_api_status status;
+   pndman_api_rate_packet rpacket;
+   pndman_rate_packet *packet = (pndman_rate_packet*)data;
+
+   if (code != PNDMAN_CURL_DONE &&
+       code != PNDMAN_CURL_FAIL)
+      return;
+
+   /* init */
+   memset(&rpacket, 0, sizeof(pndman_api_rate_packet));
+
+   /* error checking, etc.. */
+   if (code == PNDMAN_CURL_FAIL) {
+      PNDMAN_API_FAIL(rpacket, packet->callback, packet->user_data, info);
+   } else if ((_pndman_json_client_api_return(chandle->file,
+               &status) != RETURN_OK) && strlen(status.text)) {
+      PNDMAN_API_FAIL(rpacket, packet->callback, packet->user_data, status.text);
+   } else { /* success */
+      rpacket.pnd       = packet->pnd;
+      rpacket.rating    = packet->rate;
+      rpacket.user_data = packet->user_data;
+      if (packet->rate)
+         _pndman_json_get_int_value("new rating", &rpacket.total_rating, chandle->file);
+      if (packet->rate == 0)
+         _pndman_json_get_int_value("rating", &rpacket.rating, chandle->file);
+      packet->callback(PNDMAN_CURL_DONE, &rpacket);
+   }
+
+   /* dealloc */
    IFDO(_pndman_curl_handle_free, chandle);
    IFDO(free, packet);
 }
@@ -299,7 +336,7 @@ static void _pndman_api_rate_cb(const char *info, pndman_api_request *request)
    char buffer[PNDMAN_POST];
    pndman_rate_packet *packet = (pndman_rate_packet*)request->data;
 
-   request->handle->callback = _pndman_api_common_cb;
+   request->handle->callback = _pndman_api_rating_cb;
    request->handle->data     = packet;
 
    /* we free this here */
@@ -310,7 +347,8 @@ static void _pndman_api_rate_cb(const char *info, pndman_api_request *request)
       _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet, info, NULL);
    } else {
       snprintf(url, PNDMAN_URL-1, "%s/%s", packet->repository->api.root, API_RATE);
-      snprintf(buffer, PNDMAN_POST-1, "id=%s&r=%d", packet->pnd->id, packet->rate);
+      if (packet->rate) snprintf(buffer, PNDMAN_POST-1, "id=%s&a=r&r=%d", packet->pnd->id, packet->rate);
+      else              snprintf(buffer, PNDMAN_POST-1, "id=%s&a=gr", packet->pnd->id);
       _pndman_curl_handle_set_url(request->handle, url);
       _pndman_curl_handle_set_post(request->handle, buffer);
       if (_pndman_curl_handle_perform(request->handle) == RETURN_OK) {
@@ -650,7 +688,7 @@ fail:
 /* \brief rate pnd */
 static int _pndman_api_rate_pnd(void *user_data,
       pndman_package *pnd, pndman_repository *repository, int rate,
-      pndman_api_generic_callback callback)
+      pndman_api_rate_callback callback)
 {
    pndman_rate_packet *packet = NULL;
    pndman_curl_handle *handle;
@@ -928,7 +966,30 @@ PNDMANAPI int pndman_api_comment_pnd_delete(void *user_data,
 /* \brief rate pnd */
 PNDMANAPI int pndman_api_rate_pnd(void *user_data,
       pndman_package *pnd, int rate,
-      pndman_api_generic_callback callback)
+      pndman_api_rate_callback callback)
+{
+   CHECKUSE(pnd);
+   CHECKUSE(pnd->repositoryptr);
+   CHECKUSE(callback);
+   if (!strlen(pnd->repositoryptr->api.root)) {
+      BADUSE("the repository is not loaded/synced, or does not support client api.");
+      return RETURN_FAIL;
+   }
+   if (!pnd->repositoryptr->pnd) {
+      BADUSE("repository has no packages");
+      return RETURN_FAIL;
+   }
+   if (rate<1 || rate>5) {
+      BADUSE("rating must be in range of 1-5");
+      return RETURN_FAIL;
+   }
+
+   return _pndman_api_rate_pnd(user_data, pnd, pnd->repositoryptr, rate, callback);
+}
+
+/* \brief get own pnd rating */
+PNDMANAPI int pndman_api_get_own_rate_pnd(void *user_data,
+      pndman_package *pnd, pndman_api_rate_callback callback)
 {
    CHECKUSE(pnd);
    CHECKUSE(pnd->repositoryptr);
@@ -942,7 +1003,7 @@ PNDMANAPI int pndman_api_rate_pnd(void *user_data,
       return RETURN_FAIL;
    }
 
-   return _pndman_api_rate_pnd(user_data, pnd, pnd->repositoryptr, rate, callback);
+   return _pndman_api_rate_pnd(user_data, pnd, pnd->repositoryptr, 0, callback);
 }
 
 /* \brief get download history */
