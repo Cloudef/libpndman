@@ -422,6 +422,7 @@ int _pndman_json_comment_pull(void *user_data,
 
    /* no comments */
    if (!ncomments) {
+      cpacket.user_data = user_data;
       strcpy(cpacket.error, "No comments");
       callback(PNDMAN_CURL_DONE, &cpacket);
    }
@@ -474,6 +475,7 @@ int _pndman_json_download_history(void *user_data,
    }
 
    if (!nhistory) {
+      hpacket.user_data = user_data;
       strcpy(hpacket.error, "No history");
       callback(PNDMAN_CURL_DONE, &hpacket);
    }
