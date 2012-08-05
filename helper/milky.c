@@ -2383,7 +2383,7 @@ static int setrepocredentials(_USR_DATA *data)
    _USR_TARGET *t;
    pndman_repository *r;
    unsigned int count = 0;
-   char s[LINE_MAX], *repository, *username, *key;
+   char s[LINE_MAX], *repository = NULL, *username, *key;
 
    /* arguments given */
    if (data->tlist)
@@ -3083,8 +3083,8 @@ int main(int argc, char **argv)
 
    /* roll cursor back */
    memset(_ERASE, ' ', sizeof(_ERASE)-1);
-   _ERASE[sizeof(_ERASE)-1] = '\r';
-   _ERASE[sizeof(_ERASE)-0] = 0;
+   _ERASE[sizeof(_ERASE)-2] = '\r';
+   _ERASE[sizeof(_ERASE)-1] = 0;
 
    /* setup signals */
    (void)signal(SIGINT,  sigint);
