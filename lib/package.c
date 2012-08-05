@@ -15,40 +15,18 @@
  *       so rp > lp == 1 */
 int _pndman_vercmp(pndman_version *lp, pndman_version *rp)
 {
-   int major, minor, release, build;
-   int major2, minor2, release2, build2;
-   int ret;
+   char *l, *r;
 
-   /* do vanilla version checking */
-   major     = strtol(lp->major, (char **) NULL, 10);
-   minor     = strtol(lp->minor, (char **) NULL, 10);
-   release   = strtol(lp->release, (char **) NULL, 10);
-   build     = strtol(lp->build, (char **) NULL, 10);
+   for (l = lp->major, r = rp->major; *l && *r; ++l, ++r)
+      if (*r > *l) return RETURN_TRUE;
+   for (l = lp->minor, r = rp->minor; *l && *r; ++l, ++r)
+      if (*r > *l) return RETURN_TRUE;
+   for (l = lp->release, r = rp->release; *l && *r; ++l, ++r)
+      if (*r > *l) return RETURN_TRUE;
+   for (l = lp->build, r = rp->build; *l && *r; ++l, ++r)
+      if (*r > *l) return RETURN_TRUE;
 
-   /* remote */
-   major2    = strtol(rp->major, (char **) NULL, 10);
-   minor2    = strtol(rp->minor, (char **) NULL, 10);
-   release2  = strtol(rp->release, (char **) NULL, 10);
-   build2    = strtol(rp->build, (char **) NULL, 10);
-
-   ret = RETURN_FALSE;
-   if (major2 > major)
-      ret = RETURN_TRUE;
-   else if (major2 == major && minor2 > minor)
-      ret = RETURN_TRUE;
-   else if (major2 == major && minor2 == minor && release2 > release)
-      ret = RETURN_TRUE;
-   else if (major2 == major && minor2 == minor && release2 == release && build2 > build)
-      ret = RETURN_TRUE;
-
-   if (ret == RETURN_TRUE) {
-      DEBUG(PNDMAN_LEVEL_CRAP,
-            "L: %d.%d.%d.%d < R: %d.%d.%d.%d",
-            major, minor, release, build,
-            major2, minor2, release2, build2);
-   }
-
-   return ret;
+   return RETURN_FALSE;
 }
 
 /* \brief get full path of PND */
