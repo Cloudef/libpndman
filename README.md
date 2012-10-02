@@ -22,4 +22,4 @@ Package managment library for PND files.
 [qtpndman]: https://github.com/bzar/qtpndman
 [pypndman]: https://github.com/Tempel/pypndman
 
-[usage]: https://github.com/Cloudef/libpndman/blob/repo_api/test/sample.c
+[usage]: https://github.com/Cloudef/libpndman/blob/master/test/sample.c
