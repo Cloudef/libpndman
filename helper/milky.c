@@ -399,7 +399,9 @@ static pndman_device* getroot(_USR_DATA *data)
    if (!(f = fopen(path, "r")))           return NULL;
    fgets(dev, LINE_MAX, f); fclose(f);
    if (dev[strlen(dev)-1] == '\n') dev[strlen(dev)-1] = '\0';
-   return data->root = setroot(dev, data->dlist);
+   data->root = setroot(dev, data->dlist);
+   if (!data->dlist) data->dlist = data->root;
+   return data->root;
 }
 
 /* save root */
@@ -556,6 +558,7 @@ static void _setroot(char *root, _USR_DATA *data)
    assert(data);
    if (!root || !strlen(root)) { data->root = NULL; return; }
    data->root = setroot(root, data->dlist);
+   if (!data->dlist) data->dlist = data->root;
    if (data->root) data->no_action = _ROOT_SET;
    else            data->no_action = _ROOT_SET_FAIL;
 }
@@ -3099,15 +3102,13 @@ int main(int argc, char **argv)
    data.bin = argv[0];
 
    /* detect devices */
-   if (!(data.dlist = pndman_device_detect(NULL)))
-      _printf(_FAILED_TO_DEVICES);
+   data.dlist = NULL; // pndman_device_detect(NULL);
 
    /* get local repository */
    if (!(data.rlist = pndman_repository_init()))
       _printf(_FAILED_TO_REPOS);
 
-   /* do logic, if everything ok! */
-   if (data.dlist && data.rlist) {
+   if (data.rlist) {
       /* read configuration */
       if ((ret = getconfigpath(path)) == RETURN_OK) ret = readconfig(path, &data);
       if (ret != RETURN_OK) _printf(_CONFIG_READ_FAIL, path);
@@ -3117,6 +3118,13 @@ int main(int argc, char **argv)
 
       /* parse arguments */
       parseargs(argc, argv, &data);
+   }
+
+   /* we have a failure now */
+   if (!data.dlist) _printf(_FAILED_TO_DEVICES);
+
+   /* do logic, if everything ok! */
+   if (data.dlist && data.rlist) {
       ret = processflags(&data) == RETURN_OK ? EXIT_SUCCESS : EXIT_FAILURE;
    }
 
