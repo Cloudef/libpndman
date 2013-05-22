@@ -9,6 +9,8 @@ Package managment library for PND files.
 *  CLI client milkyhelper
 
 #### TODO:
+*  use server synchorize time instead of time(0); (database.c)
+*  support bzip compressed masterlist (bzip=true GET in masterlist)
 *  man pages
 *  pnd utils for data extraction.
 *  ncurses client(?)
