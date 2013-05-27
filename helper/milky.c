@@ -800,10 +800,12 @@ static int _addrepository(char **argv, int argc, _USR_DATA *data)
 /* configuration wrapper for adding device */
 static int _adddevice(char **argv, int argc, _USR_DATA *data)
 {
+   pndman_device *newd;
    assert(data);
    if (!argc) return RETURN_FAIL;
-   if (!pndman_device_add(argv[0], data->dlist))
+   if (!(newd = pndman_device_add(argv[0], data->dlist)))
       return RETURN_FAIL;
+   if (!data->dlist) data->dlist = newd;
    return RETURN_OK;
 }
 
@@ -3102,7 +3104,7 @@ int main(int argc, char **argv)
    data.bin = argv[0];
 
    /* detect devices */
-   data.dlist = NULL; // pndman_device_detect(NULL);
+   data.dlist = pndman_device_detect(NULL);
 
    /* get local repository */
    if (!(data.rlist = pndman_repository_init()))
