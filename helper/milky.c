@@ -3038,7 +3038,7 @@ static int processflags(_USR_DATA *data)
    else if ((data->flags & OP_CLEAN))     ret = cleanprocess(data);
 
    /* commit everything to disk */
-   if (!(data->flags & OP_CLEAN)) {
+   if (!(data->flags & OP_CLEAN) && data->dlist) {
       if (pndman_repository_commit_all(data->rlist, data->root) != RETURN_OK)
          _printf(_COMMIT_FAIL, data->root->mount);
    }
@@ -3120,12 +3120,17 @@ int main(int argc, char **argv)
       parseargs(argc, argv, &data);
    }
 
-   /* we have a failure now */
-   if (!data.dlist) _printf(_FAILED_TO_DEVICES);
-
-   /* do logic, if everything ok! */
-   if (data.dlist && data.rlist) {
+   /* OP_HELP && OP_VERSION are special */
+   if (data.flags & OP_HELP || data.flags & OP_VERSION) {
       ret = processflags(&data) == RETURN_OK ? EXIT_SUCCESS : EXIT_FAILURE;
+   } else {
+      /* we have a failure now */
+      if (!data.dlist) _printf(_FAILED_TO_DEVICES);
+
+      /* do logic, if everything ok! */
+      if (data.dlist && data.rlist) {
+         ret = processflags(&data) == RETURN_OK ? EXIT_SUCCESS : EXIT_FAILURE;
+      }
    }
 
    /* free repositories && devices */
