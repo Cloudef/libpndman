@@ -1213,7 +1213,7 @@ static int _pndman_crawl_dir(const char *path,
    dp = opendir(tmp);
    if (!dp) return 0;
 
-   while (ep = readdir(dp)) {
+   while ((ep = readdir(dp))) {
       if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, "..")) continue; /* no we don't want this! */
       /* recrusive */
       if (ep->d_type == DT_DIR) {
