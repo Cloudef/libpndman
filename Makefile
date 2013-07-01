@@ -29,7 +29,7 @@ INSTALL := install
 STRIP := strip
 
 # depencies for pndman
-LIB_LIBS := -lexpat `pkg-config --libs libcurl jansson`
+LIB_LIBS := -lexpat -ljansson `pkg-config --libs libcurl`
 
 # git info
 VERSION = `git rev-parse HEAD`
