@@ -224,6 +224,7 @@ static int _pndman_json_repo_header(json_t *repo_header, pndman_repository *repo
          strncpy(repo->version, json_string_value(element), PNDMAN_VERSION);
       else
          snprintf(repo->version, PNDMAN_VERSION-1, "%.2f", json_number_value(element));
+   _json_set_number(&repo->timestamp, json_object_get(repo_header, "last_updated"), time_t);
    _json_set_number(&repo->timestamp, json_object_get(repo_header, "timestamp"), time_t);
 
    return RETURN_OK;
