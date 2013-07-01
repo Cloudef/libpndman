@@ -1018,7 +1018,7 @@ static int mkconfig(const char *path)
    fputs("\n# Colored output\n", f);
    fputs("# color 1\n", f);
    fputs("\n# milkshake's repo is enabled by default\n", f);
-   fputs("repository \"http://repo.openpandora.org/client/masterlist?com=true\"\n",f );
+   fputs("repository \"http://repo.openpandora.org/client/masterlist?com=true&bzip=true\"\n",f );
    fclose(f);
    return RETURN_OK;
 }
