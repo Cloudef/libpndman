@@ -450,6 +450,8 @@ int _pndman_copy_pnd(pndman_package *pnd, pndman_package *src)
       pnd->size            = src->size;
    if (src->modified_time)
       pnd->modified_time   = src->modified_time;
+   if (src->local_modified_time)
+      pnd->local_modified_time = src->local_modified_time;
    if (src->rating)
       pnd->rating          = src->rating;
    if (src->update)
