@@ -45,13 +45,13 @@ ifeq (${MINGW},1)
    X86 = 1
    CFLAGS += -DCURL_STATICLIB
    LIB_LIBS += -static -static-libgcc
-   LIB_LIBS += -lssl -lcrypto -lz -lidn -lws2_32 -lmingw32 -lkernel32 -lgdi32
+   LIB_LIBS += -lssl -lcrypto -lz -lbz2 -lidn -lws2_32 -lmingw32 -lkernel32 -lgdi32
    EXT=.exe
 else
    ifeq (${STATIC_BIN},0)
-   	LIB_LIBS += `pkg-config --libs openssl gnutls` -lz -lpthread -lgcrypt -lgpg-error
+   	LIB_LIBS += `pkg-config --libs openssl gnutls` -lz -lbz2 -lpthread -lgcrypt -lgpg-error
      else
-   	LIB_LIBS += -static `pkg-config --libs openssl libssh2` -lz -lpthread -ldl -lrt
+   	LIB_LIBS += -static `pkg-config --libs openssl libssh2` -lz -lbz2 -lpthread -ldl -lrt
    endif
 endif
 

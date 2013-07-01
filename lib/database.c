@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <bzlib.h>
 
 #ifdef __APPLE__
 #  include <malloc/malloc.h>
@@ -302,6 +303,37 @@ fail:
    return RETURN_FAIL;
 }
 
+/* \brief decompress bzip2 compressed curl handle */
+static int _pndman_bzip2_decompress(pndman_curl_handle *chandle)
+{
+   typedef void BZFILE;
+   BZFILE *bf;
+   FILE *df;
+   int error, read;
+   char buf[4096*2];
+
+   if (!(df = _pndman_get_tmp_file()))
+      return RETURN_FAIL;
+
+   fflush(chandle->file); fseek(chandle->file, 0L, SEEK_SET);
+   bf = BZ2_bzReadOpen(&error, chandle->file, 0, 0, NULL, 0);
+   while (error == BZ_OK) {
+      read = BZ2_bzRead(&error, bf, buf, sizeof(buf));
+      fwrite(buf, 1, read, df);
+   }
+
+   /* ugly internal swap trick */
+   if (error == BZ_OK || error == BZ_STREAM_END) {
+      fclose(chandle->file);
+      chandle->file = df;
+   } else {
+      fclose(df);
+   }
+
+   BZ2_bzReadClose(&error, bf);
+   return RETURN_OK;
+}
+
 /* \brief perform internal sync */
 static void _pndman_sync_done(pndman_curl_code code, void *data, const char *info,
       pndman_curl_handle *chandle)
@@ -311,6 +343,10 @@ static void _pndman_sync_done(pndman_curl_code code, void *data, const char *inf
    if (code == PNDMAN_CURL_FAIL)
       strncpy(handle->error, info, PNDMAN_STR-1);
    else if (code == PNDMAN_CURL_DONE) {
+      if (strstr(chandle->url, "bzip=true")) {
+         _pndman_bzip2_decompress(chandle);
+      }
+
       if (_pndman_json_process(handle->repository, NULL, chandle->file) != RETURN_OK) {
          strncpy(handle->error, "json parse failed", PNDMAN_STR-1);
          code = PNDMAN_CURL_FAIL;
@@ -363,6 +399,7 @@ static int _pndman_sync_handle_perform(pndman_sync_handle *object)
    /* url copy failed */
    if (!url)
       goto url_cpy_fail;
+
 
    /* send to curl handler */
    object->data = handle = _pndman_curl_handle_new(object, &object->progress,
