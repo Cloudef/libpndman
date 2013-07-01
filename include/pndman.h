@@ -216,6 +216,7 @@ typedef struct pndman_package
    char vendor[PNDMAN_NAME];
    size_t size;
    time_t modified_time;
+   time_t local_modified_time;
    int rating;
    pndman_author     author;
    pndman_version    version;

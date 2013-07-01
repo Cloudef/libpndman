@@ -1398,7 +1398,7 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
             /* TODO: win32 implementation */
 #else
             if (stat(path, &st) == 0)
-               pnd->modified_time = st.st_mtime;
+               pnd->local_modified_time = st.st_mtime;
 #endif
          }
 
@@ -1458,7 +1458,7 @@ PNDMANAPI int pndman_package_crawl_single_package(int full_crawl,
       /* TODO: win32 implementation */
 #else
       if (stat(path, &st) == 0)
-         pnd->modified_time = st.st_mtime;
+         pnd->local_modified_time = st.st_mtime;
 #endif
    }
 
