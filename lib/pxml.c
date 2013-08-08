@@ -150,8 +150,11 @@ static char* _match_tag(char *s, size_t len, char *tag, size_t *p, char *strip)
       if (isprint(*s)) {
          /* tag found */
          if (!_strnupcmp(s, tag, nlen)) return &*s;
+
+         /* this is hopefully no longer needed */
+#if 0
          /* fugly stripping code, thank you everyone who are using invalid PXML in their PNDs :) */
-         else if (strip) {
+         else if (0 && strip) {
             if (!*strip || *strip == '?') {
                if (*strip == '?') {
                   if (*s == '!') {
@@ -184,6 +187,7 @@ static char* _match_tag(char *s, size_t len, char *tag, size_t *p, char *strip)
                }
             }
          }
+#endif
       }
       ++s; ++*p;
    }
