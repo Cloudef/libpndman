@@ -211,7 +211,6 @@ static char* _fetch_pxml_from_pnd(const char *pnd_file, size_t *size)
    } else {
       pos  = 0;
       read = len;
-
    }
 
    /* allocate our buffer */
