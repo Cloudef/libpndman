@@ -2005,7 +2005,6 @@ static void packagecallback(pndman_curl_code code,
    ERASE(); commithandle(data, handle);
    if (code == PNDMAN_CURL_FAIL) {
       data->ttdl -= handle->pnd->size;
-      handle->progress.done = 0;
    }
 
    /* we can free this already */
@@ -2040,12 +2039,12 @@ static int targetperform(_USR_DATA *data)
       ++c;
    }
 
-   while ((ret = pndman_curl_process()) > 0) {
+   while ((ret = pndman_curl_process()) > 0 || count > 0) {
       /* check active transmissions */
       for (c = 0, count = 0, t = data->tlist; t; t = t->next) {
          if (!handle[c].flags) { ++c; continue; }              /* failed perform */
-         if (!handle[c].progress.done && start[c]) ++count;    /* active transmissions */
          if (handle[c].progress.done == 2) handle[c].progress.done = 0; /* clear our hack */
+         if (!handle[c].progress.done && start[c]) ++count;    /* active transmissions */
          if (handle[c].progress.done && start[c]) data->tdl += handle[c].pnd->size;
          ++c;
       }
