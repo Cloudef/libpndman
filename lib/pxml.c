@@ -258,10 +258,11 @@ static char* _fetch_pxml_from_pnd(const char *pnd_file, size_t *size)
    if (!_match_tag(match+strlen(PXML_START_TAG), read-stag-strlen(PXML_START_TAG), PXML_END_TAG, &etag, &strip)) {
       /* nope, copy first buffer and read to end */
       XMLCOPY(pos, match, read-stag);
-      while ((ret = fread(s, 1, read, pnd))) {
-         match = s;
-         if (_match_tag(s, read, PXML_END_TAG, &etag, &strip)) { ret = 1; break; }
-         XMLCOPY(pos, s, read);
+      while ((ret = fread(s+strlen(PXML_END_TAG), 1, read-strlen(PXML_END_TAG), pnd))) {
+         match = s+strlen(PXML_END_TAG);
+         memcpy(s, buffer+pos-strlen(PXML_END_TAG), strlen(PXML_END_TAG));
+         if (_match_tag(s, read, PXML_END_TAG, &etag, &strip)) { ret = 1; etag -= strlen(PXML_END_TAG); break; }
+         XMLCOPY(pos, match, read-strlen(PXML_END_TAG));
       }
    } else etag += strlen(PXML_START_TAG);
 
