@@ -273,6 +273,7 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       _json_set_string(pnd->info,         json_object_get(package,"info"),    PNDMAN_STR);
       _json_set_number(&pnd->size,        json_object_get(package, "size"),            size_t);
       _json_set_number(&pnd->modified_time, json_object_get(package, "modified-time"), time_t);
+      _json_set_number(&pnd->local_modified_time, json_object_get(package, "local-modified-time"), time_t);
       _json_set_number(&pnd->rating,      json_object_get(package, "rating"),          int);
       _json_set_author(&pnd->author,      json_object_get(package,"author"));
       _json_set_string(pnd->vendor,       json_object_get(package,"vendor"),  PNDMAN_NAME);
@@ -698,6 +699,7 @@ int _pndman_json_commit(pndman_repository *r,
       fprintf(f, "\"size\":%zu,\n", p->size);
       _fkeyf(f, "md5", p->md5, 1);
       fprintf(f, "\"modified-time\":%lu,\n", p->modified_time);
+      if (!r->prev) fprintf(f, "\"local-modified-time\":%lu,\n", p->local_modified_time);
       fprintf(f, "\"rating\":%d,\n", p->rating);
 
       /* author object */
