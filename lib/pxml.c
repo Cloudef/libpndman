@@ -267,9 +267,10 @@ static char* _fetch_pxml_from_pnd(const char *pnd_file, size_t *size)
 
    /* finish */
    XMLCOPY(pos, match, etag+strlen(PXML_END_TAG));
+   XMLCOPY(pos, "\0", 1);
 
    /* store size */
-   *size = pos;
+   *size = pos-1;
 
    /* close the file */
    fclose(pnd);
