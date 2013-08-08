@@ -2822,10 +2822,9 @@ static int help(_USR_DATA *data)
       _printf("\5  -v : Verbose mode, combine to increase verbose level.");
       _printf("\5  -q : Quietness, combine to make application more silent.");
       _printf("\5  -t : Plain text mode, do not use colors.");
-      _printf("\5  -r : Root device/directory.\n%s\n%s\n%s",
+      _printf("\5  -r : Root device/directory.\n%s\n%s",
               "       All operations are going to be done under this device/directory.",
-              "       You can leave argument empty, if you want to choose device from a list.",
-              "       NOTE: Directory must be a absolute path!");
+              "       You can leave argument empty, if you want to choose device from a list");
 
       NEWLINE();
       _printf("\2~ Operation arguments:");
