@@ -356,13 +356,14 @@ static int _pndman_package_handle_install(pndman_package_handle *object,
    }
 
    /* backup? */
-   if (oldp && (object->flags & PNDMAN_PACKAGE_BACKUP))
+   if (oldp && (object->flags & PNDMAN_PACKAGE_BACKUP)) {
       _pndman_backup(oldp, object->device);
-   else
-   /* remove old pnd if no backup specified and path differs */
-   if (oldp && strcmp(oldp->path, relative)) {
-      _pndman_pnd_get_path(oldp, tmp);
-      unlink(tmp);
+   } else {
+      /* remove old pnd if no backup specified and path differs */
+      if (oldp && strcmp(oldp->path, relative)) {
+         _pndman_pnd_get_path(oldp, tmp);
+         unlink(tmp);
+      }
    }
 
    /* remove old pnd from repo */
