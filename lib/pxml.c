@@ -1008,9 +1008,14 @@ static int _pxml_pnd_parse(pxml_parse *data, char *PXML, size_t size)
    if (XML_Parse(xml, PXML, size, 1) == XML_STATUS_ERROR)
       ret = RETURN_FAIL;
 
-   if (ret == RETURN_FAIL)
-      DEBUG(PNDMAN_LEVEL_WARN, PXML_INVALID_XML,
-            XML_ErrorString(XML_GetErrorCode(xml)), PXML);
+   if (ret == RETURN_FAIL) {
+      DEBUG(PNDMAN_LEVEL_WARN, PXML_INVALID_XML, XML_ErrorString(XML_GetErrorCode(xml)));
+      if (pndman_get_verbose() >= PNDMAN_LEVEL_WARN) {
+         printf("-----\n");
+         for (size_t i = 0; i != size; ++i) printf("%c", PXML[i]);
+         printf("\n-----\n");
+      }
+   }
 
    /* free the parser */
    XML_ParserFree(xml);

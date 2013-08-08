@@ -80,7 +80,7 @@
 #define PXML_START_TAG_FAIL      "PXML parse failed: could not find start tag before EOF."
 #define PXML_END_TAG_FAIL        "PXML parse failed: could not find end tag before EOF."
 #define PXML_EXPAT_FAIL          "Failed to allocate expat XML parser"
-#define PXML_INVALID_XML         "PXML: %s\n-----\n%s\n-----\n"
+#define PXML_INVALID_XML         "PXML: %s"
 #define PXML_PND_PARSE_FAIL      "Failed to parse pnd: %s"
 #define PNDMAN_ALLOC_FAIL        "Failed to allocate %s, shit might break now."
 #define PNDMAN_TMP_FILE_FAIL     "Failed to get temporary file."
