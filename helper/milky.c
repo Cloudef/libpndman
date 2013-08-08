@@ -575,7 +575,7 @@ static void _setroot(char *root, _USR_DATA *data)
 #define _PASSFLG(x) { data->flags |= x; return; }           /* pass flag */
 #define _SETFLG(x)  { data->flags  = x; return; }           /* set flag */
 static const char* _G_ARG  = "fqrtv";        /* global arguments */
-static const char* _OP_ARG = "hACPQRSUV";    /* operations */
+static const char* _OP_ARG = "hACPQRSUEV";   /* operations */
 static const char* _S_ARG  = "abcdilmsuy";   /* sync operation arguments */
 static const char* _R_ARG  = "n";            /* remove operation arguments */
 static const char* _Q_ARG  = "cdilsu";       /* query operation arguments */
@@ -602,18 +602,18 @@ typedef enum _HELPER_FLAGS
    A_INST_CRPT = 0x010000000, A_QUERY_REPO = 0x020000000,
    OP_REPO_API = 0x040000000, A_COMMENT    = 0x080000000,
    A_RATE      = 0x100000000, A_DL_HISTORY = 0x200000000,
-   A_RATE_GET  = 0x400000000
+   A_RATE_GET  = 0x400000000, OP_EDIT      = 0x800000000,
 } _HELPER_FLAGS;
 typedef _HELPER_FLAGS (*_PARSE_FUNC)(char, char*, int*, _USR_DATA*); /* function prototype for parsing flags */
 
 /* do we have operation? */
 static int hasop(unsigned long flags)
 {
-   return ((flags & OP_YAOURT) || (flags & OP_SYNC)    ||
-           (flags & OP_REMOVE) || (flags & OP_UPGRADE) ||
-           (flags & OP_CRAWL)  || (flags & OP_CLEAN)   ||
-           (flags & OP_QUERY)  || (flags & OP_VERSION) ||
-           (flags & OP_REPO_API));
+   return ((flags & OP_YAOURT)   || (flags & OP_SYNC)    ||
+           (flags & OP_REMOVE)   || (flags & OP_UPGRADE) ||
+           (flags & OP_CRAWL)    || (flags & OP_CLEAN)   ||
+           (flags & OP_QUERY)    || (flags & OP_VERSION) ||
+           (flags & OP_REPO_API) || (flags &OP_EDIT));
 }
 
 /* are we querying information? */
@@ -627,10 +627,11 @@ static int isquery(unsigned long flags)
 /* do we need targets for our operation? */
 static int needtarget(unsigned long flags)
 {
-   return  (!(flags & OP_CLEAN)  && !isquery(flags)       &&
-            !(flags & A_REFRESH) && !(flags & OP_UPGRADE) &&
-            !(flags & A_UPGRADE) && !(flags & OP_CRAWL)   &&
-            !(flags & A_ALL)     && !(flags & OP_REPO_API));
+   return  (!(flags & OP_CLEAN)  && !isquery(flags)        &&
+            !(flags & A_REFRESH) && !(flags & OP_UPGRADE)  &&
+            !(flags & A_UPGRADE) && !(flags & OP_CRAWL)    &&
+            !(flags & A_ALL)     && !(flags & OP_REPO_API) &&
+            !(flags & OP_EDIT));
 }
 
 /* set destination */
@@ -663,6 +664,7 @@ static _HELPER_FLAGS getop(char c, char *arg, int *skipn, _USR_DATA *data)
    else if (c == 'A')   return OP_REPO_API;
    else if (c == 'P')   return OP_CRAWL;
    else if (c == 'C')   return OP_CLEAN;
+   else if (c == 'E')   return OP_EDIT;
    else if (c == 'V')   return OP_VERSION;
    else if (c == 'h')   return OP_HELP;
    return 0;
@@ -742,6 +744,7 @@ static void parsearg(char *arg, char *narg, int *skipn, _USR_DATA *data)
    if (!strcmp(arg, "-r"))                _PASSARG(_setroot);     /* argument with argument */
    if (!strcmp(arg, "--root"))            _PASSARG(_setroot);     /* argument with argument */
    if (!strcmp(arg, "--help"))            _PASSFLG(OP_HELP);      /* another way of calling help */
+   if (!strcmp(arg, "--edit"))            _PASSFLG(OP_EDIT);      /* another way of calling help */
    if (!strcmp(arg, "--version"))         _PASSFLG(OP_VERSION);   /* another way of calling version */
    if (!strcmp(arg, "--noconfirm"))       _PASSFLG(GB_NOCONFIRM); /* noconfirm option */
    if (!strcmp(arg, "--nomerge"))         _PASSFLG(GB_NOMERGE);   /* nomerge option */
@@ -2836,6 +2839,7 @@ static int help(_USR_DATA *data)
       _printf("\5  -A : Repository API access.");
       _printf("\5  -P : Crawls PND's from media.");
       _printf("\5  -C : Cleans all database files.");
+      _printf("\5  -E : Edit configuration with $EDITOR.");
       _printf("\5  -V : Show version information.");
       _printf("\5  -h : Show help. Combine with operation to get more help.");
 
@@ -2843,6 +2847,7 @@ static int help(_USR_DATA *data)
       _printf("\2~ Other arguments:");
       _printf("\5  --root      : Alias for -r option.");
       _printf("\5  --help      : Alias for -h option.");
+      _printf("\5  --edit      : Alias for -E option.");
       _printf("\5  --version   : Alias for -V option.");
       _printf("\5  --noconfirm : Don't prompt questions.");
       _printf("\5  --nomerge   : Do full repository synchorization.");
@@ -2902,6 +2907,17 @@ static int help(_USR_DATA *data)
       _printf("\1This operation has no arguments.");
    }
 
+   return RETURN_OK;
+}
+
+static int edit(_USR_DATA *data)
+{
+   char path[PATH_MAX];
+   memset(path, 0, sizeof(path));
+   if (getconfigpath(path) != RETURN_OK) return RETURN_FAIL;
+   char *editor = getenv("EDITOR");
+   if (!editor) editor = "vim";
+   execlp(editor, editor, path, NULL);
    return RETURN_OK;
 }
 
@@ -2974,6 +2990,7 @@ static int processflags(_USR_DATA *data)
       if ((data->flags & OP_REPO_API))  _printf("\3::REPO_API");
       if ((data->flags & OP_CRAWL))     _printf("\3::CRAWL");
       if ((data->flags & OP_CLEAN))     _printf("\3::CLEAN");
+      if ((data->flags & OP_EDIT))      _printf("\3::EDIT");
       if ((data->flags & OP_VERSION))   _printf("\3::VERSION");
       if ((data->flags & OP_HELP))      _printf("\3::HELP");
       if ((data->flags & GB_FORCE))     _printf("\4;;FORCE");
@@ -3030,6 +3047,7 @@ static int processflags(_USR_DATA *data)
    /* logic */
    if ((data->flags & OP_VERSION))        ret = version(data);
    else if ((data->flags & OP_HELP))      ret = help(data);
+   else if ((data->flags & OP_EDIT))      ret = edit(data);
    else if ((data->flags & OP_YAOURT))    ret = yaourtprocess(data);
    else if ((data->flags & OP_SYNC))      ret = syncprocess(data);
    else if ((data->flags & OP_UPGRADE))   ret = upgradeprocess(data);
