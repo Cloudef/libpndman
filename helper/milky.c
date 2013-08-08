@@ -2058,10 +2058,11 @@ static int targetperform(_USR_DATA *data)
       /* check if we should start new handle */
       for (c = 0, t = data->tlist; count < _QUEUE && t; t = t->next) {
          if (!handle[c].flags) { ++c; continue; }  /* failed perform */
-         if (count < _QUEUE && !start[c]) {        /* ready to start new download */
+         if (!start[c]) { /* ready to start new download */
             if (pndman_package_handle_perform(&handle[c]) != RETURN_OK)
                handle[c].flags = 0;
             start[c] = 1;
+            ++count;
          }
          ++c;
       }
