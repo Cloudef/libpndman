@@ -433,15 +433,6 @@ static int _pndman_version_check(pndman_package *lp, pndman_package *rp)
     * since if user has different repos.
     * They might provide even newer version. */
 
-   /* check if we can check against modified_time */
-   if (lp->modified_time && !strcmp(lp->repository, rp->repository)) {
-      if (rp->modified_time > lp->modified_time) {
-         if (lp->update) lp->update->update = NULL;
-         lp->update = rp; rp->update = lp;
-         return RETURN_TRUE;
-      }
-   }
-
    /* this package already has update, try if the new proposed is newer */
    if (lp->update) {
       if (_pndman_vercmp(&lp->update->version, &rp->version)) {
@@ -451,7 +442,14 @@ static int _pndman_version_check(pndman_package *lp, pndman_package *rp)
       else return RETURN_FALSE;
    }
 
-   if (_pndman_vercmp(&lp->version, &rp->version)) {
+   /* check if we can check against modified_time */
+   if (lp->modified_time && !strcmp(lp->repository, rp->repository)) {
+      if (rp->modified_time > lp->modified_time) {
+         if (lp->update) lp->update->update = NULL;
+         lp->update = rp; rp->update = lp;
+         return RETURN_TRUE;
+      }
+   } else if (_pndman_vercmp(&lp->version, &rp->version)) {
       lp->update = rp;
       rp->update = lp;
    }
