@@ -307,8 +307,8 @@ static char* strstrip(char *src)
    return dst;
 }
 
-/* pandora && win32 doesn't use below functions */
-#if !defined(PANDORA) && !defined(_WIN32)
+/* win32 doesn't use below functions */
+#if !defined(_WIN32)
 /* strip leading slash from path */
 static void stripslash(char *path)
 {
@@ -336,8 +336,8 @@ static int mkdirexist(const char *path)
 /* get $XDG_CONFIG_HOME/$CFG_DIR path, (create if doesn't exist) */
 static int getcfgpath(char *path)
 {
-/* just dump to cwd on porndora and win32 (on pandora stuff appears in appdata) */
-#if !defined(PANDORA) && !defined(_WIN32)
+/* just dump to cwd on win32 */
+#if !defined(_WIN32)
    const char* xdg_home;
    struct passwd *pw;
    if (!(xdg_home = getenv("XDG_CONFIG_HOME"))) {
@@ -357,7 +357,7 @@ static int getcfgpath(char *path)
    strncat(path, "/",     PATH_MAX-1);
    strncat(path, CFG_DIR, PATH_MAX-1); /* $XDG_CONFIG_HOME/$CFG_DIR */
    return mkdirexist(path);
-#endif /* !PANDORA && !_WIN32 */
+#endif /* !_WIN32 */
    return RETURN_OK;
 }
 
