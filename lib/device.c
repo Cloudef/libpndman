@@ -83,7 +83,7 @@ static void _pndman_remove_tmp_files(pndman_device *device)
 #ifndef _WIN32
    dp = opendir(tmp);
    if (!dp) return;
-   while (ep = readdir(dp)) {
+   while ((ep = readdir(dp))) {
       if (strstr(ep->d_name, ".tmp")) {
          strncpy(tmp2, tmp, PNDMAN_PATH-1);
          strncat(tmp2, "/", PNDMAN_PATH-1);
