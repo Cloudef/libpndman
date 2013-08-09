@@ -33,7 +33,7 @@ LIB_LIBS := -lexpat -ljansson `pkg-config --libs libcurl`
 
 # git info
 VERSION = `git rev-parse HEAD`
-COMMIT  = `git log --format=%B -n 1 HEAD | head -n1`
+COMMIT  = `git log --format=%s -n 1 HEAD | head -n1`
 
 ifeq (${DEBUG},1)
    CFLAGS := -std=gnu99 -D_GNU_SOURCE -Wall -O0 -g -Wno-switch -Wno-parentheses
