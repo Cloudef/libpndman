@@ -246,9 +246,10 @@ static size_t strtrim(char *str)
 
    /* trim from left */
    while (isspace((unsigned char)*pch)) ++pch;
-   if (pch != str)
+   if (pch != str) {
       if ((len = strlen(pch))) memmove(str, pch, len+1);
       else *str = '\0';
+   }
 
    /* this string is empty, return */
    if (*str == '\0') return 0;
@@ -341,10 +342,10 @@ static int getcfgpath(char *path)
    const char* xdg_home;
    struct passwd *pw;
    if (!(xdg_home = getenv("XDG_CONFIG_HOME"))) {
-      if (!(xdg_home = getenv("HOME")))
-         if ((pw = getpwuid(getuid())))
-            xdg_home = pw->pw_dir;
+      if (!(xdg_home = getenv("HOME"))) {
+         if ((pw = getpwuid(getuid()))) xdg_home = pw->pw_dir;
          else return RETURN_FAIL;
+      }
       strncpy(path, xdg_home, PATH_MAX-1);      /* $HOME */
       stripslash(path);                         /* make sure no leading slash */
       strncat(path, "/.config", PATH_MAX-1);    /* $HOME/.config */
@@ -1519,9 +1520,9 @@ static int pre_op_dialog(_USR_DATA *data)
                ++skipping;
             }
       } else {
-         if ((data->flags & GB_NEEDED)  && !t->pnd->update ||
-             !(data->flags & A_UPGRADE) && !(data->flags & OP_UPGRADE) &&
-             !(data->flags & OP_REMOVE) && !t->pnd->update &&
+         if ((data->flags & GB_NEEDED)   && (!t->pnd->update ||
+             !(data->flags & A_UPGRADE)) && !(data->flags & OP_UPGRADE) &&
+             !(data->flags & OP_REMOVE)  && !t->pnd->update &&
              ((_QUIET && ++reinstall==0) ||
               (!reinstall && !yesno(data, _PND_REINSTALL, t->pnd->id)))) {
             if ((data->flags & GB_NEEDED)) {
@@ -1546,9 +1547,9 @@ static int pre_op_dialog(_USR_DATA *data)
          if (!yesno(data, _PND_REINSTALL_Q, reinstall))
             for (t = data->tlist; t; t = tn)
                if (pndinstalled(t->pnd, data) &&
-                  (data->flags & GB_NEEDED)  && !t->pnd->update ||
-                  !(data->flags & A_UPGRADE) && !(data->flags & OP_UPGRADE) &&
-                  !(data->flags & OP_REMOVE) && !t->pnd->update) {
+                  (data->flags & GB_NEEDED)   && (!t->pnd->update ||
+                  !(data->flags & A_UPGRADE)) && !(data->flags & OP_UPGRADE) &&
+                  !(data->flags & OP_REMOVE)  && !t->pnd->update) {
                   data->tlist = freetarget(t);
                   skipping = reinstall;
                }
@@ -1919,7 +1920,7 @@ static int _rmdir_(const char *dir)
 #ifndef _WIN32
    if (!(dp = opendir(dir)))
       return 1;
-   while (ep = readdir(dp)) {
+   while ((ep = readdir(dp))) {
       if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, "..")) continue;
       if (ep->d_type == DT_DIR) {
          strncpy(tmp, dir, PATH_MAX-1);

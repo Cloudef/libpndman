@@ -29,7 +29,7 @@ int main(int argc, char **argv)
    if (!dp)
       return EXIT_FAILURE;
 
-   while (ep = readdir (dp)) {
+   while ((ep = readdir (dp))) {
       if (strstr(ep->d_name, ".pnd")) {
          strncpy(path2, path1,      PATH_MAX-1);
          strncat(path2, ep->d_name, PATH_MAX-1);

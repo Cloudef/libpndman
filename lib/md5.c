@@ -17,7 +17,7 @@ static int _pndman_md5file(FILE *file, unsigned char *digest)
    size_t len;
 
    MD5_Init(&c);
-   while(len = fread(buf, sizeof(buf[0]), sizeof(buf), file))
+   while ((len = fread(buf, sizeof(buf[0]), sizeof(buf), file)))
       MD5_Update(&c, buf, len);
    MD5_Final(digest, &c);
    return ferror(file);

@@ -14,9 +14,11 @@
 #define PND_WINDOW         4096
 #define PND_WINDOW_FRACT   PND_WINDOW-10
 #define CHCKBUF(z)      \
-   if (pos+z > bufsize) \
-      if (!(buffer = _realloc(buffer, bufsize, bufsize+PND_WINDOW))) goto buffer_fail; \
-      else bufsize += PND_WINDOW;
+   if (pos+z > bufsize) { \
+      if (!(buffer = _realloc(buffer, bufsize, bufsize+PND_WINDOW))) { \
+         goto buffer_fail; \
+      } else { bufsize += PND_WINDOW; } \
+   }
 
 #define PNG_HEADER         "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A"
 #define PNG_END            "\x49\x45\x4E\x44"
@@ -991,6 +993,7 @@ static int _pxml_pnd_parse(pxml_parse *data, char *PXML, size_t size)
 {
    XML_Parser xml;
    int ret;
+   size_t i;
 
    /* try it */
    xml = XML_ParserCreate(NULL);
@@ -1017,7 +1020,7 @@ static int _pxml_pnd_parse(pxml_parse *data, char *PXML, size_t size)
       DEBUG(PNDMAN_LEVEL_WARN, PXML_INVALID_XML, XML_ErrorString(XML_GetErrorCode(xml)));
       if (pndman_get_verbose() >= PNDMAN_LEVEL_WARN) {
          printf("-----\n");
-         for (size_t i = 0; i != size; ++i) printf("%c", PXML[i]);
+         for (i = 0; i != size; ++i) printf("%c", PXML[i]);
          printf("\n-----\n");
       }
    }

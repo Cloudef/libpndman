@@ -36,9 +36,9 @@ VERSION = `git rev-parse HEAD`
 COMMIT  = `git log --format=%s -n 1 HEAD | head -n1`
 
 ifeq (${DEBUG},1)
-   CFLAGS := -std=gnu99 -D_GNU_SOURCE -Wall -O0 -g -Wno-switch -Wno-parentheses
+   CFLAGS := -std=gnu99 -D_GNU_SOURCE -Wall -O0 -g
 else
-   CFLAGS := -std=gnu99 -D_GNU_SOURCE -Wall -O2 -s -fomit-frame-pointer -Wno-switch -Wno-parentheses
+   CFLAGS := -std=gnu99 -D_GNU_SOURCE -Wall -O2 -s -fomit-frame-pointer
 endif
 
 ifeq (${MINGW},1)

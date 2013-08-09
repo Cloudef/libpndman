@@ -125,7 +125,7 @@ int main(int argc, char **argv)
    int c=0; /* hack to skip to second commercial PND in list
                (haven't bought the other one :P) */
    for (pnd = repo->pnd; pnd; pnd = pnd->next)
-      if (pnd->commercial) if (c) break; else c++;
+      if (pnd->commercial) { if (c) break; else c++; }
    if (!pnd) puts("commercial pnd not found, skipping test");
 
    if (pnd) {
