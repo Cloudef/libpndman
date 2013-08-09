@@ -607,7 +607,7 @@ typedef enum _HELPER_FLAGS
 typedef _HELPER_FLAGS (*_PARSE_FUNC)(char, char*, int*, _USR_DATA*); /* function prototype for parsing flags */
 
 /* do we have operation? */
-static int hasop(unsigned long flags)
+static int hasop(unsigned long long flags)
 {
    return ((flags & OP_YAOURT)   || (flags & OP_SYNC)    ||
            (flags & OP_REMOVE)   || (flags & OP_UPGRADE) ||
@@ -617,7 +617,7 @@ static int hasop(unsigned long flags)
 }
 
 /* are we querying information? */
-static int isquery(unsigned long flags)
+static int isquery(unsigned long long flags)
 {
    return ((flags & OP_QUERY)   || (flags & A_SEARCH) ||
            (flags & A_CATEGORY) || (flags & A_LIST)   ||
@@ -625,7 +625,7 @@ static int isquery(unsigned long flags)
 }
 
 /* do we need targets for our operation? */
-static int needtarget(unsigned long flags)
+static int needtarget(unsigned long long flags)
 {
    return  (!(flags & OP_CLEAN)  && !isquery(flags)        &&
             !(flags & A_REFRESH) && !(flags & OP_UPGRADE)  &&
@@ -635,7 +635,7 @@ static int needtarget(unsigned long flags)
 }
 
 /* set destination */
-static unsigned long setdest(_HELPER_FLAGS dest, _USR_DATA *data)
+static unsigned long long setdest(_HELPER_FLAGS dest, _USR_DATA *data)
 {
    data->flags = data->flags & ~A_MENU;
    data->flags = data->flags & ~A_DESKTOP;
@@ -1854,7 +1854,7 @@ static void listupdate(_USR_DATA *data)
 }
 
 /* get handle flags from milkyhelper's flags */
-static unsigned long handleflagsfromflags(pndman_package *p, unsigned long flags)
+static unsigned long long handleflagsfromflags(pndman_package *p, unsigned long long flags)
 {
    unsigned int hflags = 0;
    if ((flags & OP_SYNC))           hflags |= PNDMAN_PACKAGE_INSTALL;
@@ -1880,7 +1880,7 @@ static unsigned long handleflagsfromflags(pndman_package *p, unsigned long flags
 }
 
 /* get operation string from milkyhelper's flags */
-static const char* opstrfromflags(char done, unsigned long flags)
+static const char* opstrfromflags(char done, unsigned long long flags)
 {
    if ((flags & A_UPGRADE) || (flags & OP_UPGRADE))
                                  return done?_UPGRADE_DONE:_UPGRADE_FAIL;
