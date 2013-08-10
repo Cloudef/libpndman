@@ -463,6 +463,7 @@ static void _pxml_pnd_application_icon_tag(pndman_application *app, char **attrs
 /* \brief fills pndman_application's struct */
 static void _pxml_pnd_application_clockspeed_tag(pndman_application *app, char **attrs)
 {
+   (void)app;
    int i = 0;
    for (; attrs[i]; ++i) {
       /* <clockspeed frequency= */
@@ -1441,8 +1442,7 @@ PNDMANAPI int pndman_package_crawl(int full_crawl,
 }
 
 /* \brief fill single PND's data fully by crawling it locally */
-PNDMANAPI int pndman_package_crawl_single_package(int full_crawl,
-      pndman_package *pnd)
+PNDMANAPI int pndman_package_crawl_single_package(int full_crawl, pndman_package *pnd)
 {
    char path[PNDMAN_PATH];
    pxml_parse data;
@@ -1463,6 +1463,8 @@ PNDMANAPI int pndman_package_crawl_single_package(int full_crawl,
    if (_pndman_crawl_process(pnd->mount, pnd->path, &data)
          != RETURN_OK)
       goto fail;
+
+   if (!full_crawl) _pndman_package_free_applications(pnd);
 
    /* stat for modified time */
    if (!pnd->modified_time) {

@@ -1,0 +1,5 @@
+#ifndef LIBPNDMAN_VERSION_H
+#define LIBPNDMAN_VERSION_H
+#define VERSION "@VERSION@"
+#define COMMIT  "@COMMIT@"
+#endif /* LIBPNDMAN_VERSION_H */

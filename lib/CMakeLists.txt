@@ -1,0 +1,27 @@
+SET(LIBPNDMAN_SRC
+   curl.c
+   database.c
+   device.c
+   handle.c
+   json.c
+   md5.c
+   package.c
+   pndman.c
+   pxml.c
+   repository.c
+   repo_api.c)
+
+IF (LIBPNDMAN_BUILD_STATIC)
+   SET(LIBPNDMAN_TYPE STATIC)
+ELSE ()
+   SET(LIBPNDMAN_TYPE SHARED)
+ENDIF ()
+
+EXECUTE_PROCESS(COMMAND "git" "rev-parse" "HEAD" OUTPUT_VARIABLE VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+EXECUTE_PROCESS(COMMAND "git" "log" "--format=%s" "-n" "1" "HEAD" OUTPUT_VARIABLE COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE)
+CONFIGURE_FILE(version.h.in ${libpndman_SOURCE_DIR}/lib/version.h @ONLY)
+
+INCLUDE_DIRECTORIES(${libpndman_SOURCE_DIR}/include ${LIBPNDMAN_INCL})
+ADD_LIBRARY(pndman ${LIBPNDMAN_TYPE} ${LIBPNDMAN_SRC})
+TARGET_LINK_LIBRARIES(pndman ${LIBPNDMAN_LIBRARIES})
+INSTALL(TARGETS pndman DESTINATION lib)

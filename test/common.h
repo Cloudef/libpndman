@@ -85,6 +85,7 @@ static void common_create_sync_handles(pndman_sync_handle *handle,
 static void common_create_package_handles(pndman_package_handle *handle,
       size_t num, pndman_device *device, pndman_repository *repo, pndman_package_handle_callback cb)
 {
+   (void)repo;
    size_t i;
    for (i = 0; i != num; ++i) {
       if (pndman_package_handle_init("noname", &handle[i]) != 0)

@@ -76,6 +76,8 @@ static size_t _pndman_curl_write_header(void *data, size_t size, size_t nmemb, p
 static int _pndman_curl_progress_func(pndman_curl_handle *handle,
       double total_to_download, double download, double total_to_upload, double upload)
 {
+   (void)total_to_upload;
+   (void)upload;
    if (!handle || handle->free) return 1;
    handle->progress->download           = handle->resume + download;
    handle->progress->total_to_download  = handle->resume + total_to_download;

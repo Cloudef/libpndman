@@ -259,9 +259,7 @@ PNDMANAPI const char* pndman_git_commit(void)
  * Feel free to use it as well if you want. */
 PNDMANAPI void pndman_puts(const char *buffer)
 {
-   int i;
-   size_t len;
-
+   size_t len, i;
    len = strlen(buffer);
    for (i = 0; i != len; ++i) {
            if (buffer[i] == '\1') _pndman_red();

@@ -212,23 +212,24 @@ static int _parse_filename_from_header(const char *filename,
 {
    char *needle = "filename=\"";
    char *file   = (char*)filename;
-   int pos = 0, rpos = 0, found = 0;
+   unsigned int pos = 0, rpos = 0, found = 0;
    assert(filename && haystack);
 
-   for(; rpos < strlen(haystack); rpos++) {
-      if(!found) {
-         if(haystack[rpos] == needle[pos]) {
-            if(++pos==strlen(needle)) {
+   for (; rpos < strlen(haystack); rpos++) {
+      if (!found) {
+         if (haystack[rpos] == needle[pos]) {
+            if (++pos==strlen(needle)) {
                found = 1;
                pos = 0;
             }
          } else
             pos = 0;
       } else {
-         if(haystack[rpos] != '"')
+         if (haystack[rpos] != '"') {
             file[pos++] = haystack[rpos];
-         else
+         } else {
             break;
+         }
       }
    }
 

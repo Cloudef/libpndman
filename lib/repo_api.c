@@ -634,6 +634,7 @@ fail:
 static void _pndman_api_handshake_cb(pndman_curl_code code,
       void *data, const char *info, pndman_curl_handle *chandle)
 {
+   (void)chandle;
    pndman_api_request *handle = (pndman_api_request*)data;
    if (code == PNDMAN_CURL_DONE) {
       if (handle->type == PNDMAN_API_NONCE)

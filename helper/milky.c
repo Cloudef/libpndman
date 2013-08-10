@@ -49,7 +49,7 @@ char _VERBOSE     = 0;
 char _QUIET       = 0;
 
 /* max concurrent downloads? */
-char _QUEUE       = 5;
+unsigned int _QUEUE = 5;
 
 /* use this to clear line. */
 char _ERASE[120];
@@ -523,13 +523,10 @@ static void freeignore_all(_USR_IGNORE *t)
 /* check if package id is being ignored */
 static int checkignore(const char *id, _USR_DATA *data)
 {
-   _USR_TARGET *t;
    _USR_IGNORE *i;
-
    for (i = data->ilist; i; i = i->next)
-      for (t = data->tlist; t; t = t->next)
-         if (!strcmp(i->id, t->id) ||
-             !strcmp(i->id, t->pnd?t->pnd->id:t->id)) return RETURN_TRUE;
+      if (!strcmp(i->id, id) ||
+            !strcmp(i->id, id)) return RETURN_TRUE;
    return RETURN_FALSE;
 }
 
@@ -647,6 +644,7 @@ static unsigned long long setdest(_HELPER_FLAGS dest, _USR_DATA *data)
 /* parse global flags */
 static _HELPER_FLAGS getglob(char c, char *arg, int *skipn, _USR_DATA *data)
 {
+   (void)arg, (void)skipn, (void)data;
    if (c == 'v')        ++_VERBOSE;
    else if (c == 'q')   ++_QUIET;
    else if (c == 'f')   return GB_FORCE;
@@ -658,6 +656,7 @@ static _HELPER_FLAGS getglob(char c, char *arg, int *skipn, _USR_DATA *data)
 /* parse operation flags */
 static _HELPER_FLAGS getop(char c, char *arg, int *skipn, _USR_DATA *data)
 {
+   (void)arg, (void)skipn, (void)data;
    if (c == 'S')        return OP_SYNC;
    else if (c == 'U')   return OP_UPGRADE;
    else if (c == 'R')   return OP_REMOVE;
@@ -674,6 +673,7 @@ static _HELPER_FLAGS getop(char c, char *arg, int *skipn, _USR_DATA *data)
 /* parse sync flags */
 static _HELPER_FLAGS getsync(char c, char *arg, int *skipn, _USR_DATA *data)
 {
+   (void)arg, (void)skipn, (void)data;
    if (c == 's')        return A_SEARCH;
    else if (c == 'c')   return A_CATEGORY;
    else if (c == 'i')   return A_INFO;
@@ -690,6 +690,7 @@ static _HELPER_FLAGS getsync(char c, char *arg, int *skipn, _USR_DATA *data)
 /* parse removal flags */
 static _HELPER_FLAGS getremove(char c, char *arg, int *skipn, _USR_DATA *data)
 {
+   (void)arg, (void)skipn, (void)data;
    if (c == 'n')        return A_NOSAVE;
    else if (c == 's')   return OP_SYNC;
    else if (c == 'r')   return OP_REMOVE;
@@ -699,6 +700,7 @@ static _HELPER_FLAGS getremove(char c, char *arg, int *skipn, _USR_DATA *data)
 /* parse query flags */
 static _HELPER_FLAGS getquery(char c, char *arg, int *skipn, _USR_DATA *data)
 {
+   (void)arg, (void)skipn, (void)data;
    if (c == 's')        return A_SEARCH;
    else if (c == 'c')   return A_CATEGORY;
    else if (c == 'i')   return A_INFO;
@@ -711,6 +713,7 @@ static _HELPER_FLAGS getquery(char c, char *arg, int *skipn, _USR_DATA *data)
 /* parse repo api flags */
 static _HELPER_FLAGS getrepoapi(char c, char *arg, int *skipn, _USR_DATA *data)
 {
+   (void)arg, (void)skipn, (void)data;
    if (c == 'c')        return A_COMMENT;
    else if (c == 'p')   return A_RATE;
    else if (c == 'g')   return A_RATE_GET;
@@ -721,6 +724,7 @@ static _HELPER_FLAGS getrepoapi(char c, char *arg, int *skipn, _USR_DATA *data)
 /* parse crawl flags */
 static _HELPER_FLAGS getcrawl(char c, char *arg, int *skipn, _USR_DATA *data)
 {
+   (void)arg, (void)skipn, (void)data;
    if (c == 'c')        return A_INTEGRITY;
    else if (c == 's')   return A_INST_CRPT;
    else if (c == 'd')   return A_RM_CRPT;
@@ -730,7 +734,7 @@ static _HELPER_FLAGS getcrawl(char c, char *arg, int *skipn, _USR_DATA *data)
 /* passes the information for correct flag parser function, and does extra handling if needed */
 static void parse(_PARSE_FUNC func, const char *ref, char *arg, char *narg, int *skipn, _USR_DATA *data)
 {
-   int x, y;
+   unsigned int x, y;
    for (y = 0; y != strlen(ref); ++y)
       for (x = 0; x != strlen(arg); ++x)
          if (arg[x] == ref[y]) {
@@ -837,6 +841,7 @@ static int _backup(char **argv, int argc, _USR_DATA *data)
 /* configuration wrapper for ignoring package */
 static int _addignore(char **argv, int argc, _USR_DATA *data)
 {
+   (void)argv, (void)argc;
    int i;
    assert(data);
    for (i = 0; i != argc; ++i) addignore(argv[i], &data->ilist);
@@ -846,6 +851,7 @@ static int _addignore(char **argv, int argc, _USR_DATA *data)
 /* configuration wrapper for setting nomerge option */
 static int _nomerge(char **argv, int argc, _USR_DATA *data)
 {
+   (void)argv, (void)argc;
    assert(data);
    data->flags |= GB_NOMERGE;
    return RETURN_OK;
@@ -854,6 +860,7 @@ static int _nomerge(char **argv, int argc, _USR_DATA *data)
 /* configuration wrapper for setting nobar option */
 static int _nobar(char **argv, int argc, _USR_DATA *data)
 {
+   (void)argv, (void)argc;
    assert(data);
    data->flags |= GB_NOBAR;
    return RETURN_OK;
@@ -862,6 +869,7 @@ static int _nobar(char **argv, int argc, _USR_DATA *data)
 /* configuration wrapper for setting queue limit */
 static int _queue(char **argv, int argc, _USR_DATA *data)
 {
+   (void)argv, (void)argc;
    assert(data);
    if (!argc) return RETURN_FAIL;
    if ((_QUEUE = strtol(argv[0], (char **) NULL, 10)) <= 0)
@@ -872,6 +880,7 @@ static int _queue(char **argv, int argc, _USR_DATA *data)
 /* configuration wrapper for setting quiet level */
 static int _quiet(char **argv, int argc, _USR_DATA *data)
 {
+   (void)argv, (void)argc;
    assert(data);
    if (!argc) return RETURN_FAIL;
    _QUIET = strtol(argv[0], (char **) NULL, 10);
@@ -881,6 +890,7 @@ static int _quiet(char **argv, int argc, _USR_DATA *data)
 /* configuration wrapper for setting verbose level */
 static int _verbose(char **argv, int argc, _USR_DATA *data)
 {
+   (void)argv, (void)argc;
    assert(data);
    if (!argc) return RETURN_FAIL;
    _VERBOSE = strtol(argv[0], (char **) NULL, 10);
@@ -890,6 +900,7 @@ static int _verbose(char **argv, int argc, _USR_DATA *data)
 /* configuration wrapper for setting color */
 static int _color(char **argv, int argc, _USR_DATA *data)
 {
+   (void)argv, (void)argc;
    assert(data);
    if (!argc) return RETURN_FAIL;
    pndman_set_color(strtol(argv[0], (char **) NULL, 10));
@@ -899,6 +910,7 @@ static int _color(char **argv, int argc, _USR_DATA *data)
 /* configuration wrapper for logdl */
 static int _logdl(char **argv, int argc, _USR_DATA *data)
 {
+   (void)argv, (void)argc;
    assert(data);
    _LOG_DL = 1;
    return RETURN_OK;
@@ -946,13 +958,13 @@ static _CONFIG_KEYS _CONFIG_KEY[] = {
 /* read arguments from key and pass to the function */
 static int readconfig_arg(const char *key, _CONFIG_FUNC func, _USR_DATA *data, char *line)
 {
-   int i, p, argc, in_quote;
+   unsigned int i, p, argc, in_quote;
    char *argv[_CONFIG_MAX_VAR];
 
    /* reset args */
    for (i = 0; i != _CONFIG_MAX_VAR; ++i) {
       if (!(argv[i] = malloc(_CONFIG_ARG_LEN))) {
-         for (; i >= 0; --i) free(argv[i]);
+         for (; i > 0; --i) free(argv[i]);
          return RETURN_FAIL;
       }
       memset(argv[i], 0, _CONFIG_ARG_LEN);
@@ -1156,6 +1168,7 @@ static void filltitle(pndman_package *pnd, char *buffer)
 /* repoinfo */
 static void repoinfo(pndman_repository *repo, _USR_DATA *data)
 {
+   (void)data;
    char *synced = NULL;
    unsigned int packages = 0;
    pndman_package *p;
@@ -1511,7 +1524,7 @@ static int pre_op_dialog(_USR_DATA *data)
    for (t = data->tlist; t; t = tn) {
       tn = t->next; ++count;
       if (!pndinstalled(t->pnd, data)) {
-         if (checkignore(t->pnd->id, data))
+         if (checkignore((t->pnd?t->pnd->id:t->id), data))
             if ((_QUIET && ++ignore==0) ||
                 (!ignore && !yesno(data, _PND_IGNORED_FORCE, t->pnd->id))) {
                if (!_QUIET) _printf(_WARNING_SKIPPING, t->pnd->id);
@@ -1541,7 +1554,7 @@ static int pre_op_dialog(_USR_DATA *data)
          if (!yesno(data, _PND_IGNORED_FORCE_Q, ignore))
             for (t = data->tlist; t; t = tn)
                if (!pndinstalled(t->pnd, data))
-                  if (checkignore(t->pnd->id, data))
+                  if (checkignore((t->pnd?t->pnd->id:t->id), data))
                      data->tlist = freetarget(t);
       if (reinstall)
          if (!yesno(data, _PND_REINSTALL_Q, reinstall))
@@ -2237,6 +2250,7 @@ static int vercmp(pndman_version *l, pndman_version *r)
 static void handlecorrupt(pndman_package *p, pndman_package *rp,
       pndman_repository *r, int certain, _USR_DATA *data)
 {
+   (void)r;
    _USR_TARGET *t;
 
    /* this is here so we won't output warning
@@ -2774,6 +2788,7 @@ fail:
 /* version operation logic */
 static int version(_USR_DATA *data)
 {
+   (void)data;
 printf(
 " ____                 _                       \n"
 "|  _ \\ __ _ _ __   __| | ___  _ __ __ _      \n"
@@ -2803,8 +2818,7 @@ puts("\n");
 /* help operation logic */
 static int help(_USR_DATA *data)
 {
-   int i;
-
+   unsigned int i;
    printf("usage: %s [-%s] ", data->bin, _G_ARG);
    for (i = 0; i != strlen(_OP_ARG); ++i) {
       printf("[-%c%s] ", _OP_ARG[i],
@@ -2909,6 +2923,7 @@ static int help(_USR_DATA *data)
 
 static int edit(_USR_DATA *data)
 {
+   (void)data;
    char path[PATH_MAX];
    memset(path, 0, sizeof(path));
    if (getconfigpath(path) != RETURN_OK) return RETURN_FAIL;
