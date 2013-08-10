@@ -29,7 +29,7 @@
 #define PXML_START_TAG     "<PXML"
 #define PXML_END_TAG       "</PXML>"
 #define XML_HEADER         "<?xml version=\"1.1\" encoding=\"UTF-8\"?>"
-#define XMLSTART()         pos = 0; strip = '<';
+#define XMLSTART()         pos = 0;
 #define XMLCOPY(x,y,z) \
    CHCKBUF(z); memcpy(buffer+x,y,z); pos+=z;
 
@@ -138,13 +138,13 @@ static void* _realloc(void *ptr, size_t osize, size_t nsize)
 }
 
 /* \brief search tag from string. NOTE: we do correct incorrect XML too so string changes */
-static char* _match_tag(char *s, size_t len, char *tag, size_t *p, char *strip)
+static char* _match_tag(char *s, size_t len, char *tag, size_t *p)
 {
    unsigned int nlen;
    char *end;
 
    nlen = strlen(tag);
-   end  = s + len - (strip?0:nlen);
+   end  = s + len - nlen;
    *p   = 0;
 
    while (s < end) {
@@ -152,44 +152,7 @@ static char* _match_tag(char *s, size_t len, char *tag, size_t *p, char *strip)
       if (isprint(*s)) {
          /* tag found */
          if (!_strnupcmp(s, tag, nlen)) return &*s;
-
-         /* this is hopefully no longer needed */
-#if 0
-         /* fugly stripping code, thank you everyone who are using invalid PXML in their PNDs :) */
-         else if (0 && strip) {
-            if (!*strip || *strip == '?') {
-               if (*strip == '?') {
-                  if (*s == '!') {
-                     *strip = '!';                                                        /* enter comment area */
-                     if (*p) *(s-1) = ' '; *s = ' ';                                      /* strip check characters */
-                  } else {
-                     *strip = '<';                                                        /* enter tag area */
-                     if (*s == '&' || *s == '>') *s = ' ';                                /* strip this */
-                     else if (*s == '>') *strip = 0;                                      /* instantly leave */
-                  }
-               } else if (*s == '<' || *s == '>' || *s == '"' || *s == '\'') {
-                  if (*s != '<') *strip = *s; else *strip = '?';                          /* enter strip area */
-               }
-            } else {
-               /* strip comments */
-               if (*strip == '!') {
-                  if (*s == '-') *strip = '-';                                            /* end comment on -> */
-                  *s = ' ';                                                               /* inside comments, strip everything */
-               } else if (*strip == '-') {
-                  /* check if comment ends */
-                       if (*s == '>') *strip = 0;
-                  else if (*s == '-') *strip = '-'; else *strip = '!';
-                  *s = ' ';
-               } else {
-                  /* strip non comment */
-                       if (*strip == '<') { if (*s == '>')  *strip = 0; }                 /* end bracket */
-                  else if (*strip == '>') { if (*s == '<')  *strip = 0; }                 /* end bracket */
-                  else if (*s == *strip || *s == '<')       *strip = 0;                   /* end quote */
-                       if (*strip && (*s == '&' || *s == '>')) *s = ' ';                  /* get rid of bad XML */
-               }
-            }
-         }
-#endif
+         else if (*s == '&') *s = ' ';
       }
       ++s; ++*p;
    }
@@ -201,7 +164,7 @@ static char* _fetch_pxml_from_pnd(const char *pnd_file, size_t *size)
 {
    FILE     *pnd;
    char     s[PND_WINDOW];
-   char     *match, *buffer = NULL, strip;
+   char     *match, *buffer = NULL;
    size_t   pos, len, ret, read, stag, etag, bufsize;
 
    /* open PND */
@@ -231,7 +194,7 @@ static char* _fetch_pxml_from_pnd(const char *pnd_file, size_t *size)
 
       /* read until start tag */
       if ((ret = fread(s, 1, read, pnd)))
-         if ((match = _match_tag(s, read, PXML_START_TAG, &stag, NULL)))
+         if ((match = _match_tag(s, read, PXML_START_TAG, &stag)))
          { ret = 1; break; }
 
       if (!ret) break; ret = 0;              /* below breaks are failures */
@@ -257,13 +220,13 @@ static char* _fetch_pxml_from_pnd(const char *pnd_file, size_t *size)
    XMLCOPY(0, XML_HEADER, strlen(XML_HEADER));
 
    /* check if end tag is on the same buffer as start tag */
-   if (!_match_tag(match+strlen(PXML_START_TAG), read-stag-strlen(PXML_START_TAG), PXML_END_TAG, &etag, &strip)) {
+   if (!_match_tag(match+strlen(PXML_START_TAG), read-stag-strlen(PXML_START_TAG), PXML_END_TAG, &etag)) {
       /* nope, copy first buffer and read to end */
       XMLCOPY(pos, match, read-stag);
       while ((ret = fread(s+strlen(PXML_END_TAG), 1, read-strlen(PXML_END_TAG), pnd))) {
          match = s+strlen(PXML_END_TAG);
          memcpy(s, buffer+pos-strlen(PXML_END_TAG), strlen(PXML_END_TAG));
-         if (_match_tag(s, read, PXML_END_TAG, &etag, &strip)) { ret = 1; etag -= strlen(PXML_END_TAG); break; }
+         if (_match_tag(s, read, PXML_END_TAG, &etag)) { ret = 1; etag -= strlen(PXML_END_TAG); break; }
          XMLCOPY(pos, match, read-strlen(PXML_END_TAG));
       }
    } else etag += strlen(PXML_START_TAG);
