@@ -14,7 +14,7 @@ static int _PNDMAN_VERBOSE = 0;
 static int _PNDMAN_COLOR = 1;
 
 /* \brief curl timeout */
-static int _PNDMAN_CURL_TIMEOUT = 60;
+static int _PNDMAN_CURL_TIMEOUT = 0;
 
 /* \brief internal debug hook function */
 static PNDMAN_DEBUG_HOOK_FUNC _PNDMAN_DEBUG_HOOK = NULL;
