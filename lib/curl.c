@@ -236,7 +236,7 @@ int _pndman_curl_handle_perform(pndman_curl_handle *handle)
    curl_easy_setopt(handle->curl, CURLOPT_WRITEFUNCTION, _pndman_curl_write_file);
    curl_easy_setopt(handle->curl, CURLOPT_WRITEDATA, handle);
    curl_easy_setopt(handle->curl, CURLOPT_LOW_SPEED_LIMIT, 10240L);
-   curl_easy_setopt(handle->curl, CURLOPT_LOW_SPEED_TIME, 10L);
+   curl_easy_setopt(handle->curl, CURLOPT_LOW_SPEED_TIME, 300L);
    if (handle->resume && strlen(handle->path)) {
       curl_easy_setopt(handle->curl, CURLOPT_RESUME_FROM, handle->resume);
       DEBUG(PNDMAN_LEVEL_CRAP, "Handle resume: %zu", handle->resume);
