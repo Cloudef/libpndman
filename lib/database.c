@@ -394,6 +394,15 @@ static int _pndman_sync_handle_perform(pndman_sync_handle *object)
          !(object->flags & PNDMAN_SYNC_FULL)) {
       snprintf(timestamp, PNDMAN_TIMESTAMP-1, "%lu", object->repository->timestamp);
       url = str_replace(object->repository->updates, "%time%", timestamp);
+      if (strstr(object->repository->url, "bzip=true")) {
+         size_t size = strlen(url)+strlen("&bzip=true")+1;
+         char *nurl = malloc(size);
+         if (nurl) {
+            snprintf(nurl, size, "%s&bzip=true", url);
+            free(url);
+            url = nurl;
+         }
+      }
    } else url = strdup(object->repository->url);
 
    /* url copy failed */
