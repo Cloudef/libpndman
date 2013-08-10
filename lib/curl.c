@@ -316,6 +316,7 @@ static void _pndman_curl_msg(int result,
            result == CURLE_ABORTED_BY_CALLBACK) &&
             handle->retry < PNDMAN_CURL_MAX_RETRY) {
          /* retry */
+         DEBUG(PNDMAN_LEVEL_CRAP, "%s", curl_easy_strerror(result));
          if (_pndman_curl_handle_perform(handle) == RETURN_OK)
             handle->retry++;
          else handle->retry = PNDMAN_CURL_MAX_RETRY;

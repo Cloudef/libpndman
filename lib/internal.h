@@ -39,7 +39,7 @@
 
 /* etc.. */
 #define PNDMAN_CURL_CHUNK     1024
-#define PNDMAN_CURL_MAX_RETRY 5
+#define PNDMAN_CURL_MAX_RETRY 3
 
 /* strings */
 #define DATABASE_URL_COPY_FAIL   "Failed to copy url from repository."
