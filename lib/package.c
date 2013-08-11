@@ -17,14 +17,30 @@ int _pndman_vercmp(pndman_version *lp, pndman_version *rp)
 {
    char *l, *r;
 
-   for (l = lp->major, r = rp->major; *l && *r; ++l, ++r)
+   for (l = lp->major, r = rp->major; *l && *r; ++l, ++r) {
+      while (*l && *l == '0') ++l;
+      while (*r && *r == '0') ++r;
       if (*r > *l) return RETURN_TRUE;
-   for (l = lp->minor, r = rp->minor; *l && *r; ++l, ++r)
+      else if (*r < *l) return RETURN_FALSE;
+   }
+   for (l = lp->minor, r = rp->minor; *l && *r; ++l, ++r) {
+      while (*l && *l == '0') ++l;
+      while (*r && *r == '0') ++r;
       if (*r > *l) return RETURN_TRUE;
-   for (l = lp->release, r = rp->release; *l && *r; ++l, ++r)
+      else if (*r < *l) return RETURN_FALSE;
+   }
+   for (l = lp->release, r = rp->release; *l && *r; ++l, ++r) {
+      while (*l && *l == '0') ++l;
+      while (*r && *r == '0') ++r;
       if (*r > *l) return RETURN_TRUE;
-   for (l = lp->build, r = rp->build; *l && *r; ++l, ++r)
+      else if (*r < *l) return RETURN_FALSE;
+   }
+   for (l = lp->build, r = rp->build; *l && *r; ++l, ++r) {
+      while (*l && *l == '0') ++l;
+      while (*r && *r == '0') ++r;
       if (*r > *l) return RETURN_TRUE;
+      else if (*r < *l) return RETURN_FALSE;
+   }
 
    return RETURN_FALSE;
 }
