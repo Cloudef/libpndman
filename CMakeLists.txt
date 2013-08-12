@@ -41,8 +41,6 @@ ENDIF ()
 
 # Build depencies, if no system libraries found
 ADD_SUBDIRECTORY(deps)
-LIST(APPEND LIBPNDMAN_INCL ${LIBPNDMAN_STATIC_INCL})
-LIST(APPEND LIBPNDMAN_LINK ${LIBPNDMAN_STATIC_LINK})
 
 # Export libpndman library dependencies
 SET(LIBPNDMAN_LIBRARIES ${LIBPNDMAN_LINK} CACHE STRING "Dependencies of libpndman")
