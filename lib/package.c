@@ -22,7 +22,7 @@ int _pndman_vercmp(pndman_version *lp, pndman_version *rp)
    while (*r && *r == '0') ++r;
    if (strlen(l) < strlen(r)) return RETURN_TRUE;
    else if (strlen(l) > strlen(r)) return RETURN_FALSE;
-   for (l = lp->major, r = rp->major; *l && *r; ++l, ++r) {
+   for (; *l && *r; ++l, ++r) {
       if (*r > *l) return RETURN_TRUE;
       else if (*r < *l) return RETURN_FALSE;
    }
