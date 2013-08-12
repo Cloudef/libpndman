@@ -1,0 +1,12 @@
+IF (NOT JANSSON_FOUND)
+    MESSAGE("Building jansson with libpndman")
+    SET(BUILD_DOCS OFF CACHE BOOL "Disable docs build")
+    SET(BUILD_SHARED_LIBS OFF CACHE BOOL "Static jansson")
+    SET(WITHOUT_TESTS ON CACHE BOOL "Without tests")
+    ADD_SUBDIRECTORY(jansson)
+    LIST(APPEND LIBPNDMAN_INCL ${jansson_BINARY_DIR}/include)
+    LIST(APPEND LIBPNDMAN_LINK jansson)
+ENDIF ()
+
+SET(LIBPNDMAN_STATIC_INCL ${LIBPNDMAN_INCL} CACHE STRING "(internal) libpndman static includes")
+SET(LIBPNDMAN_STATIC_LINK ${LIBPNDMAN_LINK} CACHE STRING "(internal) libpndman static linkage")
