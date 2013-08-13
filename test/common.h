@@ -13,7 +13,7 @@
 #  include <dirent.h>
 #endif
 
-#define REPOSITORY_URL "http://repo.openpandora.org/client/masterlist?com=true"
+#define REPOSITORY_URL "http://repo.openpandora.org/client/masterlist?com=true&bzip=true"
 
 /* common error function */
 static void err(const char *str)
