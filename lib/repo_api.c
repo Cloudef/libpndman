@@ -310,7 +310,7 @@ static void _pndman_api_comment_cb(const char *info, pndman_api_request *request
 
    /* error handling */
    if (info) {
-      _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet, info, NULL);
+      packet->callback(PNDMAN_CURL_FAIL, info, packet->user_data);
    } else {
       snprintf(url, PNDMAN_URL-1, "%s/%s", packet->repository->api.root, API_COMMENT);
 
@@ -321,7 +321,7 @@ static void _pndman_api_comment_cb(const char *info, pndman_api_request *request
       if (_pndman_curl_handle_perform(request->handle) == RETURN_OK) {
          request->handle = NULL;
       } else {
-        _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet, "_pndman_curl_handle_perform failed", NULL);
+        packet->callback(PNDMAN_CURL_FAIL, "_pndman_curl_handle_perform failed", packet->user_data);
       }
    }
 
@@ -334,6 +334,7 @@ static void _pndman_api_rate_cb(const char *info, pndman_api_request *request)
 {
    char url[PNDMAN_URL];
    char buffer[PNDMAN_POST];
+   pndman_api_rate_packet rpacket;
    pndman_rate_packet *packet = (pndman_rate_packet*)request->data;
 
    request->handle->callback = _pndman_api_rating_cb;
@@ -344,7 +345,9 @@ static void _pndman_api_rate_cb(const char *info, pndman_api_request *request)
 
    /* error handling */
    if (info) {
-      _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet, info, NULL);
+      memset(&rpacket, 0, sizeof(pndman_api_rate_packet));
+      rpacket.pnd = packet->pnd;
+      PNDMAN_API_FAIL(rpacket, packet->callback, packet->user_data, info);
    } else {
       snprintf(url, PNDMAN_URL-1, "%s/%s", packet->repository->api.root, API_RATE);
       if (packet->rate) snprintf(buffer, PNDMAN_POST-1, "id=%s&a=r&r=%d", packet->pnd->id, packet->rate);
@@ -355,7 +358,9 @@ static void _pndman_api_rate_cb(const char *info, pndman_api_request *request)
          request->handle = NULL;
          request->data   = NULL;
       } else {
-         _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet, "_pndman_curl_handle_perform failed", NULL);
+         memset(&rpacket, 0, sizeof(pndman_api_rate_packet));
+         rpacket.pnd = packet->pnd;
+         PNDMAN_API_FAIL(rpacket, packet->callback, packet->user_data, "_pndman_curl_handle_perform failed");
       }
    }
 
@@ -631,8 +636,8 @@ static void _pndman_api_handshake_cb(pndman_curl_code code,
       else if (handle->type == PNDMAN_API_HANDSHAKE)
          _pndman_api_handshake_check(handle);
    } else if (code == PNDMAN_CURL_FAIL) {
-      handle->callback(info, handle);
       DEBFAIL("handshake failed : %s", info);
+      handle->callback(info, handle);
    }
 }
 
@@ -696,6 +701,7 @@ static int _pndman_api_rate_pnd(void *user_data,
 
 fail:
    IFDO(_pndman_curl_handle_free, handle);
+   IFDO(free, packet);
    return RETURN_FAIL;
 }
 
@@ -720,6 +726,7 @@ static int _pndman_api_comment_pnd(void *user_data,
 
 fail:
    IFDO(_pndman_curl_handle_free, handle);
+   IFDO(free, packet);
    return RETURN_FAIL;
 }
 
@@ -752,6 +759,7 @@ static int _pndman_api_comment_pnd_pull(void *user_data,
 
 fail:
    IFDO(_pndman_curl_handle_free, handle);
+   IFDO(free, packet);
    return RETURN_FAIL;
 }
 
@@ -772,11 +780,11 @@ static int _pndman_api_comment_pnd_delete(void *user_data,
 
    packet->callback  = callback;
    packet->user_data = user_data;
-   return _pndman_api_handshake(handle, repository,
-         _pndman_api_comment_cb, packet);
+   return _pndman_api_handshake(handle, repository, _pndman_api_comment_cb, packet);
 
 fail:
    IFDO(_pndman_curl_handle_free, handle);
+   IFDO(free, packet);
    return RETURN_FAIL;
 }
 
@@ -795,11 +803,11 @@ static int _pndman_api_download_history(void *user_data,
       goto fail;
 
    packet->user_data = user_data;
-   return _pndman_api_handshake(handle, repository,
-         _pndman_api_download_history_perform, packet);
+   return _pndman_api_handshake(handle, repository, _pndman_api_download_history_perform, packet);
 
 fail:
    IFDO(_pndman_curl_handle_free, handle);
+   IFDO(free, packet);
    return RETURN_FAIL;
 }
 
@@ -832,6 +840,7 @@ static int _pndman_api_archived_pnd(void *user_data,
 
 fail:
    IFDO(_pndman_curl_handle_free, handle);
+   IFDO(free, packet);
    return RETURN_FAIL;
 }
 
@@ -919,7 +928,6 @@ PNDMANAPI int pndman_api_comment_pnd_delete(void *user_data,
       pndman_package *pnd, time_t timestamp,
       pndman_api_generic_callback callback)
 {
-   CHECKUSE(user_data);
    CHECKUSE(pnd);
    CHECKUSE(pnd->repositoryptr);
    CHECKUSE(callback);
