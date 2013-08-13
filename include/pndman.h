@@ -348,15 +348,6 @@ typedef void (*pndman_api_archived_callback)(
 typedef void (*pndman_api_rate_callback)(
       pndman_curl_code code, struct pndman_api_rate_packet *packet);
 
-/* \brief generic callback packet */
-typedef struct pndman_api_generic_packet
-{
-   char error[PNDMAN_STR];
-
-   /* your data returned */
-   void *user_data;
-} pndman_api_generic_packet;
-
 /* \brief comment pull callback packet */
 typedef struct pndman_api_comment_packet
 {
