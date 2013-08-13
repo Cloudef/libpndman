@@ -149,8 +149,7 @@ static void _pndman_api_common_cb(pndman_curl_code code, void *data, const char 
    /* error checking, etc.. */
    if (code == PNDMAN_CURL_FAIL) {
       packet->callback(PNDMAN_CURL_FAIL, info, packet->user_data);
-   } else if ((_pndman_json_client_api_return(chandle->file,
-               &status) != RETURN_OK) && strlen(status.text)) {
+   } else if (chandle && _pndman_json_client_api_return(chandle->file, &status) != RETURN_OK && strlen(status.text)) {
       packet->callback(PNDMAN_CURL_FAIL, status.text, packet->user_data);
    } else { /* success */
       packet->callback(PNDMAN_CURL_DONE, NULL, packet->user_data);
@@ -172,19 +171,20 @@ static void _pndman_api_rating_cb(pndman_curl_code code, void *data, const char 
        code != PNDMAN_CURL_FAIL)
       return;
 
+   if (code == PNDMAN_CURL_DONE && !chandle)
+      code = PNDMAN_CURL_FAIL;
+
    /* init */
    memset(&rpacket, 0, sizeof(pndman_api_rate_packet));
+   rpacket.pnd       = packet->pnd;
+   rpacket.user_data = packet->user_data;
 
    /* error checking, etc.. */
    if (code == PNDMAN_CURL_FAIL) {
       PNDMAN_API_FAIL(rpacket, packet->callback, packet->user_data, info);
-   } else if ((_pndman_json_client_api_return(chandle->file,
-               &status) != RETURN_OK) && strlen(status.text)) {
+   } else if (chandle && _pndman_json_client_api_return(chandle->file, &status) != RETURN_OK && strlen(status.text)) {
       PNDMAN_API_FAIL(rpacket, packet->callback, packet->user_data, status.text);
    } else { /* success */
-      rpacket.pnd       = packet->pnd;
-      rpacket.rating    = packet->rate;
-      rpacket.user_data = packet->user_data;
       if (packet->rate)
          _pndman_json_get_int_value("new rating", &rpacket.total_rating, chandle->file);
       if (packet->rate == 0)
@@ -208,18 +208,21 @@ static void _pndman_api_comment_pull_cb(pndman_curl_code code, void *data, const
        code != PNDMAN_CURL_FAIL)
       return;
 
+   if (code == PNDMAN_CURL_DONE && !chandle)
+      code = PNDMAN_CURL_FAIL;
+
    /* init */
    memset(&cpacket, 0, sizeof(pndman_api_comment_packet));
+   cpacket.pnd = packet->pnd;
+   cpacket.user_data = packet->user_data;
 
    /* error checking, etc.. */
    if (code == PNDMAN_CURL_FAIL) {
       PNDMAN_API_FAIL(cpacket, packet->pull_callback, packet->user_data, info);
-   } else if ((_pndman_json_client_api_return(chandle->file,
-               &status) != RETURN_OK) && strlen(status.text)) {
+   } else if (chandle && _pndman_json_client_api_return(chandle->file, &status) != RETURN_OK && strlen(status.text)) {
       PNDMAN_API_FAIL(cpacket, packet->pull_callback, packet->user_data, status.text);
    } else {
-      _pndman_json_comment_pull(packet->user_data,
-            packet->pull_callback, packet->pnd, chandle->file);
+      _pndman_json_comment_pull(packet->user_data, packet->pull_callback, packet->pnd, chandle->file);
    }
 
    /* dealloc */
@@ -238,18 +241,20 @@ static void _pndman_api_download_history_cb(pndman_curl_code code, void *data, c
        code != PNDMAN_CURL_FAIL)
       return;
 
+   if (code == PNDMAN_CURL_DONE && !chandle)
+      code = PNDMAN_CURL_FAIL;
+
    /* init */
    memset(&hpacket, 0, sizeof(pndman_api_history_packet));
+   hpacket.user_data = packet->user_data;
 
    /* error checking etc.. */
    if (code == PNDMAN_CURL_FAIL) {
       PNDMAN_API_FAIL(hpacket, packet->callback, packet->user_data, info);
-   } else if ((_pndman_json_client_api_return(chandle->file,
-               &status) != RETURN_OK) && strlen(status.text)) {
+   } else if (chandle && _pndman_json_client_api_return(chandle->file, &status) != RETURN_OK && strlen(status.text)) {
       PNDMAN_API_FAIL(hpacket, packet->callback, packet->user_data, status.text);
    } else {
-      _pndman_json_download_history(packet->user_data,
-            packet->callback, chandle->file);
+      _pndman_json_download_history(packet->user_data, packet->callback, chandle->file);
    }
 
    /* dealloc */
@@ -268,18 +273,20 @@ static void _pndman_api_archived_cb(pndman_curl_code code, void *data, const cha
        code != PNDMAN_CURL_FAIL)
       return;
 
+   if (code == PNDMAN_CURL_DONE && !chandle)
+      code = PNDMAN_CURL_FAIL;
+
    /* init */
    memset(&apacket, 0, sizeof(pndman_api_archived_packet));
+   apacket.pnd       = packet->pnd;
+   apacket.user_data = packet->user_data;
 
    /* error checking, etc.. */
    if (code == PNDMAN_CURL_FAIL) {
       PNDMAN_API_FAIL(apacket, packet->callback, packet->user_data, info);
-   } else if ((_pndman_json_client_api_return(chandle->file,
-               &status) != RETURN_OK) && strlen(status.text)) {
+   } else if (chandle && _pndman_json_client_api_return(chandle->file, &status) != RETURN_OK && strlen(status.text)) {
       PNDMAN_API_FAIL(apacket, packet->callback, packet->user_data, status.text);
    } else { /* success */
-      apacket.pnd       = packet->pnd;
-      apacket.user_data = packet->user_data;
       _pndman_json_archived_pnd(packet->pnd, chandle->file);
       packet->callback(PNDMAN_CURL_DONE, &apacket);
    }
