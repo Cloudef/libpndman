@@ -112,26 +112,23 @@ typedef struct pndman_api_request
 } pndman_api_request;
 
 /* \brief internal allocation of internal api request */
-static pndman_api_request* _pndman_api_request_new(
-      pndman_api_request_type type, pndman_curl_handle *handle)
+static pndman_api_request* _pndman_api_request_new(pndman_api_request_type type, pndman_curl_handle *handle)
 {
    pndman_api_request *request;
-   if (!(request = malloc(sizeof(pndman_api_request))))
+   if (!(request = calloc(1, sizeof(pndman_api_request))))
       goto fail;
-   memset(request, 0, sizeof(pndman_api_request));
+
    request->type = type;
    request->handle = handle;
-
    return request;
 
 fail:
    DEBFAIL(PNDMAN_ALLOC_FAIL, "pndman_api_request");
    return NULL;
-  }
+}
 
 /* \brief internal free of internal api request */
-static void _pndman_api_request_free(
-      pndman_api_request *request)
+static void _pndman_api_request_free(pndman_api_request *request)
 {
    IFDO(free, request->handshake);
    IFDO(free, request->data);
@@ -140,8 +137,7 @@ static void _pndman_api_request_free(
 }
 
 /* \brief common api callback */
-static void _pndman_api_common_cb(pndman_curl_code code, void *data,
-      const char *info, pndman_curl_handle *chandle)
+static void _pndman_api_common_cb(pndman_curl_code code, void *data, const char *info, pndman_curl_handle *chandle)
 {
    pndman_api_status status;
    pndman_generic_packet *packet = (pndman_generic_packet*)data;
@@ -166,8 +162,7 @@ static void _pndman_api_common_cb(pndman_curl_code code, void *data,
 }
 
 /* \brief rating api callback */
-static void _pndman_api_rating_cb(pndman_curl_code code, void *data,
-      const char *info, pndman_curl_handle *chandle)
+static void _pndman_api_rating_cb(pndman_curl_code code, void *data, const char *info, pndman_curl_handle *chandle)
 {
    pndman_api_status status;
    pndman_api_rate_packet rpacket;
@@ -203,8 +198,7 @@ static void _pndman_api_rating_cb(pndman_curl_code code, void *data,
 }
 
 /* \brief comment pull callback */
-static void _pndman_api_comment_pull_cb(pndman_curl_code code,
-      void *data, const char *info, pndman_curl_handle *chandle)
+static void _pndman_api_comment_pull_cb(pndman_curl_code code, void *data, const char *info, pndman_curl_handle *chandle)
 {
    pndman_api_status status;
    pndman_api_comment_packet cpacket;
@@ -234,8 +228,7 @@ static void _pndman_api_comment_pull_cb(pndman_curl_code code,
 }
 
 /* \brief dowload history callback */
-static void _pndman_api_download_history_cb(pndman_curl_code code,
-      void *data, const char *info, pndman_curl_handle *chandle)
+static void _pndman_api_download_history_cb(pndman_curl_code code, void *data, const char *info, pndman_curl_handle *chandle)
 {
    pndman_api_status status;
    pndman_api_history_packet hpacket;
@@ -265,8 +258,7 @@ static void _pndman_api_download_history_cb(pndman_curl_code code,
 }
 
 /* \brief archived PND callback */
-static void _pndman_api_archived_cb(pndman_curl_code code,
-      void *data, const char *info, pndman_curl_handle *chandle)
+static void _pndman_api_archived_cb(pndman_curl_code code, void *data, const char *info, pndman_curl_handle *chandle)
 {
    pndman_api_archived_packet apacket;
    pndman_api_status status;
@@ -396,16 +388,14 @@ static void _pndman_api_download_cb(const char *info, pndman_api_request *reques
 }
 
 /* \brief create new handshake packet */
-static pndman_handshake_packet* _pndman_api_handshake_packet(
-      const char *key, const char *username)
+static pndman_handshake_packet* _pndman_api_handshake_packet(const char *key, const char *username)
 {
    pndman_handshake_packet *packet;
-   if (!(packet = malloc(sizeof(pndman_handshake_packet))))
+   if (!(packet = calloc(1, sizeof(pndman_handshake_packet))))
       goto fail;
-   memset(packet, 0, sizeof(pndman_handshake_packet));
+
    strncpy(packet->username, username, PNDMAN_SHRT_STR-1);
    strncpy(packet->key, key, PNDMAN_STR-1);
-
    return packet;
 
 fail:
@@ -414,16 +404,14 @@ fail:
 }
 
 /* \brief create new comment packet */
-static pndman_download_packet* _pndman_api_download_packet(
-      const char *path, pndman_package_handle *handle)
+static pndman_download_packet* _pndman_api_download_packet(const char *path, pndman_package_handle *handle)
 {
    pndman_download_packet *packet;
-   if (!(packet = malloc(sizeof(pndman_download_packet))))
+   if (!(packet = calloc(1, sizeof(pndman_download_packet))))
       goto fail;
-   memset(packet, 0, sizeof(pndman_download_packet));
+
    packet->handle = handle;
    strncpy(packet->download_path, path, PNDMAN_PATH-1);
-
    return packet;
 
 fail:
@@ -437,9 +425,9 @@ static pndman_comment_packet* _pndman_api_comment_packet(
       const char *comment, time_t timestamp)
 {
    pndman_comment_packet *packet;
-   if (!(packet = malloc(sizeof(pndman_comment_packet))))
+   if (!(packet = calloc(1, sizeof(pndman_comment_packet))))
       goto fail;
-   memset(packet, 0, sizeof(pndman_comment_packet));
+
    packet->pnd = pnd;
    packet->repository = repo;
    packet->timestamp = timestamp;
@@ -455,17 +443,15 @@ fail:
 }
 
 /* \brief create new rate packet */
-static pndman_rate_packet* _pndman_api_rate_packet(
-      pndman_repository *repo, pndman_package *pnd, int rate)
+static pndman_rate_packet* _pndman_api_rate_packet(pndman_repository *repo, pndman_package *pnd, int rate)
 {
    pndman_rate_packet *packet;
-   if (!(packet = malloc(sizeof(pndman_rate_packet))))
+   if (!(packet = calloc(1, sizeof(pndman_rate_packet))))
       goto fail;
-   memset(packet, 0, sizeof(pndman_rate_packet));
+
    packet->pnd = pnd;
    packet->repository = repo;
    packet->rate = rate;
-
    return packet;
 
 fail:
@@ -474,16 +460,14 @@ fail:
 }
 
 /* \brief create new download history packet */
-static pndman_history_packet* _pndman_api_history_packet(
-      pndman_repository *repo, pndman_api_history_callback callback)
+static pndman_history_packet* _pndman_api_history_packet(pndman_repository *repo, pndman_api_history_callback callback)
 {
    pndman_history_packet *packet;
-   if (!(packet = malloc(sizeof(pndman_history_packet))))
+   if (!(packet = calloc(1, sizeof(pndman_history_packet))))
       goto fail;
-   memset(packet, 0, sizeof(pndman_history_packet));
+
    packet->repository = repo;
    packet->callback = callback;
-
    return packet;
 
 fail:
@@ -492,16 +476,14 @@ fail:
 }
 
 /* \brief create new archived packet */
-static pndman_archived_packet* _pndman_api_archived_packet(
-      pndman_repository *repo, pndman_package *pnd)
+static pndman_archived_packet* _pndman_api_archived_packet(pndman_repository *repo, pndman_package *pnd)
 {
    pndman_archived_packet *packet;
-   if (!(packet = malloc(sizeof(pndman_archived_packet))))
+   if (!(packet = calloc(1, sizeof(pndman_archived_packet))))
       goto fail;
-   memset(packet, 0, sizeof(pndman_archived_packet));
+
    packet->pnd = pnd;
    packet->repository = repo;
-
    return packet;
 
 fail:
@@ -557,8 +539,7 @@ fail:
 }
 
 /* \brief perform download history after handshake */
-static void _pndman_api_download_history_perform(
-      const char *info, pndman_api_request *request)
+static void _pndman_api_download_history_perform(const char *info, pndman_api_request *request)
 {
    char url[PNDMAN_URL];
    pndman_api_history_packet hpacket;
@@ -850,8 +831,7 @@ fail:
 /* INTERNAL API */
 
 /* \brief handshake for commercial download */
-int _pndman_api_commercial_download(pndman_curl_handle *handle,
-      pndman_package_handle *package)
+int _pndman_api_commercial_download(pndman_curl_handle *handle, pndman_package_handle *package)
 {
    pndman_download_packet *packet;
    assert(handle && package && package->pnd && package->pnd->repositoryptr);
@@ -906,8 +886,7 @@ PNDMANAPI int pndman_api_comment_pnd(void *user_data,
 }
 
 /* \brief get comments from pnd */
-PNDMANAPI int pndman_api_comment_pnd_pull(void *user_data, pndman_package *pnd,
-      pndman_api_comment_callback callback)
+PNDMANAPI int pndman_api_comment_pnd_pull(void *user_data, pndman_package *pnd, pndman_api_comment_callback callback)
 {
    CHECKUSE(pnd);
    CHECKUSE(pnd->repositoryptr);
@@ -982,8 +961,7 @@ PNDMANAPI int pndman_api_rate_pnd(void *user_data,
 }
 
 /* \brief get own pnd rating */
-PNDMANAPI int pndman_api_get_own_rate_pnd(void *user_data,
-      pndman_package *pnd, pndman_api_rate_callback callback)
+PNDMANAPI int pndman_api_get_own_rate_pnd(void *user_data, pndman_package *pnd, pndman_api_rate_callback callback)
 {
    CHECKUSE(pnd);
    CHECKUSE(pnd->repositoryptr);
@@ -1001,8 +979,7 @@ PNDMANAPI int pndman_api_get_own_rate_pnd(void *user_data,
 }
 
 /* \brief get download history */
-PNDMANAPI int pndman_api_download_history(void *user_data,
-      pndman_repository *repository, pndman_api_history_callback callback)
+PNDMANAPI int pndman_api_download_history(void *user_data, pndman_repository *repository, pndman_api_history_callback callback)
 {
    CHECKUSE(repository);
    CHECKUSE(callback);
@@ -1024,8 +1001,7 @@ PNDMANAPI int pndman_api_download_history(void *user_data,
 
 /* \brief get archived pnds
  * archived pnd's are store in next_installed */
-PNDMANAPI int pndman_api_archived_pnd(void *user_data, pndman_package *pnd,
-      pndman_api_archived_callback callback)
+PNDMANAPI int pndman_api_archived_pnd(void *user_data, pndman_package *pnd, pndman_api_archived_callback callback)
 {
    CHECKUSE(pnd);
    CHECKUSE(pnd->repositoryptr);
@@ -1044,3 +1020,6 @@ PNDMANAPI int pndman_api_archived_pnd(void *user_data, pndman_package *pnd,
 
    return _pndman_api_archived_pnd(user_data, pnd, pnd->repositoryptr, callback);
 }
+
+/* vim: set ts=8 sw=2 tw=0 :*/
+
