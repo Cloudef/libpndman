@@ -6,22 +6,25 @@ static void rate_cb(pndman_curl_code code, pndman_api_rate_packet *p)
    if (code == PNDMAN_CURL_PROGRESS)
       return;
 
+   printf("USER_DATA: %s\n", (char*)p->user_data);
+
    if (code == PNDMAN_CURL_FAIL) {
-      printf("%s", p->error);
+      printf("%s\n", p->error);
       return;
    }
 
    if (p->total_rating)
-      printf("new rating for %s is %d", p->pnd->id, p->total_rating);
+      printf("new rating for %s is %d\n", p->pnd->id, p->total_rating);
    else
-      printf("%d", p->rating);
+      printf("%d\n", p->rating);
 }
 
-static void comment_pull_cb(pndman_curl_code code,
-      pndman_api_comment_packet *p)
+static void comment_pull_cb(pndman_curl_code code, pndman_api_comment_packet *p)
 {
    if (code == PNDMAN_CURL_PROGRESS)
       return;
+
+   printf("USER_DATA: %s\n", (char*)p->user_data);
 
    if (code == PNDMAN_CURL_FAIL) {
       puts(p->error);
@@ -40,11 +43,12 @@ static void comment_pull_cb(pndman_curl_code code,
          p->username, p->comment);
 }
 
-static void history_cb(pndman_curl_code code,
-      pndman_api_history_packet *p)
+static void history_cb(pndman_curl_code code, pndman_api_history_packet *p)
 {
    if (code == PNDMAN_CURL_PROGRESS)
       return;
+
+   printf("USER_DATA: %s\n", (char*)p->user_data);
 
    if (code == PNDMAN_CURL_FAIL) {
       puts(p->error);
@@ -61,13 +65,14 @@ static void history_cb(pndman_curl_code code,
          p->version->release, p->version->build);
 }
 
-static void archive_cb(pndman_curl_code code,
-      pndman_api_archived_packet *p)
+static void archive_cb(pndman_curl_code code, pndman_api_archived_packet *p)
 {
    pndman_package *pp;
 
    if (code == PNDMAN_CURL_PROGRESS)
       return;
+
+   printf("USER_DATA: %s\n", (char*)p->user_data);
 
    if (code == PNDMAN_CURL_FAIL) {
       puts(p->error);
@@ -82,8 +87,9 @@ static void archive_cb(pndman_curl_code code,
       printf("no archieved pnds\n");
 }
 
-static void generic_cb(pndman_curl_code code,
-      const char *info, void *user_data) {
+static void generic_cb(pndman_curl_code code, const char *info, void *user_data)
+{
+   printf("USER_DATA: %s\n", (char*)user_data);
    if (code == PNDMAN_CURL_FAIL)
       puts(info);
 }
@@ -109,12 +115,16 @@ int main(int argc, char **argv)
    if (!(repo = pndman_repository_add(REPOSITORY_URL, repository)))
       err("failed to add repository "REPOSITORY_URL", :/");
 
+#if 0
+   pndman_device_read_repository(repo, device);
+#else
    common_create_sync_handles(shandle, 1, repository, common_sync_cb,
          PNDMAN_SYNC_FULL);
 
    puts("");
    while (pndman_curl_process() > 0);
    puts("");
+#endif
 
    pndman_repository_set_credentials(repo,
          "user", "key", 0);
@@ -143,13 +153,13 @@ int main(int argc, char **argv)
    if (!pnd) puts("no milkyhelper pnd found, skipping test");
 
    if (pnd) {
-      pndman_api_comment_pnd(NULL, pnd, "test comment from libpndman", generic_cb);
-      pndman_api_rate_pnd(NULL, pnd, 100, rate_cb);
-      pndman_api_get_own_rate_pnd(NULL, pnd, rate_cb);
-      pndman_api_comment_pnd_pull(NULL, pnd, comment_pull_cb);
-      pndman_api_comment_pnd_delete(NULL, pnd, 1, generic_cb);
-      pndman_api_download_history(NULL, repo, history_cb);
-      pndman_api_archived_pnd(NULL, pnd, archive_cb);
+      pndman_api_comment_pnd("USERDATA", pnd, "test comment from libpndman", generic_cb);
+      pndman_api_rate_pnd("USERDATA", pnd, 5, rate_cb);
+      pndman_api_get_own_rate_pnd("USERDATA", pnd, rate_cb);
+      pndman_api_comment_pnd_pull("USERDATA", pnd, comment_pull_cb);
+      pndman_api_comment_pnd_delete("USERDATA", pnd, 1, generic_cb);
+      pndman_api_download_history("USERDATA", repo, history_cb);
+      pndman_api_archived_pnd("USERDATA", pnd, archive_cb);
 
       puts("");
       while (pndman_curl_process() > 0);
