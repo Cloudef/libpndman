@@ -311,7 +311,7 @@ static void _pndman_api_comment_cb(const char *info, pndman_api_request *request
 
    /* error handling */
    if (info) {
-      _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet, info, NULL);
+      _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet, info, packet->user_data);
    } else {
       snprintf(url, PNDMAN_URL-1, "%s/%s", packet->repository->api.root, API_COMMENT);
 
@@ -321,8 +321,9 @@ static void _pndman_api_comment_cb(const char *info, pndman_api_request *request
       _pndman_curl_handle_set_post(request->handle, buffer);
       if (_pndman_curl_handle_perform(request->handle) == RETURN_OK) {
          request->handle = NULL;
-      } else _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet,
-            "_pndman_curl_handle_perform failed", NULL);
+      } else {
+        _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet, "_pndman_curl_handle_perform failed", packet->user_data);
+      }
    }
 
    /* free request */
@@ -344,7 +345,7 @@ static void _pndman_api_rate_cb(const char *info, pndman_api_request *request)
 
    /* error handling */
    if (info) {
-      _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet, info, NULL);
+      _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet, info, packet->user_data);
    } else {
       snprintf(url, PNDMAN_URL-1, "%s/%s", packet->repository->api.root, API_RATE);
       if (packet->rate) snprintf(buffer, PNDMAN_POST-1, "id=%s&a=r&r=%d", packet->pnd->id, packet->rate);
@@ -354,8 +355,9 @@ static void _pndman_api_rate_cb(const char *info, pndman_api_request *request)
       if (_pndman_curl_handle_perform(request->handle) == RETURN_OK) {
          request->handle = NULL;
          request->data   = NULL;
-      } else _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet,
-            "_pndman_curl_handle_perform failed", NULL);
+      } else {
+         _pndman_api_common_cb(PNDMAN_CURL_FAIL, packet, "_pndman_curl_handle_perform failed", packet->user_data);
+      }
    }
 
    /* free request */
@@ -381,9 +383,9 @@ static void _pndman_api_download_cb(const char *info, pndman_api_request *reques
       strncpy(request->handle->path, packet->download_path, PNDMAN_PATH-1);
       _pndman_curl_handle_set_url(request->handle, url);
       _pndman_curl_handle_set_post(request->handle, "");
-      if (_pndman_curl_handle_perform(request->handle) != RETURN_OK)
-         _pndman_package_handle_done(PNDMAN_CURL_FAIL,
-            handle, "_pndman_curl_handle_perform failed", NULL);
+      if (_pndman_curl_handle_perform(request->handle) != RETURN_OK) {
+         _pndman_package_handle_done(PNDMAN_CURL_FAIL, handle, "_pndman_curl_handle_perform failed", NULL);
+      }
    }
 
    /* user will free this handle! */
@@ -747,8 +749,7 @@ static int _pndman_api_comment_pnd_pull(void *user_data,
    pndman_curl_handle *handle;
    assert(pnd && repository && callback);
 
-   if (!(handle = _pndman_curl_handle_new(NULL, NULL,
-               _pndman_api_comment_pull_cb, NULL)))
+   if (!(handle = _pndman_curl_handle_new(NULL, NULL, _pndman_api_comment_pull_cb, NULL)))
       goto fail;
 
    if (!(packet = _pndman_api_comment_packet(repository, pnd, NULL, 0)))
@@ -828,8 +829,7 @@ static int _pndman_api_archived_pnd(void *user_data,
    pndman_curl_handle *handle;
    assert(pnd && repository && callback);
 
-   if (!(handle = _pndman_curl_handle_new(NULL, NULL,
-               _pndman_api_archived_cb, NULL)))
+   if (!(handle = _pndman_curl_handle_new(NULL, NULL, _pndman_api_archived_cb, NULL)))
       goto fail;
 
    if (!(packet = _pndman_api_archived_packet(repository, pnd)))

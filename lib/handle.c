@@ -447,8 +447,7 @@ fail:
 /* INTERNAL API */
 
 /* \brief handle callback */
-void _pndman_package_handle_done(pndman_curl_code code, void *data, const char *info,
-      pndman_curl_handle *chandle)
+void _pndman_package_handle_done(pndman_curl_code code, void *data, const char *info, pndman_curl_handle *chandle)
 {
    pndman_api_status status;
    pndman_package_handle *handle  = (pndman_package_handle*)data;
