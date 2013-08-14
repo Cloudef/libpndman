@@ -1,7 +1,7 @@
 libpndman
 =========
 
-Package managment library for PND files.
+Package management library for PND files.
 ----------------------------------------
 [usage][]
 
