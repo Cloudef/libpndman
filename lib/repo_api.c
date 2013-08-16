@@ -178,6 +178,7 @@ static void _pndman_api_rating_cb(pndman_curl_code code, void *data, const char 
    memset(&rpacket, 0, sizeof(pndman_api_rate_packet));
    rpacket.pnd       = packet->pnd;
    rpacket.user_data = packet->user_data;
+   rpacket.rating    = packet->rate;
 
    /* error checking, etc.. */
    if (code == PNDMAN_CURL_FAIL) {
