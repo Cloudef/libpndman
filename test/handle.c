@@ -28,7 +28,7 @@ int main(int argc, char **argv)
          PNDMAN_SYNC_FULL);
 
    puts("");
-   while (pndman_curl_process() > 0);
+   while (pndman_curl_process(0, 1000) > 0);
    puts("");
 
    /* check that we actually got pnd's */
@@ -41,7 +41,7 @@ int main(int argc, char **argv)
          PNDMAN_PACKAGE_INSTALL | PNDMAN_PACKAGE_INSTALL_MENU);
 
    puts("");
-   while (pndman_curl_process() > 0);
+   while (pndman_curl_process(0, 1000) > 0);
    puts("");
 
    common_commit_repositories_to_device(repository, device);

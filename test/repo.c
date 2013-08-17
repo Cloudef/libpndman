@@ -30,7 +30,7 @@ int main(int argc, char **argv)
    common_create_sync_handles(handle, 1, repository, common_sync_cb, 0);
 
    puts("");
-   while (pndman_curl_process() > 0);
+   while (pndman_curl_process(0, 1000) > 0);
    puts("");
 
    puts("");

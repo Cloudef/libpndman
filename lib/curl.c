@@ -338,7 +338,7 @@ static void _pndman_curl_msg(int result, pndman_curl_handle *handle)
 }
 
 /* \brief perform curl operation */
-static int _pndman_curl_perform(void)
+static int _pndman_curl_perform(unsigned long tv_sec, unsigned long tv_usec)
 {
    int still_running;
    int maxfd = -1;
@@ -355,37 +355,43 @@ static int _pndman_curl_perform(void)
    pndman_curl_handle *handle;
 
    /* perform download */
-   ret = curl_multi_perform(_pndman_curlm, &still_running);
-   while (ret == CURLM_CALL_MULTI_PERFORM)
-      ret = curl_multi_perform(_pndman_curlm, &still_running);
+   while ((ret = curl_multi_perform(_pndman_curlm, &still_running)) == CURLM_CALL_MULTI_PERFORM);
 
    /* check error */
    if (ret != CURLM_OK)
       goto fail;
 
-   /* zero file descriptions */
-   FD_ZERO(&fdread);
-   FD_ZERO(&fdwrite);
-   FD_ZERO(&fdexcep);
+   /* run multi_timeout, if still running */
+   if (still_running) {
+      /* zero file descriptions */
+      FD_ZERO(&fdread);
+      FD_ZERO(&fdwrite);
+      FD_ZERO(&fdexcep);
 
-   /* set a suitable timeout to play around with */
-   timeout.tv_sec = 1;
-   timeout.tv_usec = 0;
+      /* set a suitable timeout to play around with */
+      memset(&timeout, 0, sizeof(timeout));
+      timeout.tv_sec = tv_sec;
+      timeout.tv_usec = tv_usec;
 
-   /* timeout */
-   ret = curl_multi_timeout(_pndman_curlm, &curl_timeout);
-   if (ret != CURLM_OK) goto fail;
+      /* timeout */
+      ret = curl_multi_timeout(_pndman_curlm, &curl_timeout);
+      if (ret != CURLM_OK) goto fail;
 
-   if(curl_timeout >= 0) {
-      timeout.tv_sec = curl_timeout / 1000;
-      if(timeout.tv_sec > 1) timeout.tv_sec = 1;
-      else timeout.tv_usec = (curl_timeout % 1000) * 1000;
+      if (curl_timeout >= 0) {
+         timeout.tv_sec  = curl_timeout / 1000;
+         timeout.tv_usec = 0;
+         if (timeout.tv_sec > 60) {
+            timeout.tv_sec = 60;
+         } else if (timeout.tv_sec == 0) {
+            timeout.tv_usec = curl_timeout * 1000;
+         }
+      }
+
+      /* get file descriptors from the transfers */
+      ret = curl_multi_fdset(_pndman_curlm, &fdread, &fdwrite, &fdexcep, &maxfd);
+      if (ret != CURLM_OK || maxfd < -1) goto fail;
+      select(maxfd+1, &fdread, &fdwrite, &fdexcep, &timeout);
    }
-
-   /* get file descriptors from the transfers */
-   ret = curl_multi_fdset(_pndman_curlm, &fdread, &fdwrite, &fdexcep, &maxfd);
-   if (ret != CURLM_OK || maxfd < -1) goto fail;
-   select(maxfd+1, &fdread, &fdwrite, &fdexcep, &timeout);
 
    /* update status of curl handles */
    while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left))) {
@@ -414,7 +420,7 @@ fail:
 /* PUBLIC API */
 
 /* \brief process all internal curl requests */
-PNDMANAPI int pndman_curl_process(void)
+PNDMANAPI int pndman_curl_process(unsigned long tv_sec, unsigned long tv_usec)
 {
    int still_running;
 
@@ -422,7 +428,7 @@ PNDMANAPI int pndman_curl_process(void)
    if (!_pndman_curlm) return 0;
 
    /* perform sync */
-   if ((still_running = _pndman_curl_perform()) == -1)
+   if ((still_running = _pndman_curl_perform(tv_sec, tv_usec)) == -1)
       goto fail;
 
    /* destoroy curlm when done,

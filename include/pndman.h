@@ -658,9 +658,12 @@ PNDMANAPI int pndman_api_archived_pnd(void *user_data, pndman_package *pnd,
  * For CLI application, you should run it inside while loop
  * for example until it returns what's expected above.
  *
+ * This function does select by the value returned by curl_multi_timeout,
+ * however the timeout value is clipped to avoid stalls.
+ *
  * NOTE: this replaces pndman_sync(); pndman_download();
  * returns number of curl operations pending, -1 on failure */
-PNDMANAPI int pndman_curl_process(void);
+PNDMANAPI int pndman_curl_process(unsigned long tv_sec, unsigned long tv_usec);
 
 /* \brief function that does some internal
  * tests to catch up bad programming..

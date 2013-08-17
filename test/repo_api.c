@@ -122,7 +122,7 @@ int main(int argc, char **argv)
          PNDMAN_SYNC_FULL);
 
    puts("");
-   while (pndman_curl_process() > 0);
+   while (pndman_curl_process(0, 1000) > 0);
    puts("");
 #endif
 
@@ -145,7 +145,7 @@ int main(int argc, char **argv)
             PNDMAN_PACKAGE_INSTALL | PNDMAN_PACKAGE_INSTALL_MENU);
 
       puts("");
-      while (pndman_curl_process() > 0);
+      while (pndman_curl_process(0, 1000) > 0);
       puts("");
    }
 
@@ -162,7 +162,7 @@ int main(int argc, char **argv)
       pndman_api_archived_pnd("USERDATA", pnd, archive_cb);
 
       puts("");
-      while (pndman_curl_process() > 0);
+      while (pndman_curl_process(0, 1000) > 0);
       puts("");
    }
 

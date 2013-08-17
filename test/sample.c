@@ -272,7 +272,7 @@ int main(int argc, char **argv)
     * example in GUI programs,
     * since it won't do anything if
     * not needed. */
-   while (pndman_curl_process() > 0);
+   while (pndman_curl_process(0, 1000) > 0);
 
    /* lets make sure every sync handle is freed,
     * normally this check is not needed,
@@ -324,7 +324,7 @@ int main(int argc, char **argv)
    /* don't forget to call the magic
     * pndman_curl_process(); for api
     * requests as well. */
-   while (pndman_curl_process() > 0);
+   while (pndman_curl_process(0, 1000) > 0);
 
    /* OK, we covered all the neat
     * repository related things you
@@ -532,7 +532,7 @@ int main(int argc, char **argv)
    /* don't forget to process the
     * api requests with the magic
     * pndman_curl_process(); */
-   while (pndman_curl_process() > 0);
+   while (pndman_curl_process(0, 1000) > 0);
 
    /* want to download a package?
     * here we go. */
@@ -564,7 +564,7 @@ int main(int argc, char **argv)
 
       /* call the magic function,
        * you know the thing already. */
-      while (pndman_curl_process() > 0);
+      while (pndman_curl_process(0, 1000) > 0);
 
       /* normally this is something
        * you do in the package callback,

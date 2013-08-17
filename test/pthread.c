@@ -32,7 +32,7 @@ static void* process_thread(void *ptr) {
    int running = 1;
    while (running) {
       pthread_mutex_lock(&pndman_mutex);
-      DOWNLOADS = pndman_curl_process();
+      DOWNLOADS = pndman_curl_process(0, 1000);
       pthread_mutex_unlock(&pndman_mutex);
       pthread_mutex_lock(&quit_mutex);
       running = PROCESS_THREAD_RUNNING;

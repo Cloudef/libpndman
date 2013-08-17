@@ -28,7 +28,7 @@ int main(int argc, char **argv)
    common_create_sync_handles(shandle, 1, repository, common_sync_cb, 0);
 
    puts("");
-   while (pndman_curl_process() > 0);
+   while (pndman_curl_process(0, 1000) > 0);
    puts("");
 
    if (!repo->pnd)
@@ -48,7 +48,7 @@ int main(int argc, char **argv)
    common_perform_package_handles(phandle, HANDLE_COUNT, PNDMAN_PACKAGE_INSTALL);
 
    puts("");
-   while (pndman_curl_process() > 0);
+   while (pndman_curl_process(0, 1000) > 0);
    puts("");
 
    for (d = device; d; d = d->next) pndman_package_crawl(0, d, repository);

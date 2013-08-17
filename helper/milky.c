@@ -1687,13 +1687,13 @@ static int syncrepos(pndman_repository *rs, _USR_DATA *data)
       pndman_sync_handle_perform(&handle[c++]);
    }
 
-   while ((ret = pndman_curl_process() > 0)) {
+   while ((ret = pndman_curl_process(0, 1000) > 0)) {
       for (r = rs, c = 0; r; r = r->next) {
          if (handle[c].progress.done == 2) handle[c].progress.done = 0; /* clear our hack */
          if (handle[c].progress.done) data->tdl += handle[c].progress.total_to_download;
       }
       if (!(data->flags & GB_NOBAR)) progressbar(data->tdl, data->ttdl);
-      usleep(1000); data->tdl = 0; data->ttdl = 0;
+      data->tdl = 0; data->ttdl = 0;
    }
    ERASE();
    if (ret == -1) _printf(_INTERNAL_CURL_FAIL);
@@ -2065,7 +2065,7 @@ static int targetperform(_USR_DATA *data)
       ++c;
    }
 
-   while ((ret = pndman_curl_process()) > 0 || count > 0) {
+   while ((ret = pndman_curl_process(0, 1000)) > 0 || count > 0) {
       /* check active transmissions */
       for (c = 0, count = 0, t = data->tlist; t; t = t->next) {
          if (!handle[c].flags) { ++c; continue; }              /* failed perform */
@@ -2091,7 +2091,6 @@ static int targetperform(_USR_DATA *data)
          }
          ++c;
       }
-      usleep(1000);
    }
    ERASE();
    if (ret == -1) _printf(_INTERNAL_CURL_FAIL);
@@ -2555,7 +2554,7 @@ static int repoapiratecomment(_USR_DATA *data, const char *comment, unsigned int
          pndman_api_rate_pnd(_ID_RATE_PUT, t->pnd, rate, repoapiratecb);
       else pndman_api_get_own_rate_pnd(_ID_RATE_GET, t->pnd, repoapiratecb);
    }
-   while (pndman_curl_process() > 0) usleep(1000);
+   while (pndman_curl_process(0, 1000) > 0);
    return RETURN_OK;
 }
 
@@ -2597,7 +2596,7 @@ static int repoapicommentrm(_USR_DATA *data, const char *needle)
    pp.needle = needle;
    for (t = data->tlist; t; t = t->next) {
       pndman_api_comment_pnd_pull(&pp, t->pnd, repoapicommentrmcb);
-      while (pndman_curl_process() > 0) usleep(1000);
+      while (pndman_curl_process(0, 1000) > 0);
    }
    return RETURN_OK;
 }
@@ -2675,7 +2674,7 @@ static int repoapicommentpull(_USR_DATA *data)
       _printf(_COMMENTS_FOR_PACKAGE, t->pnd->id);
       memset(&s, 0, sizeof(_comment_pull_struct)); s.pnd = t->pnd;
       pndman_api_comment_pnd_pull(&s, t->pnd, repoapicommentcb);
-      while (pndman_curl_process() > 0) usleep(1000);
+      while (pndman_curl_process(0, 1000) > 0);
       processcommentpull(&s);
    }
    return RETURN_OK;
@@ -2714,7 +2713,7 @@ static int repoapidlhistory(_USR_DATA *data)
    pndman_repository *r;
    for (r = data->rlist; r; r = r->next)
       pndman_api_download_history(r, r, repoapihistorycb);
-   while (pndman_curl_process() > 0) usleep(1000);
+   while (pndman_curl_process(0, 1000) > 0);
    return RETURN_OK;
 }
 
