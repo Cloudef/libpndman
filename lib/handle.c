@@ -521,6 +521,7 @@ PNDMANAPI int pndman_package_handle_commit(pndman_package_handle *handle, pndman
    CHECKUSE(handle->flags);
    CHECKUSE(handle->pnd);
    CHECKUSE(local);
+   clock_t now = clock();
 
    /* make this idiot proof */
    local = _pndman_repository_first(local);
@@ -532,6 +533,7 @@ PNDMANAPI int pndman_package_handle_commit(pndman_package_handle *handle, pndman
       if (_pndman_package_handle_install(handle, local) != RETURN_OK)
          return RETURN_FAIL;
 
+   DEBUG(PNDMAN_LEVEL_CRAP, "Handle commit took %.2f seconds", (double)(clock()-now)/CLOCKS_PER_SEC);
    return RETURN_OK;
 }
 

@@ -627,6 +627,7 @@ int _pndman_json_commit(pndman_repository *r,
    pndman_category *c;
    pndman_license *l;
    int found = 0, delim = 0;
+   clock_t now = clock();
    assert(f && d && r);
 
    fprintf(f, "{\n"); /* start */
@@ -745,6 +746,7 @@ int _pndman_json_commit(pndman_repository *r,
    fprintf(f, "]}\n"); /* end */
    fflush(f);
 
+   DEBUG(PNDMAN_LEVEL_CRAP, "JSON write took %.2f seconds", (double)(clock()-now)/CLOCKS_PER_SEC);
    return RETURN_OK;
 }
 

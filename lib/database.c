@@ -151,7 +151,7 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
    BLOCK_FD fd = BLOCK_INIT;
    pndman_repository *r;
    char db_path[PNDMAN_PATH], *appdata;
-
+   clock_t now = clock();
    assert(device);
 
    /* find local db and read it first */
@@ -183,6 +183,7 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
 
    fclose(f);
    unlockfile(fd, db_path);
+   DEBUG(PNDMAN_LEVEL_CRAP, "Database commit took %.2f seconds", (double)(clock()-now)/CLOCKS_PER_SEC);
    return RETURN_OK;
 
 write_fail:
