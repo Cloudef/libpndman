@@ -284,14 +284,12 @@ static void _pndman_curl_cleanup(void)
 }
 
 /* \brief handle curl message */
-static void _pndman_curl_msg(int result,
-      pndman_curl_handle *handle)
+static void _pndman_curl_msg(int result, pndman_curl_handle *handle)
 {
    if (!handle || handle->free)
       return;
 
-   if (handle->progress)
-      handle->progress->done = result==CURLE_OK?1:0;
+   if (handle->progress) handle->progress->done = 1;
 
    if (pndman_get_verbose() >= PNDMAN_LEVEL_CRAP) {
       if (handle->header.size)
