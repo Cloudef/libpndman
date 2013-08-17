@@ -293,15 +293,17 @@ static void _pndman_curl_msg(int result,
    if (handle->progress)
       handle->progress->done = result==CURLE_OK?1:0;
 
-   char buffer[1024];
-   memset(buffer, 0, sizeof(buffer));
-   if (handle->header.size)
-      DEBUG(PNDMAN_LEVEL_CRAP, "%s", (char*)handle->header.data);
-   fseek(handle->file, 0L, SEEK_SET);
-   if (fgets(buffer, sizeof(buffer)-1, handle->file) &&
-         strlen(buffer) > 5)
-      DEBUG(PNDMAN_LEVEL_CRAP, "%s", buffer);
-   fseek(handle->file, 0L, SEEK_SET);
+   if (pndman_get_verbose() >= PNDMAN_LEVEL_CRAP) {
+      if (handle->header.size)
+         DEBUG(PNDMAN_LEVEL_CRAP, "%s", (char*)handle->header.data);
+
+      char buffer[256];
+      memset(buffer, 0, sizeof(buffer));
+      fseek(handle->file, 0L, SEEK_SET);
+      if (fgets(buffer, sizeof(buffer)-1, handle->file) && strlen(buffer) > 5)
+         DEBUG(PNDMAN_LEVEL_CRAP, "%s", buffer);
+      fseek(handle->file, 0L, SEEK_SET);
+   }
 
    if (result != CURLE_OK) {
       /* is http 1.1 resume supported? */
