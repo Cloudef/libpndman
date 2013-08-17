@@ -577,49 +577,112 @@ bad_json:
    return RETURN_FAIL;
 }
 
+/* \brief dynamic json buffer */
+typedef struct json_buffer {
+   size_t len, allocated;
+   char *str;
+} json_buffer;
+#define JSON_BUFFER_STEP 4096
+
+static int buf_realloc(json_buffer *buf, size_t size)
+{
+   char *tmp;
+   if (!buf->str) {
+      if (!(buf->str = malloc(buf->allocated+size))) return 0;
+   } else if ((tmp = realloc(buf->str, buf->allocated+size))) {
+      buf->str = tmp;
+   } else if ((tmp = malloc(buf->allocated+size))) {
+      memcpy(tmp, buf->str, buf->len);
+      free(buf->str);
+      buf->str = tmp;
+   } else return 0;
+   buf->allocated += size;
+   return 1;
+}
+
+static void buf_free(json_buffer *buf)
+{
+   if (buf->str) free(buf->str);
+   free(buf);
+}
+
+static json_buffer* buf_appendd(json_buffer *buf, void *data, size_t size)
+{
+   if (!buf && !(buf = calloc(1, sizeof(json_buffer)))) return NULL;
+   if (!buf->str && !buf_realloc(buf, JSON_BUFFER_STEP)) {
+      buf_free(buf);
+      return buf;
+   }
+   while (buf->allocated-buf->len < size) {
+      if (!buf_realloc(buf, JSON_BUFFER_STEP)) return buf;
+   }
+   memcpy(buf->str+buf->len, data, size);
+   buf->len += size;
+   return buf;
+}
+
+static json_buffer* buf_append(json_buffer *buf, char *str)
+{
+   return buf_appendd(buf, str, strlen(str));
+}
+
+static json_buffer* buf_appendc(json_buffer *buf, char c)
+{
+   return buf_appendd(buf, &c, 1);
+}
+
+static json_buffer* buf_appendf(json_buffer *buf, char *fmt, ...)
+{
+   char str[2048];
+   va_list argptr;
+   va_start(argptr, fmt);
+   vsnprintf(str, sizeof(str)-1, fmt, argptr);
+   va_end(argptr);
+   return buf_append(buf, str);
+}
+
 /* \brief print to file with escapes */
-static void _cfprintf(FILE *f, char *str)
+static void _cfprintf(json_buffer *f, char *str)
 {
    int len, i;
    assert(f && str);
    if (!(len = strlen(str))) return;
    for (i = 0; i != len; ++i) {
       if (str[i] == '\\')
-         fprintf(f, "\\%c", '\\');
+         buf_appendf(f, "\\%c", '\\');
       else if (str[i] == '\n')
-         fprintf(f, "\\n");
+         buf_append(f, "\\n");
       else if (str[i] == '\r')
-         fprintf(f, "\\r");
+         buf_append(f, "\\r");
       else if (str[i] == '\t')
-         fprintf(f, "\\t");
+         buf_append(f, "\\t");
       else if (str[i] == '"')
-         fprintf(f, "\\\"");
+         buf_append(f, "\\\"");
       else
-         fprintf(f, "%c", str[i]);
+         buf_appendc(f, str[i]);
    }
 }
 
 /* \brief print json key to file */
-static void _fkeyf(FILE *f, char *key, char *value, int delim)
+static void _fkeyf(json_buffer *f, char *key, char *value, int delim)
 {
    assert(f && key && value);
-   fprintf(f, "\"%s\":\"", key);
+   buf_appendf(f, "\"%s\":\"", key);
    _cfprintf(f, value);
-   fprintf(f, "\"%s\n", delim ? "," : "");
+   buf_appendf(f, "\"%s\n", delim ? "," : "");
 }
 
 /* \brief print json string to file */
-static void _fstrf(FILE *f, char *value, int delim)
+static void _fstrf(json_buffer *f, char *value, int delim)
 {
    assert(f && value);
-   fprintf(f, "\"");
+   buf_append(f, "\"");
    _cfprintf(f, value);
-   fprintf(f, "\"%s", delim ? "," : "");
+   buf_appendf(f, "\"%s\n", delim ? "," : "");
 }
 
 /* \brief outputs json for repository */
-int _pndman_json_commit(pndman_repository *r,
-      pndman_device *d, void *f)
+int _pndman_json_commit(pndman_repository *r, pndman_device *d, void *file)
 {
    pndman_package *p;
    pndman_translated *t, *td;
@@ -628,17 +691,20 @@ int _pndman_json_commit(pndman_repository *r,
    pndman_license *l;
    int found = 0, delim = 0;
    clock_t now = clock();
-   assert(f && d && r);
+   json_buffer *f;
+   assert(file && d && r);
 
-   fprintf(f, "{\n"); /* start */
-   fprintf(f, "\"repository\":{\n");
+   if (!(f = buf_append(NULL, "{\n")))
+      goto fail;
+
+   buf_append(f, "\"repository\":{\n");
    _fkeyf(f, "name", r->name, 1);
    _fkeyf(f, "version", r->version, r->prev?1:0);
 
    /* non local repository */
    if (r->prev) {
       _fkeyf(f, "updates", r->updates, 1);
-      fprintf(f, "\"timestamp\":%lu,\n", r->timestamp);
+      buf_appendf(f, "\"timestamp\":%lu,\n", r->timestamp);
       _fkeyf(f, "client_api", r->api.root, r->api.store_credentials?1:0);
       if (r->api.store_credentials) {
          _fkeyf(f, "username", r->api.username, 1);
@@ -646,14 +712,14 @@ int _pndman_json_commit(pndman_repository *r,
       }
    }
 
-   fprintf(f, "},\n");
-   fprintf(f, "\"packages\":[\n"); /* packages */
+   buf_append(f, "},\n");
+   buf_append(f, "\"packages\":[\n"); /* packages */
    for (p = r->pnd; p; p = p->next) {
       /* this pnd doesn't belong to this device */
       if (!r->prev && strcmp(p->mount, d->mount))
          continue;
 
-      fprintf(f, "%s{\n", delim?",":""); delim = 1;
+      buf_appendf(f, "%s{\n", delim?",":""); delim = 1;
 
       /* local repository */
       if (!r->prev) {
@@ -663,10 +729,10 @@ int _pndman_json_commit(pndman_repository *r,
 
       _fkeyf(f, "id", p->id, 1);
       _fkeyf(f, "uri", p->url, 1);
-      fprintf(f, "\"commercial\":%d,\n", p->commercial);
+      buf_appendf(f, "\"commercial\":%d,\n", p->commercial);
 
       /* version object */
-      fprintf(f, "\"version\":{\n");
+      buf_append(f, "\"version\":{\n");
       _fkeyf(f, "major", p->version.major, 1);
       _fkeyf(f, "minor", p->version.minor, 1);
       _fkeyf(f, "release", p->version.release, 1);
@@ -674,10 +740,10 @@ int _pndman_json_commit(pndman_repository *r,
       _fkeyf(f, "type",
             p->version.type == PND_VERSION_BETA    ? "beta"    :
             p->version.type == PND_VERSION_ALPHA   ? "alpha"   : "release", 0);
-      fprintf(f, "},\n");
+      buf_append(f, "},\n");
 
       /* localization object */
-      fprintf(f, "\"localizations\":{\n");
+      buf_append(f, "\"localizations\":{\n");
       for (t = p->title; t; t = t->next) {
          found = 0;
          for (td = p->description; td ; td = td->next)
@@ -686,68 +752,74 @@ int _pndman_json_commit(pndman_repository *r,
                break;
             }
 
-         fprintf(f, "\"%s\":{\n", t->lang);
+         buf_appendf(f, "\"%s\":{\n", t->lang);
          _fkeyf(f, "title", t->string, 1);
          _fkeyf(f, "description", found ? td->string : "", 0);
-         fprintf(f, "}%s\n", t->next ? "," : "");
+         buf_appendf(f, "}%s\n", t->next ? "," : "");
       }
 
       /* fallback */
       if (!p->title)
-         fprintf(f, "\"en_US\":{\"title\":\"\",\"description\":\"\"}\n");
-      fprintf(f, "},\n");
+         buf_appendf(f, "\"en_US\":{\"title\":\"\",\"description\":\"\"}\n");
+      buf_append(f, "},\n");
 
       _fkeyf(f, "info", p->info, 1);
 
-      fprintf(f, "\"size\":%zu,\n", p->size);
+      buf_appendf(f, "\"size\":%zu,\n", p->size);
       _fkeyf(f, "md5", p->md5, 1);
-      fprintf(f, "\"modified-time\":%lu,\n", p->modified_time);
-      if (!r->prev) fprintf(f, "\"local-modified-time\":%lu,\n", p->local_modified_time);
-      fprintf(f, "\"rating\":%d,\n", p->rating);
+      buf_appendf(f, "\"modified-time\":%lu,\n", p->modified_time);
+      if (!r->prev) buf_appendf(f, "\"local-modified-time\":%lu,\n", p->local_modified_time);
+      buf_appendf(f, "\"rating\":%d,\n", p->rating);
 
       /* author object */
-      fprintf(f, "\"author\":\n");
-      fprintf(f, "{\n");
+      buf_append(f, "\"author\":{\n");
       _fkeyf(f, "name", p->author.name, 1);
       _fkeyf(f, "website", p->author.website, 1);
       _fkeyf(f, "email", p->author.email, 0);
-      fprintf(f, "},\n");
+      buf_append(f, "},\n");
 
       _fkeyf(f, "vendor", p->vendor, 1);
       _fkeyf(f, "icon", p->icon, 1);
 
       /* previewpics array */
-      fprintf(f, "\"previewpics\":[\n");
+      buf_append(f, "\"previewpics\":[\n");
       for (pic = p->previewpic; pic; pic = pic->next)
          _fstrf(f, pic->src, pic->next ? 1 : 0);
-      fprintf(f, "],\n");
+      buf_append(f, "],\n");
 
       /* licenses array */
-      fprintf(f, "\"licenses\":[\n");
+      buf_append(f, "\"licenses\":[\n");
       for (l = p->license; l; l = l->next)
          _fstrf(f, l->name, l->next ? 1 : 0);
-      fprintf(f, "],\n");
+      buf_append(f, "],\n");
 
       /* sources array */
-      fprintf(f, "\"source\":[\n");
+      buf_append(f, "\"source\":[\n");
       for (l = p->license; l; l = l->next)
          _fstrf(f, l->sourcecodeurl, l->next ? 1 : 0);
-      fprintf(f, "],\n");
+      buf_append(f, "],\n");
 
       /* categories array */
-      fprintf(f, "\"categories\":[");
+      buf_append(f, "\"categories\":[");
       for (c = p->category; c; c = c->next) {
          _fstrf(f, c->main, 1);
          _fstrf(f, c->sub, c->next ? 1 : 0);
       }
-      fprintf(f, "]\n");
-      fprintf(f, "}\n");
+      buf_append(f, "]\n");
+      buf_append(f, "}\n");
    }
-   fprintf(f, "]}\n"); /* end */
-   fflush(f);
+   buf_append(f, "]}\n"); /* end */
+
+   fwrite(f->str, 1, f->len, file);
+   fflush(file);
+   buf_free(f);
 
    DEBUG(PNDMAN_LEVEL_CRAP, "JSON write took %.2f seconds", (double)(clock()-now)/CLOCKS_PER_SEC);
    return RETURN_OK;
+
+fail:
+   DEBUG(PNDMAN_LEVEL_ERROR, "Out of memory!");
+   return RETURN_FAIL;
 }
 
 /* vim: set ts=8 sw=3 tw=0 :*/
