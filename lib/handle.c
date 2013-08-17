@@ -326,10 +326,11 @@ static int _pndman_package_handle_install(pndman_package_handle *object,
     * skip the search if this is update. We know old one already. */
    oldp = NULL;
    if (object->pnd->update) oldp = object->pnd->update;
-   for (pnd = local->pnd; pnd && !oldp; pnd = pnd->next)
+   for (pnd = local->pnd; pnd && !oldp; pnd = pnd->next) {
       if (!strcmp(object->pnd->id, pnd->id) &&
-          !strcmp(object->pnd->mount, pnd->mount))
+          !strcmp(object->device->mount, pnd->mount))
          oldp = pnd;
+   }
 
    /* temporary path used for conflict checking */
    strncpy(tmp, object->device->mount, PNDMAN_PATH-1);
@@ -339,7 +340,7 @@ static int _pndman_package_handle_install(pndman_package_handle *object,
    strncat(tmp, filename, PNDMAN_PATH-1);
 
    /* if there is conflict use pnd id as filename */
-   if ((!oldp || _conflict(object->pnd->id, relative, object->device, local)) && _file_exist(tmp)) {
+   if (!oldp || (_file_exist(tmp) && _conflict(object->pnd->id, relative, object->device, local))) {
       strncat(relative, "/", PNDMAN_PATH-1);
       strncat(relative, object->pnd->id, PNDMAN_PATH-1);
       snprintf(tmp, PNDMAN_PATH-1, "%s.pnd", relative);
