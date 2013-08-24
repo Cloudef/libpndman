@@ -41,6 +41,7 @@ static void comment_pull_cb(pndman_curl_code code, pndman_api_comment_packet *p)
          p->version->major, p->version->minor,
          p->version->release, p->version->build,
          p->username, p->comment);
+   if (p->is_last) printf("^^^ LAST ^^^\n");
 }
 
 static void history_cb(pndman_curl_code code, pndman_api_history_packet *p)
@@ -63,6 +64,7 @@ static void history_cb(pndman_curl_code code, pndman_api_history_packet *p)
    printf("%s [%lu] (%s.%s.%s.%s)\n", p->id, p->download_date,
          p->version->major,p->version->minor,
          p->version->release, p->version->build);
+   if (p->is_last) printf("^^^ LAST ^^^\n");
 }
 
 static void archive_cb(pndman_curl_code code, pndman_api_archived_packet *p)

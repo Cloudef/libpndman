@@ -357,6 +357,7 @@ typedef struct pndman_api_comment_packet
    time_t date;
    const char *username;
    const char *comment;
+   int is_last;
 
    /* your data returned */
    void *user_data;
@@ -369,6 +370,7 @@ typedef struct pndman_api_history_packet
    const char *id;
    pndman_version *version;
    time_t download_date;
+   int is_last;
 
    /* your data returned */
    void *user_data;

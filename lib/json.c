@@ -418,6 +418,7 @@ int _pndman_json_comment_pull(void *user_data,
             cpacket.pnd = pnd; cpacket.date = date;
             cpacket.version = &version; cpacket.username = username;
             cpacket.comment = comment; cpacket.user_data = user_data;
+            cpacket.is_last = (c == json_array_size(comments) && v == json_array_size(versions));
             callback(PNDMAN_CURL_DONE, &cpacket);
             ++ncomments;
          }
@@ -472,6 +473,7 @@ int _pndman_json_download_history(void *user_data,
 
             hpacket.id = id; hpacket.version = &version;
             hpacket.download_date = date; hpacket.user_data = user_data;
+            hpacket.is_last = (p == json_array_size(packages));
             callback(PNDMAN_CURL_DONE, &hpacket);
             ++nhistory;
          }
