@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <curl/curl.h>
+#include "version.h"
 
 /* internal multi curl handle */
 static CURLM *_pndman_curlm = NULL;
@@ -98,6 +99,7 @@ static void _pndman_curl_handle_free_real(pndman_curl_handle *handle)
       curl_easy_cleanup(handle->curl);
    }
    _pndman_curl_header_free(&handle->header);
+   IFDO(curl_slist_free_all, handle->header_list);
    IFDO(fclose, handle->file);
 
    /* unlink on free
@@ -180,6 +182,7 @@ void _pndman_curl_handle_set_post(pndman_curl_handle *handle, const char *post)
 int _pndman_curl_handle_perform(pndman_curl_handle *handle)
 {
    assert(handle);
+   struct curl_slist *slist = NULL;
 
    /* no callback or data, we will fail */
    if (!handle->data || !handle->callback)
@@ -218,13 +221,14 @@ int _pndman_curl_handle_perform(pndman_curl_handle *handle)
    /* print url */
    DEBUG(PNDMAN_LEVEL_CRAP, "url: %s", handle->url);
 
-   /* set file options */
+   /* set curl options */
+   curl_easy_setopt(handle->curl, CURLOPT_USERAGENT, "libpndman ("VERSION")");
    curl_easy_setopt(handle->curl, CURLOPT_URL, handle->url);
    if (strlen(handle->post)) {
-         curl_easy_setopt(handle->curl, CURLOPT_POSTFIELDS, handle->post);
+      curl_easy_setopt(handle->curl, CURLOPT_POSTFIELDS, handle->post);
       DEBUG(PNDMAN_LEVEL_CRAP, "POST: %s", handle->post);
    }
-
+   curl_easy_setopt(handle->curl, CURLOPT_HEADERFUNCTION, _pndman_curl_write_header);
    curl_easy_setopt(handle->curl, CURLOPT_HEADERFUNCTION, _pndman_curl_write_header);
    curl_easy_setopt(handle->curl, CURLOPT_CONNECTTIMEOUT, pndman_get_curl_timeout());
    curl_easy_setopt(handle->curl, CURLOPT_NOPROGRESS, handle->progress?0:1);
@@ -240,6 +244,17 @@ int _pndman_curl_handle_perform(pndman_curl_handle *handle)
    if (handle->resume && strlen(handle->path)) {
       curl_easy_setopt(handle->curl, CURLOPT_RESUME_FROM, handle->resume);
       DEBUG(PNDMAN_LEVEL_CRAP, "Handle resume: %zu", handle->resume);
+   }
+   if (handle->if_modified_since) {
+      char header[82];
+      char rfc2822[42];
+      struct tm *ptm = gmtime(&handle->if_modified_since);
+      strftime(rfc2822, sizeof(rfc2822)-1, "%a, %d %b %Y %H:%M:%S %z", ptm);
+      snprintf(header, sizeof(header)-1, "If-Modified-Since: %s", rfc2822);
+      slist = curl_slist_append(slist, header);
+      curl_easy_setopt(handle->curl, CURLOPT_HTTPHEADER, slist);
+      handle->header_list = slist;
+      DEBUG(PNDMAN_LEVEL_CRAP, header);
    }
 
    if (!_pndman_curlm && !(_pndman_curlm = curl_multi_init()))
@@ -270,6 +285,7 @@ add_fail:
    DEBFAIL("curl_multi_add_handle failed");
 fail:
    IFDO(fclose, handle->file);
+   IFDO(curl_slist_free_all, slist);
    if (strlen(handle->path)) unlink(handle->path);
    return RETURN_FAIL;
 }

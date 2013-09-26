@@ -348,7 +348,11 @@ static void _pndman_sync_done(pndman_curl_code code, void *data, const char *inf
          _pndman_bzip2_decompress(chandle);
       }
 
-      if (_pndman_json_process(handle->repository, NULL, chandle->file) != RETURN_OK) {
+      fflush(chandle->file); fseek(chandle->file, 0L, SEEK_END);
+      size_t size = ftell(chandle->file); fseek(chandle->file, 0L, SEEK_SET);
+      if (!size) {
+         code = PNDMAN_CURL_DONE;
+      } else if (_pndman_json_process(handle->repository, NULL, chandle->file) != RETURN_OK) {
          strncpy(handle->error, "json parse failed", PNDMAN_STR-1);
          code = PNDMAN_CURL_FAIL;
       }
@@ -410,12 +414,12 @@ static int _pndman_sync_handle_perform(pndman_sync_handle *object)
    if (!url)
       goto url_cpy_fail;
 
-
    /* send to curl handler */
-   object->data = handle = _pndman_curl_handle_new(object, &object->progress,
-         _pndman_sync_done, NULL);
+   object->data = handle = _pndman_curl_handle_new(object, &object->progress, _pndman_sync_done, NULL);
    if (!handle) goto fail;
 
+   if (!(object->flags & PNDMAN_SYNC_FULL))
+      handle->if_modified_since = object->repository->timestamp;
    _pndman_curl_handle_set_url(handle, url);
    free(url);
 
