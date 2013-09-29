@@ -660,7 +660,7 @@ static void _cfprintf(json_buffer *f, char *str)
          buf_append(f, "\\t");
       else if (str[i] == '"')
          buf_append(f, "\\\"");
-      else
+      else if (!iscntrl(str[i]))
          buf_appendc(f, str[i]);
    }
 }
