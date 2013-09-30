@@ -130,9 +130,9 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
 
    /* write local db */
    _pndman_json_commit(repo, device, f);
+   repo->commited = 1;
 
    fclose(f);
-
    unlockfile(fd, db_path);
    return RETURN_OK;
 
@@ -158,6 +158,13 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
    repo = _pndman_repository_first(repo);
    _pndman_db_commit_local(repo, device);
 
+   /* do we need to commit remote repositories? */
+   for (r = repo->next; r && r->commited; r = r->next);
+   if (!r) {
+      DEBUG(PNDMAN_LEVEL_CRAP, "Database commit took %.2f seconds", (double)(clock()-now)/CLOCKS_PER_SEC);
+      return RETURN_OK;
+   }
+
    /* check appdata */
    appdata = _pndman_device_get_appdata(device);
    if (!appdata || !strlen(appdata)) goto fail;
@@ -174,11 +181,11 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
       goto write_fail;
 
    /* write repositories */
-   r = repo;
-   for (; r; r = r->next) {
+   for (r = repo; r; r = r->next) {
       if (!strlen(r->url)) continue;
       fprintf(f, "[%s]\n", r->url);
       _pndman_json_commit(r, device, f);
+      r->commited = 1;
    }
 
    fclose(f);
@@ -220,6 +227,7 @@ static int _pndman_db_get_local(pndman_repository *repo, pndman_device *device)
 
    /* read local database */
    _pndman_json_process(repo, device, f);
+   repo->commited = 1;
 
    fclose(f);
    return RETURN_OK;
@@ -290,6 +298,8 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
 
    /* process and close */
    _pndman_json_process(repo, NULL, f2);
+   repo->commited = 1;
+
    fclose(f2); fclose(f);
    return RETURN_OK;
 
@@ -348,6 +358,8 @@ static void _pndman_sync_done(pndman_curl_code code, void *data, const char *inf
          _pndman_bzip2_decompress(chandle);
       }
 
+      time_t old_timestamp = handle->repository->timestamp;
+
       fflush(chandle->file); fseek(chandle->file, 0L, SEEK_END);
       size_t size = ftell(chandle->file); fseek(chandle->file, 0L, SEEK_SET);
       if (!size) {
@@ -355,6 +367,10 @@ static void _pndman_sync_done(pndman_curl_code code, void *data, const char *inf
       } else if (_pndman_json_process(handle->repository, NULL, chandle->file) != RETURN_OK) {
          strncpy(handle->error, "json parse failed", PNDMAN_STR-1);
          code = PNDMAN_CURL_FAIL;
+      }
+
+      if (old_timestamp != handle->repository->timestamp) {
+         handle->repository->commited = 0;
       }
    }
 

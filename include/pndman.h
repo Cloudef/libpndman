@@ -251,6 +251,7 @@ typedef struct pndman_repository
    char name[PNDMAN_NAME];
    char updates[PNDMAN_URL];
    char version[PNDMAN_VERSION];
+   char commited;
    time_t timestamp;
    pndman_package *pnd;
    pndman_repository_api api;
