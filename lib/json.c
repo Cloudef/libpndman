@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include <time.h>
+#include <ctype.h>
 #include <jansson.h>
 
 /* \brief helpfer string setter */
