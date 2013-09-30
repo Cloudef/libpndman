@@ -235,6 +235,19 @@ static void _printf(const char *fmt, ...)
  *  \___/  |_| |___|_____|
  */
 
+/* show hide terminal cursor */
+void showcursor(int show)
+{
+#define CSI "\e["
+  if (show) {
+    fputs(CSI "?25h", stdout);
+  }
+  else {
+    fputs(CSI "?25l", stdout);
+  }
+#undef CSI
+}
+
 /* trim string */
 static size_t strtrim(char *str)
 {
@@ -432,7 +445,7 @@ static _USR_TARGET* addtarget(const char *id, _USR_TARGET **list)
    _USR_TARGET *new, *t = NULL;
    assert(id);
 
-   if (!strlen(id)) return NULL;
+   if (!id) return NULL;
    if (*list) {
       for (t = *list; t; t = t->next) if (!strcmp(t->id, id) ||
                                           !strcmp(t->pnd?t->pnd->id:t->id, id)) return NULL;
@@ -482,7 +495,7 @@ static _USR_IGNORE* addignore(char *id, _USR_IGNORE **list)
    _USR_IGNORE *new, *t = NULL;
    assert(id);
 
-   if (!strlen(id)) return NULL;
+   if (!id) return NULL;
    if (*list) {
       for (t = *list; t; t = t->next) if (!strcmp(t->id, id)) return NULL;
       for (t = *list; t && t->next; t = t->next);
@@ -1087,7 +1100,7 @@ static int pndinstalled(pndman_package *pnd, _USR_DATA *data)
    pndman_package *p;
    assert(pnd && data);
    for (p = data->rlist->pnd; p; p = p->next)
-      if (!strcmp(pnd->id, p->id)) return RETURN_TRUE;
+      if (pnd->id && p->id && !strcmp(pnd->id, p->id)) return RETURN_TRUE;
    return RETURN_FALSE;
 }
 
@@ -1096,7 +1109,7 @@ static const char* pndtitle(pndman_package *pnd, const char *lang)
 {
    pndman_translated *t;
    for (t = pnd->title; t; t = t->next)
-      if (!strupcmp(t->lang, lang)) return strlen(t->string)?t->string:NULL;
+      if (t->lang && lang && !strupcmp(t->lang, lang)) return t->string?t->string:NULL;
    return NULL;
 }
 
@@ -1105,7 +1118,7 @@ static const char* pnddesc(pndman_package *pnd, const char *lang)
 {
    pndman_translated *t;
    for (t = pnd->description; t; t = t->next)
-      if (!strupcmp(t->lang, lang)) return strlen(t->string)?t->string:NULL;
+      if (t->lang && lang && !strupcmp(t->lang, lang)) return t->string?t->string:NULL;
    return NULL;
 }
 
@@ -1114,7 +1127,7 @@ static const char* apptitle(pndman_application *app, const char *lang)
 {
    pndman_translated *t;
    for (t = app->title; t; t = t->next)
-      if (!strupcmp(t->lang, lang)) return strlen(t->string)?t->string:NULL;
+      if (t->lang && lang && !strupcmp(t->lang, lang)) return t->string?t->string:NULL;
    return NULL;
 }
 
@@ -1160,7 +1173,7 @@ static void filltitle(pndman_package *pnd, char *buffer)
    memset(buffer, 0, LINE_MAX-1);
    if (!pnd) return;
    snprintf(buffer, LINE_MAX-1, "\4%s\5/%s%s\7",
-         pnd->category ? strlen(pnd->category->sub) ?
+         pnd->category ? pnd->category->sub ?
          pnd->category->sub : pnd->category->main : "nogroup",
          pnd->commercial?"\1":"\2", pnd->id);
 }
@@ -1178,16 +1191,13 @@ static void repoinfo(pndman_repository *repo, _USR_DATA *data)
    _printf(_D"\1Repository with \4%d \1packages.", packages);
    _printf("\1─┬─\4%s", repo->url);
    _printf("\1 └─┬──\2%s [\3%s\5]", repo->name, repo->version);
-   if (strlen(repo->updates))  _printf("\1   ├──\5%s", repo->updates);
-   if (strlen(repo->api.root)) _printf("\1   ├─%s─\5%s",
-         (strlen(repo->api.username)||strlen(repo->api.key))?"┬":"",
-          repo->api.root);
-   if (strlen(repo->api.username)) _printf("\1   │ %s─\3%s",
-         strlen(repo->api.key)?"├":"└", repo->api.username);
-   if (strlen(repo->api.key))      _printf("\1   │ └─\3%s", repo->api.key);
+   if (repo->updates)  _printf("\1   ├──\5%s", repo->updates);
+   if (repo->api.root) _printf("\1   ├─%s─\5%s",
+         (repo->api.username||repo->api.key)?"┬":"",repo->api.root);
+   if (repo->api.username) _printf("\1   │ %s─\3%s",repo->api.key?"├":"└", repo->api.username);
+   if (repo->api.key)      _printf("\1   │ └─\3%s", repo->api.key);
    if (repo->timestamp) synced = gettime(repo->timestamp);
-   _printf("\1   └──\5%s%s%s", synced?"\2Synced ":"",
-         synced?synced:"\3Not synced!", synced?" ago":"");
+   _printf("\1   └──\5%s%s%s", synced?"\2Synced ":"",synced?synced:"\3Not synced!", synced?" ago":"");
    if (synced) free(synced);
 }
 
@@ -1222,7 +1232,7 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data, size_t longest_title)
       if ((data->flags & OP_QUERY)) {
          _printf("\2Path          \5: %s", pnd->path);
       }
-      _printf("\2Repository    \5: %s", strlen(pnd->repository)?pnd->repository:"Foreign");
+      _printf("\2Repository    \5: %s", pnd->repository?pnd->repository:"Foreign");
       _printf("\2Update        \5: %s", pnd->update?"Yes":"No");
       if ((time = gettime(pnd->modified_time))) {
          _printf("\2Modified      \5: %s ago", time);
@@ -1231,19 +1241,19 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data, size_t longest_title)
       if (pnd->category) {
          _printf("\2Categories    \5: \7");
          for (c = pnd->category; c; c = c->next)
-            printf("%s%s%s ", strlen(c->main)?c->main:"", strlen(c->sub)?" ":"", strlen(c->sub)?c->sub:"");
+            printf("%s%s%s ", c->main?c->main:"", c->sub?" ":"", c->sub?c->sub:"");
          puts("");
       }
       if (pnd->license) {
          _printf("\2Licenses      \5: \7");
          for (l = pnd->license; l; l = l->next)
-            printf("%s ", strlen(l->name)?l->name:"");
+            printf("%s ", l->name?l->name:"");
          puts("");
       }
       if (!(title = strstrip((char*)pndtitle(pnd, data->syslc))))
          title = strstrip((char*)pndtitle(pnd, "en_US")); /* fallback locale */
       if (title) {
-         _printf("\2Title         \5: %s", strlen(title)?title:pnd->id);
+         _printf("\2Title         \5: %s", title?title:pnd->id);
          free(title);
       }
       _printf("\2Size          \5: %.2f MiB", (float)pnd->size/1048576);
@@ -1255,12 +1265,12 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data, size_t longest_title)
             pnd->version.type==PND_VERSION_BETA?"Beta":
             pnd->version.type==PND_VERSION_ALPHA?"Alpha":"Release");
       _printf("\2Rating        \5: %d", pnd->rating);
-      _printf("\2URL           \5: %s", pnd->url);
-      _printf("\2MD5           \5: %s", pnd->md5);
-      _printf("\2Author        \5: %s", pnd->author.name);
-      _printf("\2Author page   \5: %s", pnd->author.website);
-      _printf("\2Vendor        \5: %s", pnd->vendor);
-      _printf("\2Icon          \5: %s", pnd->icon);
+      if (pnd->url) _printf("\2URL           \5: %s", pnd->url);
+      if (pnd->md5) _printf("\2MD5           \5: %s", pnd->md5);
+      if (pnd->author.name) _printf("\2Author        \5: %s", pnd->author.name);
+      if (pnd->author.website) _printf("\2Author page   \5: %s", pnd->author.website);
+      if (pnd->vendor) _printf("\2Vendor        \5: %s", pnd->vendor);
+      if (pnd->icon) _printf("\2Icon          \5: %s", pnd->icon);
       if (desc) {
          NEWLINE();
          _printf("\3Description   \5:\n%s", desc);
@@ -1326,7 +1336,7 @@ static pndman_repository* repositorydialog(_USR_DATA *data)
    fflush(stdout);
    _printf(_SELECT_REPOSITORY);
    for (r = data->rlist->next; r; r = r->next)
-      _printf("\4%d. \5%s", ++i, strlen(r->name)?r->name:r->url);
+      _printf("\4%d. \5%s", ++i, r->name?r->name:r->url);
    _printf(_INPUT_LINE"\7");
    fflush(stdout);
 
@@ -1659,8 +1669,7 @@ static void synccallback(pndman_curl_code code, pndman_sync_handle *handle)
    ERASE();
         if (code == PNDMAN_CURL_DONE) _printf(_REPO_SYNCED, handle->repository->name);
    else if (code == PNDMAN_CURL_FAIL) {
-      _printf(_REPO_SYNCED_NOT, strlen(handle->repository->name)?
-         handle->repository->name:handle->repository->url);
+      _printf(_REPO_SYNCED_NOT, handle->repository->name?handle->repository->name:handle->repository->url);
       _printf(_D"\1%s", handle->error);
    }
 
@@ -1687,6 +1696,7 @@ static int syncrepos(pndman_repository *rs, _USR_DATA *data)
       pndman_sync_handle_perform(&handle[c++]);
    }
 
+   if (!(data->flags & GB_NOBAR)) showcursor(0);
    while ((ret = pndman_curl_process(0, 1000) > 0)) {
       for (r = rs, c = 0; r; r = r->next) {
          if (handle[c].progress.done == 2) handle[c].progress.done = 0; /* clear our hack */
@@ -1696,6 +1706,7 @@ static int syncrepos(pndman_repository *rs, _USR_DATA *data)
       data->tdl = 0; data->ttdl = 0;
    }
    ERASE();
+   if (!(data->flags & GB_NOBAR)) showcursor(1);
    if (ret == -1) _printf(_INTERNAL_CURL_FAIL);
 
    for (r = rs, c = 0; r; r = r->next) {
@@ -1716,16 +1727,16 @@ static int matchquery(pndman_package *p, _USR_TARGET *t, _USR_DATA *data)
    /* compary category? */
    if ((data->flags & A_CATEGORY)) {
       for (c = p->category; c; c = c->next)
-         if (!strupcmp(c->main, t->id))     return RETURN_TRUE;
-         else if (!strupcmp(c->sub, t->id)) return RETURN_TRUE;
+         if (c->main && t->id && !strupcmp(c->main, t->id)) return RETURN_TRUE;
+         else if (c->sub && t->id && !strupcmp(c->sub, t->id)) return RETURN_TRUE;
       return RETURN_FALSE;
    }
 
-   if (strupstr(p->id, t->id))        return RETURN_TRUE;
+   if (p->id && t->id && strupstr(p->id, t->id)) return RETURN_TRUE;
    for (s = p->title; s; s = s->next)
-      if (strupstr(s->string, t->id)) return RETURN_TRUE;
+      if (s->string && t->id && strupstr(s->string, t->id)) return RETURN_TRUE;
    for (s = p->description; s; s = s->next)
-      if (strupstr(s->string, t->id)) return RETURN_TRUE;
+      if (s->string && t->id && strupstr(s->string, t->id)) return RETURN_TRUE;
 
    return RETURN_FALSE;
 }
@@ -1889,9 +1900,9 @@ static unsigned long long handleflagsfromflags(pndman_package *p, unsigned long 
       if ((flags & A_DESKTOP))         hflags |= PNDMAN_PACKAGE_INSTALL_DESKTOP;
       else if ((flags & A_APPS))       hflags |= PNDMAN_PACKAGE_INSTALL_APPS;
       else if ((flags & A_MENU))       hflags |= PNDMAN_PACKAGE_INSTALL_MENU;
-      else if (strstr(p->path, "pandora/desktop"))
+      else if (p->path && strstr(p->path, "pandora/desktop"))
          hflags |= PNDMAN_PACKAGE_INSTALL_DESKTOP;
-      else if (strstr(p->path, "pandora/apps"))
+      else if (p->path && strstr(p->path, "pandora/apps"))
          hflags |= PNDMAN_PACKAGE_INSTALL_APPS;
       else hflags |= PNDMAN_PACKAGE_INSTALL_MENU; /* default to menu */
    }
@@ -1916,7 +1927,7 @@ static const char* opstrfromflags(char done, unsigned long long flags)
 static void commithandle(_USR_DATA *data, pndman_package_handle *handle)
 {
    assert(data && handle);
-   if (strlen(handle->error)) {
+   if (handle->error) {
       _printf(_D"\4%s \1failed with: \1%s", handle->name, handle->error);
       return;
    }
@@ -2002,7 +2013,7 @@ static void removeappdata(pndman_package *pnd, _USR_DATA *data)
 
    /* remove appdata */
    for (a = pnd->app; a; a = a->next) {
-      if (!strlen(a->appdata)) continue;
+      if (!a->appdata) continue;
       memset(path, 0, PATH_MAX);
       strncpy(path, dev->mount, PATH_MAX-1);
       strncat(path, "/pandora/appdata/", PATH_MAX-1);
@@ -2049,7 +2060,7 @@ static int targetperform(_USR_DATA *data)
    for (t = data->tlist; t; t = t->next) ++c;
    pndman_package_handle handle[c]; t = data->tlist; char start[c];
    for (c = 0; t; t = t->next) {
-      pndman_package_handle_init(strlen(t->pnd->id)?t->pnd->id:"notitle", &handle[c]);
+      pndman_package_handle_init(t->pnd->id?t->pnd->id:"notitle", &handle[c]);
       handle[c].pnd        = t->pnd;
       handle[c].callback   = packagecallback;
       handle[c].user_data  = data;
@@ -2065,6 +2076,7 @@ static int targetperform(_USR_DATA *data)
       ++c;
    }
 
+   if (!(data->flags & GB_NOBAR)) showcursor(0);
    while ((ret = pndman_curl_process(0, 1000)) > 0 || count > 0) {
       /* check active transmissions */
       for (c = 0, count = 0, t = data->tlist; t; t = t->next) {
@@ -2093,6 +2105,7 @@ static int targetperform(_USR_DATA *data)
       }
    }
    ERASE();
+   if (!(data->flags & GB_NOBAR)) showcursor(1);
    if (ret == -1) _printf(_INTERNAL_CURL_FAIL);
 
    /* free handles */
@@ -2178,7 +2191,7 @@ static int syncprocess(_USR_DATA *data)
    /* search */
    if (isquery(data->flags))  {
       longest_title = getlongtarget(data);
-      for (r = rs; r && strlen(r->url); r = r->next)
+      for (r = rs; r && r->url; r = r->next)
          searchpnd(r, data, longest_title);
       return RETURN_OK;
    }
@@ -2300,7 +2313,7 @@ static int crawlprocess(_USR_DATA *data)
       /* check that we aren't using local repository */
       if ((rs = checkremoterepo("crawl", data))) {
          for (p = data->rlist->pnd; p; p = p->next) {
-            if (!strlen(p->md5) || (data->flags & GB_FORCE))
+            if (!p->md5 || (data->flags & GB_FORCE))
                pndman_package_fill_md5(p);
             for (r = rs; r; r = r->next)
                for (pp = r->pnd; pp; pp = pp->next) {
@@ -2372,7 +2385,7 @@ static int cleanprocess(_USR_DATA *data)
 
    memset(tmp, 0, PATH_MAX);
    for (d = data->dlist; d; d = d->next)
-      if (strlen(d->appdata)) {
+      if (d->appdata) {
          strncpy(tmp, d->appdata, PATH_MAX-1);
          _printf(_CLEANING_DB, tmp);
          strncat(tmp, "/local.db", PATH_MAX-1);
@@ -2445,13 +2458,13 @@ static int setrepocredentials(_USR_DATA *data)
       for (r = data->rlist->next; r; r = r->next)
          if (!strcmp(repository, r->url)      ||
              !strcmp(repository, r->api.root) ||
-             (strlen(r->name) && !strcmp(repository, r->name)))
+             (r->name && !strcmp(repository, r->name)))
             break;
 
       /* try strstr instead */
       if (!r) {
          for (r = data->rlist->next; r; r = r->next)
-            if (strlen(r->name) && strstr(r->name, repository)) break;
+            if (r->name && strstr(r->name, repository)) break;
       }
    }
 
@@ -2647,10 +2660,9 @@ static void processcommentpull(_comment_pull_struct *s)
           longest_user = len;
 
    /* print */
+   char *user = s->pnd->repositoryptr->api.username;
    for (d = s->comment; d; d = d->next) {
-      _printf(_D"%s%s\5\7",
-            !strcmp(s->pnd->repositoryptr->api.username, d->username)?"\4":"\1",
-             d->username);
+      _printf(_D"%s%s\5\7",(user&&!strcmp(user, d->username))?"\4":"\1", d->username);
       for (len = longest_user-strlen(d->username);
            len; --len)
          printf(" ");
@@ -2691,7 +2703,7 @@ static void repoapihistorycb(pndman_curl_code code, pndman_api_history_packet *p
       return;
    }
 
-   if (!strlen(p->id)) {
+   if (!p->id) {
       _printf(_REPO_API_NO_HISTORY);
       return;
    }
@@ -3043,7 +3055,7 @@ static int processflags(_USR_DATA *data)
       _printf("\1LANG: %s", data->syslc);
       if (data->root)  _printf("\3Root: %s", data->root->mount);
       if (data->rlist) _printf("\n\1Repositories:");
-      for (r = data->rlist; r; r = r->next) puts(strlen(r->name) ? r->name : r->url);
+      for (r = data->rlist; r; r = r->next) puts(r->name ? r->name : r->url);
       if (data->tlist) _printf("\n\4Targets:");
       for (t = data->tlist; t; t = t->next) puts(t->id);
       NEWLINE();

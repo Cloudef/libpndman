@@ -5,10 +5,6 @@
 #include "../include/pndman.h"
 #include <string.h>     /* for strrchr */
 
-/* internal sizes */
-#define PNDMAN_API_COMMENT_LEN   300
-#define PNDMAN_POST              256
-
 /* constants */
 #define PNDMAN_APPDATA        "libpndman"
 #define PNDMAN_LOCAL_DB       "libpndman repository"
@@ -24,6 +20,7 @@
 
 /* helper macros */
 #define IFDO(f, x)            if (x) f(x); x = NULL;
+#define NULLDO(f, x)          f(x); x = NULL;
 #define THIS_FILE             ((strrchr(__FILE__, '/') ?: __FILE__ - 1) + 1)
 #define DBG_FMT               "\2@FILE \5%-20s \2@LINE \5%-4d \5>> \4%s\n\5%s"
 #define DBG_WRN_BAD_USE       "\2-!- Bad usage of function:\5 "
@@ -128,9 +125,9 @@ typedef struct pndman_curl_handle
    pndman_curl_callback callback;
    pndman_curl_progress *progress;
    pndman_curl_header header;
-   char url[PNDMAN_URL];
-   char post[PNDMAN_POST];
-   char path[PNDMAN_PATH];
+   char *url;
+   char *post;
+   char *path;
    char free;
 } pndman_curl_handle;
 
@@ -145,7 +142,7 @@ typedef enum pndman_api_code {
 typedef struct pndman_api_status {
    pndman_api_code status;
    int number;
-   char text[PNDMAN_SHRT_STR];
+   char *text;
 } pndman_api_status;
 
 /* internal string utils */
@@ -158,37 +155,25 @@ int   _strnupcmp(const char *hay, const char *needle, size_t len);
 void* _pndman_get_tmp_file();
 
 /* verbose */
-void _pndman_debug_hook(const char *file, int line,
-      const char *function, int verbose_level, const char *fmt, ...);
+void _pndman_debug_hook(const char *file, int line, const char *function, int verbose_level, const char *fmt, ...);
 
 /* curl */
-pndman_curl_handle* _pndman_curl_handle_new(void *data,
-      pndman_curl_progress *progress, pndman_curl_callback callback,
-      const char *path);
+pndman_curl_handle* _pndman_curl_handle_new(void *data, pndman_curl_progress *progress, pndman_curl_callback callback, const char *path);
 void _pndman_curl_handle_free(pndman_curl_handle *handle);
 int  _pndman_curl_handle_perform(pndman_curl_handle *handle);
 void _pndman_curl_handle_set_post(pndman_curl_handle *handle, const char *post);
 void _pndman_curl_handle_set_url(pndman_curl_handle *handle, const char *url);
 
 /* json */
-int _pndman_json_api_value(const char *key, char *value, size_t size,
-      const char *buffer);
+int _pndman_json_api_value(const char *key, char *value, size_t size, const char *buffer);
 int _pndman_json_api_status(const char *buffer, pndman_api_status *status);
-int _pndman_json_commit(pndman_repository *repo,
-      pndman_device *device, void *f);
-int _pndman_json_process(pndman_repository *repo,
-      pndman_device *device, void *f);
+int _pndman_json_commit(pndman_repository *repo, pndman_device *device, void *f);
+int _pndman_json_process(pndman_repository *repo, pndman_device *device, void *f);
 int _pndman_json_client_api_return(void *file, pndman_api_status *status);
-int _pndman_json_get_value(const char *key, char *value,
-      size_t size, void *file);
-int _pndman_json_get_int_value(const char *key, int *value,
-      void *file);
-int _pndman_json_comment_pull(void *user_data,
-      pndman_api_comment_callback callback,
-      pndman_package *pnd, void *file);
-int _pndman_json_download_history(void *user_data,
-      pndman_api_history_callback callback,
-      void *file);
+int _pndman_json_get_value(const char *key, char **value, void *file);
+int _pndman_json_get_int_value(const char *key, int *value, void *file);
+int _pndman_json_comment_pull(void *user_data, pndman_api_comment_callback callback, pndman_package *pnd, void *file);
+int _pndman_json_download_history(void *user_data, pndman_api_history_callback callback, void *file);
 int _pndman_json_archived_pnd(pndman_package *pnd, void *file);
 
 /* md5 functions (remember free result) */
@@ -199,31 +184,28 @@ char* _pndman_md5(const char *file);
 pndman_device* _pndman_device_first(pndman_device *device);
 pndman_device* _pndman_device_last(pndman_device *device);
 char* _pndman_device_get_appdata(pndman_device *device);
-void  _pndman_device_get_appdata_no_create(char *appdata,
-      pndman_device *device);
+char* _pndman_device_get_appdata_no_create(pndman_device *device);
 
 /* repositories */
 pndman_repository* _pndman_repository_first(pndman_repository *repo);
 pndman_repository* _pndman_repository_last(pndman_repository *repo);
-pndman_repository* _pndman_repository_get(const char *url,
-      pndman_repository *list);
+pndman_repository* _pndman_repository_get(const char *url, pndman_repository *list);
 pndman_package* _pndman_repository_new_pnd(pndman_repository *repo);
-pndman_package* _pndman_repository_new_pnd_check(pndman_package *in_pnd,
-      const char *path, const char *mount, pndman_repository *repo);
+pndman_package* _pndman_repository_new_pnd_check(pndman_package *in_pnd, const char *path, const char *mount, pndman_repository *repo);
 int _pndman_repository_free_pnd(pndman_package *pnd, pndman_repository *repo);
 
 /* internal callback access */
-void _pndman_package_handle_done(pndman_curl_code code, void *data, const char *info,
-      pndman_curl_handle *chandle);
+void _pndman_package_handle_done(pndman_curl_code code, void *data, const char *info, pndman_curl_handle *chandle);
 
 /* api */
-int _pndman_api_commercial_download(pndman_curl_handle *handle,
-      pndman_package_handle *package);
+int _pndman_api_commercial_download(pndman_curl_handle *handle, pndman_package_handle *package);
 
 /* pndman_package  */
 pndman_package* _pndman_new_pnd(void);
 int  _pndman_vercmp(pndman_version *lp, pndman_version *rp);
-void _pndman_pnd_get_path(pndman_package *pnd, char *buffer);
+char* _pndman_pnd_get_path(pndman_package *pnd);
+void _pndman_copy_version(pndman_version *dst, pndman_version *src);
+void _pndman_free_version(pndman_version *version);
 void _pndman_package_free_titles(pndman_package *pnd);
 void _pndman_package_free_descriptions(pndman_package *pnd);
 void _pndman_package_free_previewpics(pndman_package *pnd);

@@ -105,7 +105,7 @@ static void _pndman_curl_handle_free_real(pndman_curl_handle *handle)
    /* unlink on free
     * commented since we allow download resumes! */
 #if 0
-   if (strlen(handle->path)) unlink(handle->path);
+   if (handle->path) unlink(handle->path);
 #endif
    memset(handle, 0, sizeof(pndman_curl_handle));
 
@@ -122,6 +122,9 @@ void _pndman_curl_handle_free(pndman_curl_handle *handle)
    handle->free = 1;
    handle->progress = NULL;
    handle->callback = NULL;
+   IFDO(free, handle->path);
+   IFDO(free, handle->url);
+   IFDO(free, handle->post);
 
    /* can we free immediatly? */
    if (!_pndman_curlm)
@@ -135,16 +138,14 @@ pndman_curl_handle* _pndman_curl_handle_new(void *data,
 {
    pndman_curl_handle *handle;
 
-   if (!(handle = malloc(sizeof(pndman_curl_handle))))
+   if (!(handle = calloc(1, sizeof(pndman_curl_handle))))
       goto handle_fail;
-   memset(handle, 0, sizeof(pndman_curl_handle));
-   memset(&handle->header, 0, sizeof(pndman_curl_header));
 
    if (!(handle->curl = curl_easy_init()))
       goto curl_fail;
 
    /* set defaults */
-   if (path) memcpy(handle->path, path, PNDMAN_PATH);
+   if (path) handle->path = strdup(path);
    handle->data      = data;
    handle->callback  = callback;
    handle->progress  = progress;
@@ -164,18 +165,16 @@ fail:
 void _pndman_curl_handle_set_url(pndman_curl_handle *handle, const char *url)
 {
    assert(handle);
-   if (!url) return;
-   memset(handle->url, 0, PNDMAN_URL-1);
-   strncpy(handle->url, url, PNDMAN_URL-1);
+   IFDO(free, handle->url);
+   if (url) handle->url = strdup(url);
 }
 
 /* \brief set curl handle's post field */
 void _pndman_curl_handle_set_post(pndman_curl_handle *handle, const char *post)
 {
    assert(handle);
-   if (!post) return;
-   memset(handle->post, 0, PNDMAN_POST-1);
-   strncpy(handle->post, post, PNDMAN_POST-1);
+   IFDO(free, handle->post);
+   if (post) handle->post = strdup(post);
 }
 
 /* \brief perform curl operation */
@@ -189,7 +188,7 @@ int _pndman_curl_handle_perform(pndman_curl_handle *handle)
       goto no_data_or_callback;
 
    /* no url, fail */
-   if (!strlen(handle->url))
+   if (!handle->url)
       goto no_url;
 
    /* reopen handle if needed */
@@ -203,7 +202,7 @@ int _pndman_curl_handle_perform(pndman_curl_handle *handle)
       DEBUG(PNDMAN_LEVEL_CRAP, "CURL REOPEN");
    }
 
-   if (!strlen(handle->path)) {
+   if (!handle->path) {
       if (!(handle->file = _pndman_get_tmp_file()))
          goto fail;
    } else {
@@ -213,8 +212,7 @@ int _pndman_curl_handle_perform(pndman_curl_handle *handle)
          handle->resume = ftell(handle->file);
          fclose(handle->file);
       }
-      if (!(handle->file = fopen(handle->path,
-                  handle->resume?"a+b":"w+b")))
+      if (!(handle->file = fopen(handle->path, handle->resume?"a+b":"w+b")))
          goto open_fail;
    }
 
@@ -224,7 +222,7 @@ int _pndman_curl_handle_perform(pndman_curl_handle *handle)
    /* set curl options */
    curl_easy_setopt(handle->curl, CURLOPT_USERAGENT, "libpndman ("VERSION")");
    curl_easy_setopt(handle->curl, CURLOPT_URL, handle->url);
-   if (strlen(handle->post)) {
+   if (handle->post) {
       curl_easy_setopt(handle->curl, CURLOPT_POSTFIELDS, handle->post);
       DEBUG(PNDMAN_LEVEL_CRAP, "POST: %s", handle->post);
    }
@@ -241,7 +239,7 @@ int _pndman_curl_handle_perform(pndman_curl_handle *handle)
    curl_easy_setopt(handle->curl, CURLOPT_WRITEDATA, handle);
    curl_easy_setopt(handle->curl, CURLOPT_LOW_SPEED_LIMIT, 10240L);
    curl_easy_setopt(handle->curl, CURLOPT_LOW_SPEED_TIME, 300L);
-   if (handle->resume && strlen(handle->path)) {
+   if (handle->resume && handle->path) {
       curl_easy_setopt(handle->curl, CURLOPT_RESUME_FROM, handle->resume);
       DEBUG(PNDMAN_LEVEL_CRAP, "Handle resume: %zu", handle->resume);
    }
@@ -286,7 +284,7 @@ add_fail:
 fail:
    IFDO(fclose, handle->file);
    IFDO(curl_slist_free_all, slist);
-   if (strlen(handle->path)) unlink(handle->path);
+   if (handle->path) unlink(handle->path);
    return RETURN_FAIL;
 }
 

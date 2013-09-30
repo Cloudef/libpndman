@@ -56,7 +56,7 @@ static void history_cb(pndman_curl_code code, pndman_api_history_packet *p)
       return;
    }
 
-   if (!strlen(p->id)) {
+   if (!p->id) {
       printf("no history\n");
       return;
    }

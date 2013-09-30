@@ -56,7 +56,7 @@ int main(int argc, char **argv)
 #if 0
    puts("");
    for (r = repo; r; r = r->next) {
-      printf("%s\n",strlen(r->name) ? r->name : r->url);
+      printf("%s\n",r->name ? r->name : r->url);
       printf("next: %s\n", r->next ? r->next->url : "NULL");
       printf("prev: %s\n", r->prev ? r->prev->url : "NULL");
    }
@@ -67,12 +67,12 @@ int main(int argc, char **argv)
    srand(time(0));
    while (repo) {
       for (r = repo; (rand() % 2) && r && r->next; r = r->next);
-      printf("free: %s\n", strlen(r->name) ? r->name : r->url);
+      printf("free: %s\n", r->name ? r->name : r->url);
       repo = pndman_repository_free(r);
    }
 #else
    for (r = repo; r; r = r->next) {
-      printf("free: %s\n", strlen(r->name) ? r->name : r->url);
+      printf("free: %s\n", r->name ? r->name : r->url);
       repo = pndman_repository_free(r);
    }
 #endif

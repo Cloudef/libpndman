@@ -35,17 +35,6 @@
 #  endif
 #endif
 
-/* public sizes */
-#define PNDMAN_ID          256
-#define PNDMAN_URL         LINE_MAX
-#define PNDMAN_NAME        256
-#define PNDMAN_TIMESTAMP   48
-#define PNDMAN_VERSION     8
-#define PNDMAN_STR         LINE_MAX
-#define PNDMAN_SHRT_STR    256
-#define PNDMAN_MD5         33
-#define PNDMAN_PATH        PATH_MAX
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -108,10 +97,10 @@ typedef enum pndman_exec_x11
 /* \brief struct holding version information */
 typedef struct pndman_version
 {
-   char major[PNDMAN_VERSION];
-   char minor[PNDMAN_VERSION];
-   char release[PNDMAN_VERSION];
-   char build[PNDMAN_VERSION];
+   char *major;
+   char *minor;
+   char *release;
+   char *build;
    pndman_version_type type;
 } pndman_version;
 
@@ -119,76 +108,76 @@ typedef struct pndman_version
 typedef struct pndman_exec
 {
    int   background;
-   char  startdir[PNDMAN_PATH];
+   char *startdir;
    int   standalone;
-   char  command[PNDMAN_PATH];
-   char  arguments[PNDMAN_STR];
+   char *command;
+   char *arguments;
    pndman_exec_x11 x11;
 } pndman_exec;
 
 /* \brief struct holding author information */
 typedef struct pndman_author
 {
-   char name[PNDMAN_NAME];
-   char website[PNDMAN_STR];
-   char email[PNDMAN_STR];
+   char *name;
+   char *website;
+   char *email;
 } pndman_author;
 
 /* \brief struct holding documentation information */
 typedef struct pndman_info
 {
-   char name[PNDMAN_NAME];
-   char type[PNDMAN_SHRT_STR];
-   char src[PNDMAN_PATH];
+   char *name;
+   char *type;
+   char *src;
 } pndman_info;
 
 /* \brief struct holding translated strings */
 typedef struct pndman_translated
 {
-   char lang[PNDMAN_SHRT_STR];
-   char string[PNDMAN_STR];
+   char *lang;
+   char *string;
    struct pndman_translated *next;
 } pndman_translated;
 
 /* \brief struct holding license information */
 typedef struct pndman_license
 {
-   char name[PNDMAN_STR];
-   char url[PNDMAN_STR];
-   char sourcecodeurl[PNDMAN_STR];
+   char *name;
+   char *url;
+   char *sourcecodeurl;
    struct pndman_license *next;
 } pndman_license;
 
 /* \brief struct holding previewpic information */
 typedef struct pndman_previewpic
 {
-   char src[PNDMAN_PATH];
+   char *src;
    struct pndman_previewpic *next;
 } pndman_previewpic;
 
 /* \brief struct holding association information */
 typedef struct pndman_association
 {
-   char name[PNDMAN_STR];
-   char filetype[PNDMAN_SHRT_STR];
-   char exec[PNDMAN_PATH];
+   char *name;
+   char *filetype;
+   char *exec;
    struct pndman_association *next;
 } pndman_association;
 
 /* \brief struct holding category information */
 typedef struct pndman_category
 {
-   char main[PNDMAN_SHRT_STR];
-   char sub[PNDMAN_SHRT_STR];
+   char *main;
+   char *sub;
    struct pndman_category *next;
 } pndman_category;
 
 /* \brief struct that represents PND application */
 typedef struct pndman_application
 {
-   char id[PNDMAN_ID];
-   char appdata[PNDMAN_PATH];
-   char icon[PNDMAN_PATH];
+   char *id;
+   char *appdata;
+   char *icon;
    int  frequency;
    pndman_author  author;
    pndman_version osversion;
@@ -207,13 +196,13 @@ typedef struct pndman_application
 /* \brief struct that represents PND */
 typedef struct pndman_package
 {
-   char path[PNDMAN_PATH];
-   char id[PNDMAN_ID];
-   char icon[PNDMAN_PATH];
-   char info[PNDMAN_STR];
-   char md5[PNDMAN_MD5];
-   char url[PNDMAN_STR];
-   char vendor[PNDMAN_NAME];
+   char *path;
+   char *id;
+   char *icon;
+   char *info;
+   char *md5;
+   char *url;
+   char *vendor;
    size_t size;
    time_t modified_time;
    time_t local_modified_time;
@@ -226,8 +215,8 @@ typedef struct pndman_package
    pndman_license    *license;
    pndman_previewpic *previewpic;
    pndman_category   *category;
-   char repository[PNDMAN_STR];
-   char mount[PNDMAN_PATH];
+   char *repository;
+   char *mount;
    struct pndman_package *update;
    struct pndman_package *next_installed;
    struct pndman_package *next;
@@ -238,19 +227,19 @@ typedef struct pndman_package
 /*! \brief struct representing client api access */
 typedef struct pndman_repository_api
 {
-   char root[PNDMAN_URL];
-   char username[PNDMAN_SHRT_STR];
-   char key[PNDMAN_STR];
+   char *root;
+   char *username;
+   char *key;
    char store_credentials;
 } pndman_repository_api;
 
 /*! \brief struct representing repository */
 typedef struct pndman_repository
 {
-   char url[PNDMAN_URL];
-   char name[PNDMAN_NAME];
-   char updates[PNDMAN_URL];
-   char version[PNDMAN_VERSION];
+   char *url;
+   char *name;
+   char *updates;
+   char *version;
    char commited;
    time_t timestamp;
    pndman_package *pnd;
@@ -261,10 +250,10 @@ typedef struct pndman_repository
 /*! \brief struct representing device */
 typedef struct pndman_device
 {
-   char mount[PNDMAN_PATH];
-   char device[PNDMAN_PATH];
+   char *mount;
+   char *device;
    size_t size, free, available;
-   char appdata[PNDMAN_PATH];
+   char *appdata;
    struct pndman_device *next, *prev;
 } pndman_device;
 
@@ -290,8 +279,8 @@ typedef void (*pndman_sync_handle_callback)(
 /*! \brief Struct for PND transaction */
 typedef struct pndman_package_handle
 {
-   char name[PNDMAN_NAME];
-   char error[PNDMAN_STR];
+   char *name;
+   char *error;
    pndman_package *pnd;
    pndman_device  *device;
    unsigned int flags;
@@ -309,7 +298,7 @@ typedef struct pndman_package_handle
 /* \brief struct for repository synchorization */
 typedef struct pndman_sync_handle
 {
-   char error[PNDMAN_STR];
+   char *error;
    pndman_repository *repository;
    unsigned int flags;
    pndman_curl_progress progress;
@@ -352,7 +341,7 @@ typedef void (*pndman_api_rate_callback)(
 /* \brief comment pull callback packet */
 typedef struct pndman_api_comment_packet
 {
-   char error[PNDMAN_STR];
+   char *error;
    pndman_package *pnd;
    pndman_version *version;
    time_t date;
@@ -367,7 +356,7 @@ typedef struct pndman_api_comment_packet
 /* \brief download history callback packet */
 typedef struct pndman_api_history_packet
 {
-   char error[PNDMAN_STR];
+   char *error;
    const char *id;
    pndman_version *version;
    time_t download_date;
@@ -380,7 +369,7 @@ typedef struct pndman_api_history_packet
 /* \brief archived callback packet */
 typedef struct pndman_api_archived_packet
 {
-   char error[PNDMAN_STR];
+   char *error;
    pndman_package *pnd;
 
    /* your data returned */
@@ -390,7 +379,7 @@ typedef struct pndman_api_archived_packet
 /* \brief rating callback packet */
 typedef struct pndman_api_rate_packet
 {
-   char error[PNDMAN_STR];
+   char *error;
    pndman_package *pnd;
    int rating;       /* your rating */
    int total_rating; /* new rating on repo */

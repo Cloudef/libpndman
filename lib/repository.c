@@ -15,11 +15,10 @@ static pndman_repository* _pndman_repository_init()
 {
    pndman_repository *repo;
 
-   if (!(repo = malloc(sizeof(pndman_repository))))
+   if (!(repo = calloc(1, sizeof(pndman_repository))))
       goto fail;
 
-   memset(repo, 0, sizeof(pndman_repository));
-   strncpy(repo->version, "1.0", PNDMAN_VERSION-1);
+   repo->version = strdup("1.0");
    return repo;
 
 fail:
@@ -50,7 +49,7 @@ inline pndman_repository* _pndman_repository_get(const char *url, pndman_reposit
 {
    pndman_repository *r;
    r = _pndman_repository_first(list);
-   for(; r; r = r->next) if (!strcmp(r->url, url)) return r;
+   for(; r; r = r->next) if ((r->url && !strcmp(r->url, url)) || (!r->url && !url)) return r;
    return NULL;
 }
 
@@ -61,10 +60,11 @@ pndman_package* _pndman_repository_new_pnd(pndman_repository *repo)
    assert(repo);
 
    if (repo->pnd) {
-         for (p = repo->pnd; p->next; p = p->next);
-         p = p->next = _pndman_new_pnd();
+      for (p = repo->pnd; p->next; p = p->next);
+      p = p->next = _pndman_new_pnd();
    } else p = repo->pnd = _pndman_new_pnd();
-   strncpy(p->repository, repo->url, PNDMAN_STR-1);
+   IFDO(free, p->repository);
+   if (repo->url) p->repository = strdup(repo->url);
    p->repositoryptr = repo;
 
    return p;
@@ -82,8 +82,7 @@ pndman_package* _pndman_repository_new_pnd_check(pndman_package *in_pnd,
          /* if local repository, create instance */
          if (!repo->prev) {
             /* create instance here, path differs! */
-            if (!repo->prev && strlen(path) &&
-                  strcmp(path, pnd->path) && strcmp(pnd->mount, mount)) { /* only local repo can have next installed */
+            if (!repo->prev && path && strcmp(path, pnd->path) && mount && strcmp(pnd->mount, mount)) { /* only local repo can have next installed */
                if (!_pndman_vercmp(&pnd->version, &in_pnd->version)) {
                   /* new pnd is older, assing it to end */
                   for (pni = pnd; pni && pni->next_installed; pni = pni->next_installed)
@@ -99,7 +98,8 @@ pndman_package* _pndman_repository_new_pnd_check(pndman_package *in_pnd,
                   pni->next = pnd->next;
                   DEBUG(PNDMAN_LEVEL_CRAP, "Newer : %s", path);
                }
-               strncpy(pni->repository, repo->url, PNDMAN_STR-1);
+               IFDO(free, pni->repository);
+               if (repo->url) pni->repository = strdup(repo->url);
                pni->repositoryptr = repo;
                return pni;
             } else
@@ -207,7 +207,8 @@ static pndman_repository* _pndman_repository_add(const char *url, pndman_reposit
    if (!_pndman_repository_new_if_exist(&repo, url))
       return NULL;
 
-   strncpy(repo->url, url, PNDMAN_URL-1);
+   IFDO(free, repo->url);
+   if (url) repo->url = strdup(url);
    return repo;
 }
 
@@ -228,6 +229,14 @@ static pndman_repository* _pndman_repository_free(pndman_repository *repo)
    /* get first repo */
    first = repo->prev ? _pndman_repository_first(repo) : repo->next;
 
+   IFDO(free, repo->url);
+   IFDO(free, repo->name);
+   IFDO(free, repo->updates);
+   IFDO(free, repo->version);
+   IFDO(free, repo->api.root);
+   IFDO(free, repo->api.username);
+   IFDO(free, repo->api.key);
+
    /* free the repository */
    _pndman_repository_free_pnd_all(repo);
    free(repo);
@@ -246,8 +255,7 @@ static void _pndman_repository_free_all(pndman_repository *repo)
    /* free everything */
    for(; repo; repo = next) {
       next = repo->next;
-      _pndman_repository_free_pnd_all(repo);
-      free(repo);
+      _pndman_repository_free(repo);
    }
 }
 
@@ -256,18 +264,18 @@ static int _pndman_repository_check(pndman_repository *repo)
 {
    pndman_package *p, *pn;
    FILE *f;
-   char path[PNDMAN_PATH];
    int removed = 0;
    assert(repo);
 
    for (p = repo->pnd; p; p = pn) {
       pn = p->next;
-      _pndman_pnd_get_path(p, path);
+      char *path;
+      if (!(path = _pndman_pnd_get_path(p))) continue;
       if (!(f = fopen(path, "rb"))) {
          if (_pndman_repository_free_pnd(p, repo) == RETURN_OK)
             ++removed;
-      }
-      else fclose(f);
+      } else fclose(f);
+      free(path);
    }
    return removed;
 }
@@ -281,21 +289,24 @@ PNDMANAPI pndman_repository* pndman_repository_init(void)
    pndman_repository *repo;
    repo = _pndman_repository_init();
    if (!repo) return NULL;
-   strncpy(repo->name, PNDMAN_LOCAL_DB, PNDMAN_NAME-1);
+   repo->name = strdup(PNDMAN_LOCAL_DB);
    return repo;
 }
 
 /* \brief Add new repository */
 PNDMANAPI pndman_repository* pndman_repository_add(const char *url, pndman_repository *repo)
 {
-   char stripped[PNDMAN_URL];
    CHECKUSEP(url);
    CHECKUSEP(repo);
 
-   memset(stripped, 0, PNDMAN_URL-1);
-   strncpy(stripped, url, PNDMAN_URL-1);
-   _strip_slash(stripped);
-   return _pndman_repository_add(stripped, repo);
+   char *stripped = NULL;
+   if (url) {
+      stripped = strdup(url);
+      _strip_slash(stripped);
+   }
+   pndman_repository *ret = _pndman_repository_add(stripped, repo);
+   free(stripped);
+   return ret;
 }
 
 /* \brief Clear repository, effectiely frees the PND list */
@@ -303,6 +314,7 @@ PNDMANAPI void pndman_repository_clear(pndman_repository *repo)
 {
    CHECKUSEV(repo);
    _pndman_repository_free_pnd_all(repo);
+   repo->commited = 0;
    repo->pnd = NULL;
 }
 
@@ -333,9 +345,12 @@ PNDMANAPI void pndman_repository_set_credentials(pndman_repository *repo,
       const char *username, const char *key, int store_credentials)
 {
    CHECKUSEV(repo);
-   strncpy(repo->api.username, username, PNDMAN_SHRT_STR-1);
-   strncpy(repo->api.key, key, PNDMAN_SHRT_STR-1);
+   IFDO(free, repo->api.username);
+   IFDO(free, repo->api.key);
+   if (username) repo->api.username = strdup(username);
+   if (key) repo->api.key = strdup(key);
    repo->api.store_credentials = store_credentials;
+   repo->commited = 0;
 }
 
 /* vim: set ts=8 sw=3 tw=0 :*/

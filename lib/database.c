@@ -63,46 +63,66 @@ timedout:
 /* \brief block read until file is unlocked */
 static int readblock(char *path)
 {
-   char lckpath[PNDMAN_PATH];
-   strncpy(lckpath, path, PNDMAN_PATH-1);
-   strncat(lckpath, ".lck", PNDMAN_PATH-1);
+   char *lckpath;
+   int size = snprintf(NULL, 0, "%s.lck", path)+1;
+   if (!(lckpath = malloc(size)))
+      goto fail;
+
+   sprintf(lckpath, "%s.lck", path);
    if (blockfile(lckpath) != RETURN_OK)
-      return RETURN_FAIL;
+      goto fail;
+
+   free(lckpath);
    return RETURN_OK;
+
+fail:
+   IFDO(free, lckpath);
+   return RETURN_FAIL;
 }
 
 /* \brief locks file from other processes from reading and writing */
 static FILE* lockfile(char *path)
 {
    FILE *f;
-   char lckpath[PNDMAN_PATH];
+   char *lckpath;
+   int size = snprintf(NULL, 0, "%s.lck", path)+1;
+   if (!(lckpath = malloc(size)))
+      goto fail;
 
    /* on non posix, do it uncertain way by creating lock file */
-   strncpy(lckpath, path, PNDMAN_PATH-1);
-   strncat(lckpath, ".lck", PNDMAN_PATH-1);
+   sprintf(lckpath, "%s.lck", path);
 
    /* block until ready */
    if (blockfile(lckpath) != RETURN_OK)
-      return NULL;
+      goto fail;
 
    /* create .lck file */
    if (!(f = fopen(lckpath, "w")))
-      return NULL;
+      goto fail;
 
    /* make sure it's created */
    fflush(f);
+   free(lckpath);
    return f;
+
+fail:
+   IFDO(free, lckpath);
+   return NULL;
 }
 
 /* \brief unlock the file */
 static void unlockfile(FILE *f, char *path)
 {
-   char lckpath[PNDMAN_PATH];
+   char *lckpath;
+   int size = snprintf(NULL, 0, "%s.lck", path)+1;
+   if (!(lckpath = malloc(size)))
+      return;
+
    /* on non posix, do it uncertain way by creating lock file */
-   strncpy(lckpath, path, PNDMAN_PATH-1);
-   strncat(lckpath, ".lck", PNDMAN_PATH-1);
+   sprintf(lckpath, "%s.lck", path);
    fclose(f);
    unlink(lckpath);
+   free(lckpath);
 }
 
 /* \brief Store local database seperately */
@@ -110,15 +130,19 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
 {
    FILE *f = NULL;
    BLOCK_FD fd = BLOCK_INIT;
-   char db_path[PNDMAN_PATH], *appdata;
+   char *db_path, *appdata;
    assert(device);
 
    /* check appdata */
    appdata = _pndman_device_get_appdata(device);
-   if (!appdata || !strlen(appdata)) goto fail;
+   if (!appdata) goto fail;
 
-   strncpy(db_path, appdata, PNDMAN_PATH-1);
-   strncat(db_path, "/local.db", PNDMAN_PATH-1);
+   /* begin to read local database */
+   int size = snprintf(NULL, 0, "%s/local.db", appdata)+1;
+   if (!(db_path = malloc(size)))
+      goto fail;
+
+   sprintf(db_path, "%s/local.db", appdata);
    DEBUG(PNDMAN_LEVEL_CRAP, "-!- writing to %s", db_path);
 
    /* lock the file */
@@ -134,11 +158,15 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
 
    fclose(f);
    unlockfile(fd, db_path);
+   free(appdata);
+   free(db_path);
    return RETURN_OK;
 
 write_fail:
    DEBFAIL(WRITE_FAIL, db_path);
 fail:
+   IFDO(free, appdata);
+   IFDO(free, db_path);
    IFDO(fclose, fd);
    IFDO(fclose, f);
    return RETURN_FAIL;
@@ -150,7 +178,7 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
    FILE *f = NULL;
    BLOCK_FD fd = BLOCK_INIT;
    pndman_repository *r;
-   char db_path[PNDMAN_PATH], *appdata;
+   char *db_path, *appdata;
    clock_t now = clock();
    assert(device);
 
@@ -167,10 +195,13 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
 
    /* check appdata */
    appdata = _pndman_device_get_appdata(device);
-   if (!appdata || !strlen(appdata)) goto fail;
+   if (!appdata) goto fail;
 
-   strncpy(db_path, appdata, PNDMAN_PATH-1);
-   strncat(db_path, "/repo.db", PNDMAN_PATH-1);
+   int size = snprintf(NULL, 0, "%s/repo.db", appdata)+1;
+   if (!(db_path = malloc(size)))
+      goto fail;
+
+   sprintf(db_path, "%s/repo.db", appdata);
    DEBUG(PNDMAN_LEVEL_CRAP, "-!- writing to %s", db_path);
 
    /* lock the file */
@@ -182,7 +213,7 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
 
    /* write repositories */
    for (r = repo; r; r = r->next) {
-      if (!strlen(r->url)) continue;
+      if (!r->url) continue;
       fprintf(f, "[%s]\n", r->url);
       _pndman_json_commit(r, device, f);
       r->commited = 1;
@@ -190,12 +221,16 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
 
    fclose(f);
    unlockfile(fd, db_path);
+   free(appdata);
+   free(db_path);
    DEBUG(PNDMAN_LEVEL_CRAP, "Database commit took %.2f seconds", (double)(clock()-now)/CLOCKS_PER_SEC);
    return RETURN_OK;
 
 write_fail:
    DEBFAIL(WRITE_FAIL, db_path);
 fail:
+   IFDO(free, appdata);
+   IFDO(free, db_path);
    IFDO(fclose, fd);
    IFDO(fclose, f);
    return RETURN_FAIL;
@@ -205,17 +240,20 @@ fail:
 static int _pndman_db_get_local(pndman_repository *repo, pndman_device *device)
 {
    FILE *f = NULL;
-   char db_path[PNDMAN_PATH];
-   char appdata[PNDMAN_PATH];
+   char *db_path = NULL;
+   char *appdata = NULL;
    assert(repo && device);
 
    /* check appdata */
-   _pndman_device_get_appdata_no_create(appdata, device);
-   if (!strlen(appdata)) goto fail;
+   if (!(appdata = _pndman_device_get_appdata_no_create(device)))
+      goto fail;
 
    /* begin to read local database */
-   strncpy(db_path, appdata, PNDMAN_PATH-1);
-   strncat(db_path, "/local.db", PNDMAN_PATH-1);
+   int size = snprintf(NULL, 0, "%s/local.db", appdata)+1;
+   if (!(db_path = malloc(size)))
+      goto fail;
+
+   sprintf(db_path, "%s/local.db", appdata);
    DEBUG(PNDMAN_LEVEL_CRAP, "-!- local from %s", db_path);
 
    /* block until ready for read */
@@ -224,6 +262,10 @@ static int _pndman_db_get_local(pndman_repository *repo, pndman_device *device)
 
    if (!(f = fopen(db_path, "r")))
       goto read_fail;
+
+   /* not needed */
+   NULLDO(free, appdata);
+   NULLDO(free, db_path);
 
    /* read local database */
    _pndman_json_process(repo, device, f);
@@ -235,6 +277,8 @@ static int _pndman_db_get_local(pndman_repository *repo, pndman_device *device)
 read_fail:
    DEBFAIL(READ_FAIL, db_path);
 fail:
+   IFDO(free, appdata);
+   IFDO(free, db_path);
    IFDO(fclose, f);
    return RETURN_FAIL;
 }
@@ -245,8 +289,8 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
    FILE *f = NULL, *f2 = NULL;
    char s[LINE_MAX];
    char s2[LINE_MAX];
-   char db_path[PNDMAN_PATH];
-   char appdata[PNDMAN_PATH];
+   char *db_path = NULL;
+   char *appdata = NULL;
    char *ret;
    int  parse = 0;
    pndman_repository *r, *rs;
@@ -257,16 +301,19 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
       return _pndman_db_get_local(repo, device);
 
    /* invalid url */
-   if (!strlen(repo->url))
+   if (!repo->url)
       goto bad_url;
 
    /* check appdata */
-   _pndman_device_get_appdata_no_create(appdata, device);
-   if (!strlen(appdata)) goto fail;
+   if (!(appdata = _pndman_device_get_appdata_no_create(device)))
+      goto fail;
 
    /* begin to read other repositories */
-   strncpy(db_path, appdata, PNDMAN_PATH-1);
-   strncat(db_path, "/repo.db", PNDMAN_PATH-1);
+   int size = snprintf(NULL, 0, "%s/repo.db", appdata)+1;
+   if (!(db_path = malloc(size)))
+      goto fail;
+
+   sprintf(db_path, "%s/repo.db", appdata);
    DEBUG(PNDMAN_LEVEL_CRAP, "-!- reading from %s", db_path);
 
    /* block until ready for read */
@@ -275,6 +322,10 @@ int _pndman_db_get(pndman_repository *repo, pndman_device *device)
 
    if (!(f = fopen(db_path, "r")))
       goto read_fail;
+
+   /* not needed */
+   NULLDO(free, appdata);
+   NULLDO(free, db_path);
 
    /* write parse result here */
    if (!(f2 = _pndman_get_tmp_file()))
@@ -309,6 +360,8 @@ bad_url:
 read_fail:
    DEBFAIL(READ_FAIL, db_path);
 fail:
+   IFDO(free, appdata);
+   IFDO(free, db_path);
    IFDO(fclose, f2);
    IFDO(fclose, f);
    return RETURN_FAIL;
@@ -345,14 +398,21 @@ static int _pndman_bzip2_decompress(pndman_curl_handle *chandle)
    return RETURN_OK;
 }
 
+/* \brief set sync handle's error */
+void _pndman_sync_handle_set_error(pndman_sync_handle *handle, const char *error)
+{
+   assert(handle);
+   IFDO(free, handle->error);
+   if (error) handle->error = strdup(error);
+}
+
 /* \brief perform internal sync */
-static void _pndman_sync_done(pndman_curl_code code, void *data, const char *info,
-      pndman_curl_handle *chandle)
+static void _pndman_sync_done(pndman_curl_code code, void *data, const char *info, pndman_curl_handle *chandle)
 {
    pndman_sync_handle *handle  = (pndman_sync_handle*)data;
 
    if (code == PNDMAN_CURL_FAIL)
-      strncpy(handle->error, info, PNDMAN_STR-1);
+      _pndman_sync_handle_set_error(handle, info);
    else if (code == PNDMAN_CURL_DONE) {
       if (strstr(chandle->url, "bzip=true")) {
          _pndman_bzip2_decompress(chandle);
@@ -365,7 +425,7 @@ static void _pndman_sync_done(pndman_curl_code code, void *data, const char *inf
       if (!size) {
          code = PNDMAN_CURL_DONE;
       } else if (_pndman_json_process(handle->repository, NULL, chandle->file) != RETURN_OK) {
-         strncpy(handle->error, "json parse failed", PNDMAN_STR-1);
+         _pndman_sync_handle_set_error(handle, "json parse failed");
          code = PNDMAN_CURL_FAIL;
       }
 
@@ -386,6 +446,7 @@ static void _pndman_sync_handle_free(pndman_sync_handle *object)
    IFDO(_pndman_curl_handle_free, handle);
    object->data      = NULL;
    object->callback  = NULL;
+   IFDO(free, object->error);
 }
 
 /* \brief allocate internal sync request */
@@ -400,9 +461,10 @@ static int _pndman_sync_handle_init(pndman_sync_handle *object)
 static int _pndman_sync_handle_perform(pndman_sync_handle *object)
 {
    char *url = NULL;
-   char timestamp[PNDMAN_TIMESTAMP];
+   char timestamp[20];
    pndman_curl_handle *handle;
    assert(object && object->repository);
+   IFDO(free, object->error);
 
    /* this is local repository,
     * let's fail and inform developer */
@@ -410,16 +472,14 @@ static int _pndman_sync_handle_perform(pndman_sync_handle *object)
       goto local_repo_fail;
 
    /* check wether, to do merging or full sync */
-   if (strlen(object->repository->updates) &&
-         object->repository->timestamp &&
-         !(object->flags & PNDMAN_SYNC_FULL)) {
-      snprintf(timestamp, PNDMAN_TIMESTAMP-1, "%lu", object->repository->timestamp);
+   if (object->repository->updates && object->repository->timestamp && !(object->flags & PNDMAN_SYNC_FULL)) {
+      snprintf(timestamp, sizeof(timestamp)-1, "%lu", object->repository->timestamp);
       url = str_replace(object->repository->updates, "%time%", timestamp);
       if (strstr(object->repository->url, "bzip=true")) {
-         size_t size = strlen(url)+strlen("&bzip=true")+1;
+         size_t size = snprintf(NULL, 0, "%s&bzip=true", url)+1;
          char *nurl = malloc(size);
          if (nurl) {
-            snprintf(nurl, size, "%s&bzip=true", url);
+            sprintf(nurl, "%s&bzip=true", url);
             free(url);
             url = nurl;
          }
@@ -456,7 +516,7 @@ fail:
 static int _pndman_version_check(pndman_package *lp, pndman_package *rp)
 {
    /* md5sums are same, no update */
-   if (!strcmp(lp->md5, rp->md5))
+   if (lp->md5 && rp->md5 && !strcmp(lp->md5, rp->md5))
       return RETURN_FALSE;
 
    /* the md5 checking won't be enough here,
@@ -486,7 +546,7 @@ static int _pndman_version_check(pndman_package *lp, pndman_package *rp)
 
    /* maybe as last resort use the md5 differ?
     * might be good idea if no other way was update detected */
-   if (!lp->update && strlen(lp->md5)) {
+   if (!lp->update && lp->md5) {
       lp->update = rp;
       rp->update = lp;
    }

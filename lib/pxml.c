@@ -117,7 +117,7 @@ typedef struct pxml_parse
    PXML_STATE           state;
    pndman_package       *pnd;
    pndman_application   *app;
-   char                 *data;
+   char                 **data;
    int                  bckward_title;
    int                  bckward_desc;
 } pxml_parse;
@@ -382,8 +382,10 @@ static void _pxml_pnd_package_tag(pndman_package *pnd, char **attrs)
    int i = 0;
    for (; attrs[i]; ++i) {
       /* <package id= */
-      if (!memcmp(attrs[i], PXML_ID_ATTR, strlen(PXML_ID_ATTR)))
-         strncpy(pnd->id, attrs[++i], PNDMAN_ID-1);
+      if (!memcmp(attrs[i], PXML_ID_ATTR, strlen(PXML_ID_ATTR))) {
+         IFDO(free, pnd->id);
+         pnd->id = strdup(attrs[++i]);
+      }
    }
 }
 
@@ -393,8 +395,10 @@ static void _pxml_pnd_icon_tag(pndman_package *pnd, char **attrs)
    int i = 0;
    for (; attrs[i]; ++i) {
       /* <icon src= */
-      if (!memcmp(attrs[i], PXML_SRC_ATTR, strlen(PXML_SRC_ATTR)))
-         strncpy(pnd->icon, attrs[++i], PNDMAN_PATH-1);
+      if (!memcmp(attrs[i], PXML_SRC_ATTR, strlen(PXML_SRC_ATTR))) {
+         IFDO(free, pnd->icon);
+         pnd->icon = strdup(attrs[++i]);
+      }
    }
 }
 
@@ -404,11 +408,15 @@ static void _pxml_pnd_application_tag(pndman_application *app, char **attrs)
    int i = 0;
    for (; attrs[i]; ++i) {
       /* <application id= */
-      if (!memcmp(attrs[i], PXML_ID_ATTR, strlen(PXML_ID_ATTR)))
-         strncpy(app->id, attrs[++i], PNDMAN_ID-1);
+      if (!memcmp(attrs[i], PXML_ID_ATTR, strlen(PXML_ID_ATTR))) {
+         IFDO(free, app->id);
+         app->id = strdup(attrs[++i]);
+      }
       /* <application appdata= */
-      else if (!memcmp(attrs[i], PXML_APPDATA_ATTR, strlen(PXML_APPDATA_ATTR)))
-         strncpy(app->appdata, attrs[++i], PNDMAN_PATH-1);
+      else if (!memcmp(attrs[i], PXML_APPDATA_ATTR, strlen(PXML_APPDATA_ATTR))) {
+         IFDO(free, app->appdata);
+         app->appdata = strdup(attrs[++i]);
+      }
    }
 }
 
@@ -418,8 +426,10 @@ static void _pxml_pnd_application_icon_tag(pndman_application *app, char **attrs
    int i = 0;
    for (; attrs[i]; ++i) {
       /* <icon src= */
-      if (!memcmp(attrs[i], PXML_SRC_ATTR, strlen(PXML_SRC_ATTR)))
-         strncpy(app->icon, attrs[++i], PNDMAN_PATH-1);
+      if (!memcmp(attrs[i], PXML_SRC_ATTR, strlen(PXML_SRC_ATTR))) {
+         IFDO(free, app->icon);
+         app->icon = strdup(attrs[++i]);
+      }
    }
 }
 
@@ -446,19 +456,25 @@ static void _pxml_pnd_exec_tag(pndman_exec *exec, char **attrs)
          if (!_strupcmp(attrs[++i], PNDMAN_TRUE)) exec->background = 1;
       }
       /* <exec startdir= */
-      else if (!memcmp(attrs[i], PXML_STARTDIR_ATTR, strlen(PXML_STARTDIR_ATTR)))
-         strncpy(exec->startdir, attrs[++i], PNDMAN_PATH-1);
+      else if (!memcmp(attrs[i], PXML_STARTDIR_ATTR, strlen(PXML_STARTDIR_ATTR))) {
+         IFDO(free, exec->startdir);
+         exec->startdir = strdup(attrs[++i]);
+      }
       /* <exec standalone= */
       else if (!memcmp(attrs[i], PXML_STANDALONE_ATTR, strlen(PXML_STANDALONE_ATTR)))
       {
          if (!memcmp(attrs[++i], PNDMAN_FALSE, strlen(PNDMAN_FALSE))) exec->standalone = 0;
       }
       /* <exec command= */
-      else if (!memcmp(attrs[i], PXML_COMMAND_ATTR, strlen(PXML_COMMAND_ATTR)))
-         strncpy(exec->command, attrs[++i], PNDMAN_PATH-1);
+      else if (!memcmp(attrs[i], PXML_COMMAND_ATTR, strlen(PXML_COMMAND_ATTR))) {
+         IFDO(free, exec->command);
+         exec->command = strdup(attrs[++i]);
+      }
       /* <exec arguments= */
-      else if (!memcmp(attrs[i], PXML_ARGUMENTS_ATTR, strlen(PXML_ARGUMENTS_ATTR)))
-         strncpy(exec->arguments, attrs[++i], PNDMAN_STR-1);
+      else if (!memcmp(attrs[i], PXML_ARGUMENTS_ATTR, strlen(PXML_ARGUMENTS_ATTR))) {
+         IFDO(free, exec->arguments);
+         exec->arguments = strdup(attrs[++i]);
+      }
       /* <exec x11= */
       else if (!memcmp(attrs[i], PXML_X11_ATTR, strlen(PXML_X11_ATTR)))
       {
@@ -476,14 +492,20 @@ static void _pxml_pnd_info_tag(pndman_info *info, char **attrs)
    int i = 0;
    for (; attrs[i]; ++i) {
       /* <info name= */
-      if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
-         strncpy(info->name, attrs[++i], PNDMAN_NAME-1);
+      if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR))) {
+         IFDO(free, info->name);
+         info->name = strdup(attrs[++i]);
+      }
       /* <info type= */
-      else if (!memcmp(attrs[i], PXML_TYPE_ATTR, strlen(PXML_TYPE_ATTR)))
-         strncpy(info->type, attrs[++i], PNDMAN_SHRT_STR-1);
+      else if (!memcmp(attrs[i], PXML_TYPE_ATTR, strlen(PXML_TYPE_ATTR))) {
+         IFDO(free, info->type);
+         info->type = strdup(attrs[++i]);
+      }
       /* <info src= */
-      else if (!memcmp(attrs[i], PXML_SRC_ATTR, strlen(PXML_SRC_ATTR)))
-         strncpy(info->src, attrs[++i], PNDMAN_PATH-1);
+      else if (!memcmp(attrs[i], PXML_SRC_ATTR, strlen(PXML_SRC_ATTR))) {
+         IFDO(free, info->src);
+         info->src = strdup(attrs[++i]);
+      }
    }
 }
 
@@ -493,14 +515,20 @@ static void _pxml_pnd_license_tag(pndman_license *lic, char **attrs)
    int i = 0;
    for (; attrs[i]; ++i) {
       /* <license name= */
-      if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
-         strncpy(lic->name, attrs[++i], PNDMAN_SHRT_STR-1);
+      if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR))) {
+         IFDO(free, lic->name);
+         lic->name = strdup(attrs[++i]);
+      }
       /* <license url= */
-      else if (!memcmp(attrs[i], PXML_URL_ATTR, strlen(PXML_URL_ATTR)))
-         strncpy(lic->url, attrs[++i], PNDMAN_STR-1);
+      else if (!memcmp(attrs[i], PXML_URL_ATTR, strlen(PXML_URL_ATTR))) {
+         IFDO(free, lic->url);
+         lic->url = strdup(attrs[++i]);
+      }
       /* <license sourcecodeurl= */
-      else if (!memcmp(attrs[i], PXML_SOURCECODE_ATTR, strlen(PXML_SOURCECODE_ATTR)))
-         strncpy(lic->sourcecodeurl, attrs[++i], PNDMAN_STR-1);
+      else if (!memcmp(attrs[i], PXML_SOURCECODE_ATTR, strlen(PXML_SOURCECODE_ATTR))) {
+         IFDO(free, lic->sourcecodeurl);
+         lic->sourcecodeurl = strdup(attrs[++i]);
+      }
    }
 }
 
@@ -510,8 +538,10 @@ static void _pxml_pnd_pic_tag(pndman_previewpic *pic, char **attrs)
    int i = 0;
    for (; attrs[i]; ++i) {
       /* <pic src= */
-      if (!memcmp(attrs[i], PXML_SRC_ATTR, strlen(PXML_SRC_ATTR)))
-         strncpy(pic->src, attrs[++i], PNDMAN_PATH-1);
+      if (!memcmp(attrs[i], PXML_SRC_ATTR, strlen(PXML_SRC_ATTR))) {
+         IFDO(free, pic->src);
+         pic->src = strdup(attrs[++i]);
+      }
    }
 }
 
@@ -521,8 +551,10 @@ static void _pxml_pnd_category_tag(pndman_category *cat, char **attrs)
    int i = 0;
    for (; attrs[i]; ++i) {
       /* <category name= */
-      if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
-         strncpy(cat->main, attrs[++i], PNDMAN_SHRT_STR-1);
+      if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR))) {
+         IFDO(free, cat->main);
+         cat->main = strdup(attrs[++i]);
+      }
    }
 }
 
@@ -532,8 +564,10 @@ static void _pxml_pnd_subcategory_tag(pndman_category *cat, char **attrs)
    int i = 0;
    for (; attrs[i]; ++i) {
       /* <subcategory name= */
-      if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
-         strncpy(cat->sub, attrs[++i], PNDMAN_SHRT_STR-1);
+      if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR))) {
+         IFDO(free, cat->sub);
+         cat->sub = strdup(attrs[++i]);
+      }
    }
 }
 
@@ -543,14 +577,20 @@ static void _pxml_pnd_association_tag(pndman_association *assoc, char **attrs)
    int i = 0;
    for (; attrs[i]; ++i) {
       /* <association name= */
-      if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
-         strncpy(assoc->name, attrs[++i], PNDMAN_STR-1);
+      if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR))) {
+         IFDO(free, assoc->name);
+         assoc->name = strdup(attrs[++i]);
+      }
       /* <association filetype= */
-      else if (!memcmp(attrs[i], PXML_FILETYPE_ATTR, strlen(PXML_FILETYPE_ATTR)))
-         strncpy(assoc->filetype, attrs[++i], PNDMAN_SHRT_STR-1);
+      else if (!memcmp(attrs[i], PXML_FILETYPE_ATTR, strlen(PXML_FILETYPE_ATTR))) {
+         IFDO(free, assoc->filetype);
+         assoc->filetype = strdup(attrs[++i]);
+      }
       /* <association exec= */
-      else if (!memcmp(attrs[i], PXML_EXEC_ATTR, strlen(PXML_EXEC_ATTR)))
-         strncpy(assoc->exec, attrs[++i], PNDMAN_PATH-1);
+      else if (!memcmp(attrs[i], PXML_EXEC_ATTR, strlen(PXML_EXEC_ATTR))) {
+         IFDO(free, assoc->exec);
+         assoc->exec = strdup(attrs[++i]);
+      }
    }
 }
 
@@ -560,8 +600,10 @@ static void _pxml_pnd_translated_tag(pndman_translated *title, char **attrs)
    int i = 0;
    for (; attrs[i]; ++i) {
       /* <title/description lang= */
-      if (!memcmp(attrs[i], PXML_LANG_ATTR, strlen(PXML_LANG_ATTR)))
-         strncpy(title->lang, attrs[++i], PNDMAN_SHRT_STR-1);
+      if (!memcmp(attrs[i], PXML_LANG_ATTR, strlen(PXML_LANG_ATTR))) {
+         IFDO(free, title->lang);
+         title->lang = strdup(attrs[++i]);
+      }
    }
 }
 
@@ -571,14 +613,20 @@ static void _pxml_pnd_author_tag(pndman_author *author, char **attrs)
    int i = 0;
    for(; attrs[i]; ++i) {
       /* <author name= */
-      if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR)))
-         strncpy(author->name, attrs[++i], PNDMAN_NAME-1);
+      if (!memcmp(attrs[i], PXML_NAME_ATTR, strlen(PXML_NAME_ATTR))) {
+         IFDO(free, author->name);
+         author->name = strdup(attrs[++i]);
+      }
       /* <author website= */
-      else if(!memcmp(attrs[i], PXML_WEBSITE_ATTR, strlen(PXML_WEBSITE_ATTR)))
-         strncpy(author->website, attrs[++i], PNDMAN_STR-1);
+      else if(!memcmp(attrs[i], PXML_WEBSITE_ATTR, strlen(PXML_WEBSITE_ATTR))) {
+         IFDO(free, author->website);
+         author->website = strdup(attrs[++i]);
+      }
       /* <author email= */
-      else if(!memcmp(attrs[i], PXML_EMAIL_ATTR, strlen(PXML_EMAIL_ATTR)))
-         strncpy(author->email, attrs[++i], PNDMAN_STR-1);
+      else if(!memcmp(attrs[i], PXML_EMAIL_ATTR, strlen(PXML_EMAIL_ATTR))) {
+         IFDO(free, author->email);
+         author->email = strdup(attrs[++i]);
+      }
    }
 }
 
@@ -588,17 +636,25 @@ static void _pxml_pnd_version_tag(pndman_version *ver, char **attrs)
    int i = 0;
    for (; attrs[i]; ++i) {
       /* <osversion/version major= */
-      if (!memcmp(attrs[i], PXML_MAJOR_ATTR, strlen(PXML_MAJOR_ATTR)))
-         strncpy(ver->major, attrs[++i], PNDMAN_VERSION-1);
+      if (!memcmp(attrs[i], PXML_MAJOR_ATTR, strlen(PXML_MAJOR_ATTR))) {
+         IFDO(free, ver->major);
+         ver->major = strdup(attrs[++i]);
+      }
       /* <osversion/version minor= */
-      else if (!memcmp(attrs[i], PXML_MINOR_ATTR, strlen(PXML_MINOR_ATTR)))
-         strncpy(ver->minor, attrs[++i], PNDMAN_VERSION-1);
+      else if (!memcmp(attrs[i], PXML_MINOR_ATTR, strlen(PXML_MINOR_ATTR))) {
+         IFDO(free, ver->minor);
+         ver->minor = strdup(attrs[++i]);
+      }
       /* <osverion/version release= */
-      else if (!memcmp(attrs[i], PXML_RELEASE_ATTR, strlen(PXML_RELEASE_ATTR)))
-         strncpy(ver->release, attrs[++i], PNDMAN_VERSION-1);
+      else if (!memcmp(attrs[i], PXML_RELEASE_ATTR, strlen(PXML_RELEASE_ATTR))) {
+         IFDO(free, ver->release);
+         ver->release = strdup(attrs[++i]);
+      }
       /* <osversion/version build= */
-      else if (!memcmp(attrs[i], PXML_BUILD_ATTR, strlen(PXML_BUILD_ATTR)))
-         strncpy(ver->build, attrs[++i], PNDMAN_VERSION-1);
+      else if (!memcmp(attrs[i], PXML_BUILD_ATTR, strlen(PXML_BUILD_ATTR))) {
+         IFDO(free, ver->build);
+         ver->build = strdup(attrs[++i]);
+      }
       else if (!memcmp(attrs[i], PXML_TYPE_ATTR, strlen(PXML_TYPE_ATTR)))
       {
          ++i;
@@ -654,7 +710,7 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
             if ((title = _pndman_package_new_title(pnd)))
             {
                _pxml_pnd_translated_tag(title, attrs);
-               ((pxml_parse*)data)->data = title->string;
+               ((pxml_parse*)data)->data = &title->string;
             }
          }
       break;
@@ -666,7 +722,7 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
             if ((desc = _pndman_package_new_description(pnd)))
             {
                _pxml_pnd_translated_tag(desc, attrs);
-               ((pxml_parse*)data)->data = desc->string;
+               ((pxml_parse*)data)->data = &desc->string;
             }
          }
       break;
@@ -697,7 +753,7 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
             if ((title = _pndman_application_new_title(app)))
             {
                _pxml_pnd_translated_tag(title, attrs);
-               ((pxml_parse*)data)->data = title->string;
+               ((pxml_parse*)data)->data = &title->string;
             }
          }
       break;
@@ -710,7 +766,7 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
             if ((desc = _pndman_application_new_description(app)))
             {
                _pxml_pnd_translated_tag(desc, attrs);
-               ((pxml_parse*)data)->data = desc->string;
+               ((pxml_parse*)data)->data = &desc->string;
             }
          }
       break;
@@ -829,7 +885,7 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
                if ((title = _pndman_application_new_title(app)))
                {
                   _pxml_pnd_translated_tag(title, attrs);
-                  ((pxml_parse*)data)->data = title->string;
+                  ((pxml_parse*)data)->data = &title->string;
                }
             }
          }
@@ -841,7 +897,7 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
                if ((desc = _pndman_application_new_description(app)))
                {
                   _pxml_pnd_translated_tag(desc, attrs);
-                  ((pxml_parse*)data)->data = desc->string;
+                  ((pxml_parse*)data)->data = &desc->string;
                }
             }
          }
@@ -850,20 +906,32 @@ static void _pxml_pnd_start_tag(void *data, char *tag, char** attrs)
 }
 
 /* \brief copy string with special care, returns number of characters copied */
-static int _cstrncpy(char *dst, char *src, int len)
+static char* _cstrdup(char *src, int len)
 {
    int i, p, nospace;
-   assert(dst && src);
-   if (!len) return 0;
+   char *dst;
+   assert(src);
+
+   if (!len) return NULL;
+   if (!(dst = malloc(len+1)))
+      return NULL;
+
    p = 0; nospace = 0;
-   for (i = 0; i != len; ++i) {
+   for (i = 0; i < len; ++i) {
       if (!isspace(src[i])) nospace = 1;
       if (isprint(src[i]) && src[i] != '\n' &&
           src[i] != '\r'  && src[i] != '\t' && nospace) {
          dst[p++] = src[i];
       }
    }
-   return p;
+   dst[p++] = 0;
+
+   char *fdst;
+   if ((fdst = strdup(dst))) {
+      free(dst);
+      dst = fdst;
+   }
+   return dst;
 }
 
 /* \brief Text data */
@@ -872,11 +940,12 @@ static void _pxml_pnd_data(void *data, char *text, int len)
    // unsigned int       *parse_state  = &((pxml_parse*)data)->state;
    // pndman_package     *pnd          = ((pxml_parse*)data)->pnd;
    // pndman_application *app          = ((pxml_parse*)data)->app;
-   char                  *ptr          = ((pxml_parse*)data)->data;
+   char                 **ptr          = ((pxml_parse*)data)->data;
 
    if (!ptr) return;
-   if (len < PNDMAN_STR)
-      if (_cstrncpy(ptr, text, len)) ((pxml_parse*)data)->data = NULL;
+   IFDO(free, *ptr);
+   *ptr = _cstrdup(text, len);
+   ((pxml_parse*)data)->data = NULL;
 }
 
 /* \brief End element tag */
@@ -1017,26 +1086,26 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
       return;
 
    /* header */
-   if (!strlen(pnd->id) && strlen(pnd->app->id))
-      memcpy(pnd->id, pnd->app->id, PNDMAN_ID);
-   if (!strlen(pnd->icon) && strlen(pnd->app->icon))
-      memcpy(pnd->icon, pnd->app->icon, PNDMAN_PATH);
+   if (!pnd->id && pnd->app->id)
+      pnd->id = strdup(pnd->app->id);
+   if (!pnd->icon && pnd->app->icon)
+      pnd->icon = strdup(pnd->app->icon);
 
    /* author */
-   if (!strlen(pnd->author.name) && strlen(pnd->app->author.name))
-      memcpy(pnd->author.name, pnd->app->author.name, PNDMAN_NAME);
-   if (!strlen(pnd->author.website) && strlen(pnd->app->author.website))
-      memcpy(pnd->author.website, pnd->app->author.website, PNDMAN_STR);
+   if (!pnd->author.name && pnd->app->author.name)
+      pnd->author.name = strdup(pnd->app->author.name);
+   if (!pnd->author.website && pnd->app->author.website)
+      pnd->author.website = strdup(pnd->app->author.website);
 
    /* version */
-   if (!strlen(pnd->version.major) && strlen(pnd->app->version.major))
-      memcpy(pnd->version.major, pnd->app->version.major, PNDMAN_VERSION);
-   if (!strlen(pnd->version.minor) && strlen(pnd->app->version.minor))
-      memcpy(pnd->version.minor, pnd->app->version.minor, PNDMAN_VERSION);
-   if (!strlen(pnd->version.release) && strlen(pnd->app->version.release))
-      memcpy(pnd->version.release, pnd->app->version.release, PNDMAN_VERSION);
-   if (!strlen(pnd->version.build) && strlen(pnd->app->version.build))
-      memcpy(pnd->version.build, pnd->app->version.build, PNDMAN_VERSION);
+   if (!pnd->version.major && pnd->app->version.major)
+      pnd->version.major = strdup(pnd->app->version.major);
+   if (!pnd->version.minor && pnd->app->version.minor)
+      pnd->version.minor = strdup(pnd->app->version.minor);
+   if (!pnd->version.release && pnd->app->version.release)
+      pnd->version.release = strdup(pnd->app->version.release);
+   if (!pnd->version.build && pnd->app->version.build)
+      pnd->version.build = strdup(pnd->app->version.build);
    if (pnd->version.type != pnd->app->version.type && pnd->version.type == PND_VERSION_RELEASE)
       pnd->version.type = pnd->app->version.type;
 
@@ -1045,8 +1114,8 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
       t = pnd->app->title;
       for (; t; t = t->next) {
          if ((tc = _pndman_package_new_title(pnd))) {
-            memcpy(tc->lang, t->lang, PNDMAN_SHRT_STR);
-            memcpy(tc->string, t->string, PNDMAN_STR);
+            if (t->lang) tc->lang = strdup(t->lang);
+            if (t->string) tc->string = strdup(t->string);
          }
       }
    }
@@ -1056,8 +1125,8 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
       t = pnd->app->description;
       for (; t; t = t->next) {
          if ((tc = _pndman_package_new_description(pnd))) {
-            memcpy(tc->lang, t->lang, PNDMAN_SHRT_STR);
-            memcpy(tc->string, t->string, PNDMAN_STR);
+            if (t->lang) tc->lang = strdup(t->lang);
+            if (t->string) tc->string = strdup(t->string);
          }
       }
    }
@@ -1067,9 +1136,9 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
       l = pnd->app->license;
       for (; l; l = l->next) {
          if ((lc = _pndman_package_new_license(pnd))) {
-            memcpy(lc->name, l->name, PNDMAN_SHRT_STR);
-            memcpy(lc->url, l->url, PNDMAN_STR);
-            memcpy(lc->sourcecodeurl, l->sourcecodeurl, PNDMAN_STR);
+            if (l->name) lc->name = strdup(l->name);
+            if (l->url) lc->url = strdup(l->url);
+            if (l->sourcecodeurl) lc->sourcecodeurl = strdup(l->sourcecodeurl);
          }
       }
    }
@@ -1079,7 +1148,7 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
       p = pnd->app->previewpic;
       for (; p; p = p->next) {
          if ((pc = _pndman_package_new_previewpic(pnd))) {
-            memcpy(pc->src, p->src, PNDMAN_PATH);
+            if (p->src) pc->src = strdup(p->src);
          }
       }
    }
@@ -1089,40 +1158,38 @@ static void _pxml_pnd_post_process(pndman_package *pnd)
       c = pnd->app->category;
       for (; c; c = c->next) {
          if ((cc = _pndman_package_new_category(pnd))) {
-            memcpy(cc->main, c->main, PNDMAN_SHRT_STR);
-            memcpy(cc->sub, c->sub, PNDMAN_SHRT_STR);
+            if (c->main) cc->main = strdup(c->main);
+            if (c->sub) cc->sub = strdup(c->sub);
          }
       }
    }
 
    /* check for null appdata */
-   for (a = pnd->app; a; a = a->next)
-      if (!strlen(a->appdata))
-         strncpy(a->appdata, a->id, PNDMAN_PATH-1);
+   for (a = pnd->app; a; a = a->next) {
+      if (!a->appdata) a->appdata = strdup(a->id);
+   }
 }
 
 /* \brief Process crawl */
-static int _pndman_crawl_process(const char *path,
-      const char *relative, pxml_parse *data)
+static int _pndman_crawl_process(const char *path, const char *relative, pxml_parse *data)
 {
-   char *PXML = NULL, full_path[PNDMAN_PATH];
+   char *PXML = NULL, *full_path = NULL;
    size_t size = 0;
    FILE *f;
    assert(path && relative && data);
 
-   memset(full_path, 0, PNDMAN_PATH-1);
-   strncpy(full_path, path, PNDMAN_PATH-1);
-   strncat(full_path, "/", PNDMAN_PATH-1);
-   strncat(full_path, relative, PNDMAN_PATH-1);
+   int len = snprintf(NULL, 0, "%s/%s", path, relative)+1;
+   if (!(full_path = malloc(len))) goto fail;
+   sprintf(full_path, "%s/%s", path, relative);
 
    if (!(PXML = _fetch_pxml_from_pnd(full_path, &size)))
       goto fail;
 
    /* reset some stuff before crawling for post process */
-   memset(data->pnd->version.major,  0, PNDMAN_VERSION);
-   memset(data->pnd->version.minor,  0, PNDMAN_VERSION);
-   memset(data->pnd->version.release,0, PNDMAN_VERSION);
-   memset(data->pnd->version.build,  0, PNDMAN_VERSION);
+   IFDO(free, data->pnd->version.major);
+   IFDO(free, data->pnd->version.minor);
+   IFDO(free, data->pnd->version.release);
+   IFDO(free, data->pnd->version.build);
 
    /* parse */
    if (_pxml_pnd_parse(data, PXML, size) != RETURN_OK)
@@ -1141,22 +1208,26 @@ static int _pndman_crawl_process(const char *path,
       fclose(f);
    }
 
+   NULLDO(free, full_path);
+
    /* add path to the pnd */
-   strncpy(data->pnd->path, relative, PNDMAN_PATH-1);
+   char *copy = strdup(relative);
+   IFDO(free, data->pnd->path);
+   data->pnd->path = copy;
    return RETURN_OK;
 
 parse_fail:
    DEBFAIL(PXML_PND_PARSE_FAIL, relative);
 fail:
+   IFDO(free, full_path);
    IFDO(free, PXML);
    return RETURN_FAIL;
 }
 
 /* \brief Crawl directory */
-static int _pndman_crawl_dir(const char *path,
-      const char *relative, pndman_package *list)
+static int _pndman_crawl_dir(const char *path, const char *relative, pndman_package *list)
 {
-   char tmp[PNDMAN_PATH], relav[PNDMAN_PATH];
+   char *tmp;
    pxml_parse data;
    pndman_package *pnd, *p;
    int ret;
@@ -1175,29 +1246,31 @@ static int _pndman_crawl_dir(const char *path,
    pnd = NULL; p = NULL;
    ret = 0;
 
-   memset(relav, 0, PNDMAN_PATH);
-   memset(tmp, 0, PNDMAN_PATH);
-
    /* copy full */
-   strncpy(tmp, path, PNDMAN_PATH-1);
-   strncat(tmp, "/", PNDMAN_PATH-1);
-   strncat(tmp, relative, PNDMAN_PATH-1);
+   int size = snprintf(NULL, 0, "%s/%s", path, relative)+1;
+   if (!(tmp = malloc(size))) return RETURN_FAIL;
+   sprintf(tmp, "%s/%s", path, relative);
 
    /* jump to end of list */
-   if (strlen(list->id)) for (p = list; p && p->next; p = p->next);
+   if (list->id) for (p = list; p && p->next; p = p->next);
 
 #ifndef _WIN32 /* POSIX */
    dp = opendir(tmp);
-   if (!dp) return 0;
+   if (!dp) {
+      free(tmp);
+      return RETURN_FAIL;
+   }
 
    while ((ep = readdir(dp))) {
       if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, "..")) continue; /* no we don't want this! */
       /* recrusive */
       if (ep->d_type == DT_DIR) {
-         strncpy(relav, relative, PNDMAN_PATH-1);
-         strncat(relav, "/", PNDMAN_PATH-1);
-         strncat(relav, ep->d_name, PNDMAN_PATH-1);
+         char *relav;
+         int size2 = snprintf(NULL, 0, "%s/%s", relative, ep->d_name)+1;
+         if (!(relav = malloc(size2))) continue;
+         sprintf(relav, "%s/%s", relative, ep->d_name);
          ret += _pndman_crawl_dir(path, relav, list);
+         free(relav);
          continue;
       }
       if (ep->d_type != DT_REG) continue;               /* we only want regular files */
@@ -1205,9 +1278,6 @@ static int _pndman_crawl_dir(const char *path,
       if (ep->d_name[0] == '.') continue;
 #endif
       if (!_strupstr(ep->d_name, ".pnd")) continue;     /* we only want .pnd files */
-      strncpy(relav, relative, PNDMAN_PATH-1);
-      strncat(relav, "/", PNDMAN_PATH-1);
-      strncat(relav, ep->d_name, PNDMAN_PATH-1);
 
       /* create pnd */
       pnd = _pndman_new_pnd();
@@ -1220,10 +1290,17 @@ static int _pndman_crawl_dir(const char *path,
       data.bckward_title = 1; /* backwards compatibility with PXML titles */
       data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
       data.state = PXML_PARSE_DEFAULT;
+
+      char *relav;
+      int size2 = snprintf(NULL, 0, "%s/%s", relative, ep->d_name)+1;
+      if (!(relav = malloc(size2))) continue;
+      sprintf(relav, "%s/%s", relative, ep->d_name);
       if (_pndman_crawl_process(path, relav, &data) != RETURN_OK) {
+         free(relav);
          while ((pnd = _pndman_free_pnd(pnd)));
          continue;
       }
+      free(relav);
 
       /* assign pnd to list */
       if (!p) {
@@ -1240,32 +1317,33 @@ static int _pndman_crawl_dir(const char *path,
 #else /* WIN32 */
 
    /* do this for wildcard search */
-   strncat(tmp, "/*", PNDMAN_PATH-1);
-   if ((hFind = FindFirstFile(tmp, &dp)) == INVALID_HANDLE_VALUE)
+   char *tmp2;
+   size += strlen("/*")+1;
+   if (!(tmp2 = malloc(size))) {
+      free(tmp);
+      return RETURN_FAIL;
+   }
+   snprintf(tmp2, size-1, "%s/*", tmp);
+   if ((hFind = FindFirstFile(tmp2, &dp)) == INVALID_HANDLE_VALUE)
       return 0;
-
-   /* copy full path again */
-   strncpy(tmp, path, PNDMAN_PATH-1);
-   strncat(tmp, "/", PNDMAN_PATH-1);
-   strncat(tmp, relative, PNDMAN_PATH-1);
+   free(tmp2);
 
    do {
       if (!strcmp(dp.cFileName, ".") || !strcmp(dp.cFileName, "..")) continue; /* we don't want this */
       /* recrusive */
       if (dp.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY) {
-         strncpy(relav, relative, PNDMAN_PATH-1);
-         strncat(relav, "/", PNDMAN_PATH-1);
-         strncat(relav, dp.cFileName, PNDMAN_PATH-1);
+         char *relav;
+         int size2 = snprintf(NULL, 0, "%s/%s", relative, dp.cFileName)+1;
+         if (!(relav = malloc(size2))) continue;
+         sprintf(relav, "%s/%s", relative, dp.cFileName);
          ret += _pndman_crawl_dir(path, relav, list);
+         free(relav);
          continue;
       }
 #if 1 /* skip hidden . (dot) files? */
       if (ep->d_name[0] == '.') continue;
 #endif
       if (!_strupstr(dp.cFileName, ".pnd")) continue; /* we only want .pnd files */
-      strncpy(relav, relative, PNDMAN_PATH-1);
-      strncat(relav, "/", PNDMAN_PATH-1);
-      strncat(relav, dp.cFileName, PNDMAN_PATH-1);
 
       /* create pnd */
       pnd = _pndman_new_pnd();
@@ -1278,10 +1356,17 @@ static int _pndman_crawl_dir(const char *path,
       data.bckward_title = 1; /* backwards compatibility with PXML titles */
       data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
       data.state = PXML_PARSE_DEFAULT;
+
+      char *relav;
+      int size2 = snprintf(NULL, 0, "%s/%s", relative, dp.cFileName)+1;
+      if (!(relav = malloc(size2))) continue;
+      sprintf(relav, "%s/%s", relative, dp.cFileName);
       if (_pndman_crawl_process(path, relav, &data) != RETURN_OK) {
+         free(relav);
          while ((pnd = _pndman_free_pnd(pnd)));
          continue;
       }
+      free(relav);
 
       /* assign pnd to list */
       if (!p) {
@@ -1296,37 +1381,33 @@ static int _pndman_crawl_dir(const char *path,
    FindClose(hFind);
 #endif
 
+   free(tmp);
    return ret;
 }
 
 /* \brief Crawl to pndman_package list */
 static int _pndman_crawl_to_pnd_list(pndman_device *device, pndman_package *list)
 {
-   char tmp[PNDMAN_PATH];
    int ret = 0;
    assert(device && list);
-   memset(tmp,  0, PNDMAN_PATH);
-
-   /* pandora root */
-   strncpy(tmp, device->mount, PNDMAN_PATH-1);
 
    /* can't access */
-   if (access(tmp, F_OK) != 0)
+   if (!device->mount || access(device->mount, F_OK) != 0)
       goto fail;
 
    /* desktop */
-   ret += _pndman_crawl_dir(tmp, "pandora/desktop", list);
+   ret += _pndman_crawl_dir(device->mount, "pandora/desktop", list);
 
    /* menu */
-   ret += _pndman_crawl_dir(tmp, "pandora/menu", list);
+   ret += _pndman_crawl_dir(device->mount, "pandora/menu", list);
 
    /* apps */
-   ret += _pndman_crawl_dir(tmp, "pandora/apps", list);
+   ret += _pndman_crawl_dir(device->mount, "pandora/apps", list);
 
    return ret;
 
 fail:
-   DEBFAIL(ACCESS_FAIL, tmp);
+   DEBFAIL(ACCESS_FAIL, device->mount);
    return RETURN_FAIL;
 }
 
@@ -1334,7 +1415,6 @@ fail:
 static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_repository *local)
 {
    pndman_package *list, *p, *n = NULL, *pnd;
-   char path[PNDMAN_PATH];
    int ret;
 #ifdef _WIN32
    /* TODO: win32 implementation */
@@ -1363,20 +1443,24 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
       pnd = _pndman_repository_new_pnd_check(p, p->path, device->mount, local);
       if (pnd) {
          /* copy needed stuff over */
-         if (!full) _pndman_package_free_applications(pnd);
          _pndman_copy_pnd(pnd, p);
-         strncpy(pnd->mount, device->mount, PNDMAN_PATH-1);
+         if (!full) _pndman_package_free_applications(pnd);
+         IFDO(free, pnd->mount);
+         pnd->mount = strdup(device->mount);
          pnd->repositoryptr = local;
 
          /* stat for modified time */
          if (!pnd->modified_time) {
-            _pndman_pnd_get_path(pnd, path);
+            char *path;
+            if ((path = _pndman_pnd_get_path(pnd))) {
 #ifdef _WIN32
-            /* TODO: win32 implementation */
+               /* TODO: win32 implementation */
 #else
-            if (stat(path, &st) == 0)
-               pnd->local_modified_time = st.st_mtime;
+               if (stat(path, &st) == 0)
+                  pnd->local_modified_time = st.st_mtime;
 #endif
+               free(path);
+            }
          }
 
          /* count again */
@@ -1395,8 +1479,7 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
 
 /* \brief crawl pnds to local repository, returns number of pnd's found, and -1 on error
  * The full_crawl option allows you to specify wether to crawl application data from PND as well */
-PNDMANAPI int pndman_package_crawl(int full_crawl,
-      pndman_device *device, pndman_repository *local)
+PNDMANAPI int pndman_package_crawl(int full_crawl, pndman_device *device, pndman_repository *local)
 {
    CHECKUSE(device);
    CHECKUSE(local);
@@ -1407,7 +1490,6 @@ PNDMANAPI int pndman_package_crawl(int full_crawl,
 /* \brief fill single PND's data fully by crawling it locally */
 PNDMANAPI int pndman_package_crawl_single_package(int full_crawl, pndman_package *pnd)
 {
-   char path[PNDMAN_PATH];
    pxml_parse data;
 #ifdef _WIN32
    /* TODO: win32 implementation */
@@ -1423,21 +1505,23 @@ PNDMANAPI int pndman_package_crawl_single_package(int full_crawl, pndman_package
    data.bckward_desc  = 1; /* backwards compatibility with PXML descriptions */
    data.state = PXML_PARSE_DEFAULT;
 
-   if (_pndman_crawl_process(pnd->mount, pnd->path, &data)
-         != RETURN_OK)
+   if (_pndman_crawl_process(pnd->mount, pnd->path, &data) != RETURN_OK)
       goto fail;
 
    if (!full_crawl) _pndman_package_free_applications(pnd);
 
    /* stat for modified time */
    if (!pnd->modified_time) {
-      _pndman_pnd_get_path(pnd, path);
+      char *path;
+      if ((path = _pndman_pnd_get_path(pnd))) {
 #ifdef _WIN32
-      /* TODO: win32 implementation */
+         /* TODO: win32 implementation */
 #else
-      if (stat(path, &st) == 0)
-         pnd->local_modified_time = st.st_mtime;
+         if (stat(path, &st) == 0)
+            pnd->local_modified_time = st.st_mtime;
 #endif
+         free(path);
+      }
    }
 
    return RETURN_OK;
@@ -1448,17 +1532,17 @@ fail:
 
 /* \brief get embedded png from pnd
  * returns number of bytes copied on success and 0 on failure */
-PNDMANAPI size_t pndman_package_get_embedded_png(
-      pndman_package *pnd, char *buffer, size_t buflen)
+PNDMANAPI size_t pndman_package_get_embedded_png(pndman_package *pnd, char *buffer, size_t buflen)
 {
-   char *PNG = NULL, path[PNDMAN_PATH];
+   char *PNG = NULL;
    size_t size;
 
    CHECKUSE(pnd);
    CHECKUSE(buffer);
 
    /* fill our buffer */
-   _pndman_pnd_get_path(pnd, path);
+   char *path = _pndman_pnd_get_path(pnd);
+   if (!path) goto fail;
    if (!(PNG = _fetch_png_from_pnd(path, &size)))
       goto fail;
 
@@ -1518,10 +1602,10 @@ PNDMANAPI int pndman_pxml_test(const char *file)
    data.bckward_desc  = 1;
    data.state = PXML_PARSE_DEFAULT;
 
-   memset(data.pnd->version.major,  0, PNDMAN_VERSION);
-   memset(data.pnd->version.minor,  0, PNDMAN_VERSION);
-   memset(data.pnd->version.release,0, PNDMAN_VERSION);
-   memset(data.pnd->version.build,  0, PNDMAN_VERSION);
+   IFDO(free, data.pnd->version.major);
+   IFDO(free, data.pnd->version.minor);
+   IFDO(free, data.pnd->version.release);
+   IFDO(free, data.pnd->version.build);
 
    /* parse */
    if (_pxml_pnd_parse(&data, PXML, size) != RETURN_OK) {
@@ -1541,7 +1625,7 @@ PNDMANAPI int pndman_pxml_test(const char *file)
 
    puts("");
    printf("ID:       %s\n", test->id);
-   if (!strlen(test->id)) {
+   if (!test->id || !strlen(test->id)) {
       DEBFAIL("Your code sucks, fix it!");
       while ((test = _pndman_free_pnd(test)));
       exit(EXIT_FAILURE);

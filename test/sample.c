@@ -103,7 +103,7 @@ static void dl_history_cb(pndman_curl_code code,
       return;
    }
 
-   if (!strlen(p->id)) {
+   if (!p->id) {
       printf("no history\n");
       return;
    }
