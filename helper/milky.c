@@ -3110,6 +3110,7 @@ static int processflags(_USR_DATA *data)
  * (lockfile should be also part of libpndman!?) */
 static void sigint(int sig)
 {
+   showcursor(1);
    _printf("\1Caught %s, exiting...",
          sig == SIGINT  ? "SIGINT"  :
          sig == SIGTERM ? "SIGTERM" : "SIGSEGV");
@@ -3192,6 +3193,7 @@ int main(int argc, char **argv)
    /* free targets && ignores */
    freetarget_all(data.tlist);
    freeignore_all(data.ilist);
+   showcursor(1);
    return ret;
 }
 
