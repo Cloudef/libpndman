@@ -149,7 +149,7 @@ static void init_usrdata(_USR_DATA *data)
 #define _PND_DIF_CORRUPT         _D"\1Package \4%s \1integrity differs beetwen repositories.\n"_PND_MAY_CORRUPT
 #define _REMOVED_APPDATA         _D"\2Removed appdata: \5%s"
 #define _APPDATA_FAIL            _D"\1Failed to remove appdata: \5%s"
-#define _UPGRADE_DONE            _D"\2Upgraded package:\4%s"
+#define _UPGRADE_DONE            _D"\2Upgraded package: \4%s"
 #define _UPGRADE_FAIL            _D"\1Failed to upgrade \4%s"
 #define _INSTALL_DONE            _D"\2Installed package: \4%s"
 #define _INSTALL_FAIL            _D"\1Failed to install package: \4%s"
