@@ -2,4 +2,3 @@ change how remote repositories are saved (change every repository as seperate js
 compress database json files
 show time and speed in milkyhelper
 check archived PNDs md5sums, if local md5 hits one of them, it's older than on repo
-make the structs saner (remove statically allocated crap), currently they take quite a lot of memory
