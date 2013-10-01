@@ -1500,10 +1500,17 @@ static int _yesno_base(int noconfirm, int yn, char *fmt, ...)
 }
 
 /* show progressbar, shows dots instead when total_to_download is not known */
-static void progressbar(double downloaded, double total_to_download)
+static void progressbar(double downloaded, double total_to_download, double speed)
 {
    size_t dots, i, pwdt;
    double fraction;
+   double eta = 0.0;
+
+   if (speed > 0.0) eta = (total_to_download-downloaded)/speed;
+   int etam = (int)eta/60;
+   int etas = (int)eta%60;
+   if (etas < 0) etas = 0;
+   if (etam < 0) etam = 0;
 
    pwdt = 40; /* width */
    if (total_to_download <= downloaded) total_to_download = downloaded + 1;
@@ -1513,8 +1520,8 @@ static void progressbar(double downloaded, double total_to_download)
    _printf("\4%3.0f%% \5[\7", fraction * 100);
    for (i = 0; i != dots; ++i) _printf("\1=\7");
    for (     ; i != pwdt; ++i) printf(" ");
-   _printf("\5] \1%-6.2f \5MiB / \2%-6.2f \5MiB\r\7",
-         downloaded/1048576, total_to_download/1048567);
+   _printf("\5] \1%-6.2f \5MiB / \2%-6.2f \5MiB | %.2fM/s | %02d:%02d\r\7",
+         downloaded/1048576, total_to_download/1048567, speed/1048567, etam, etas);
    fflush(stdout);
 }
 
@@ -1696,13 +1703,24 @@ static int syncrepos(pndman_repository *rs, _USR_DATA *data)
       pndman_sync_handle_perform(&handle[c++]);
    }
 
+   double speed = 0.0;
+   double last_tdl = 0;
+   time_t start_time = time(NULL);
    if (!(data->flags & GB_NOBAR)) showcursor(0);
    while ((ret = pndman_curl_process(0, 1000) > 0)) {
       for (r = rs, c = 0; r; r = r->next) {
          if (handle[c].progress.done == 2) handle[c].progress.done = 0; /* clear our hack */
          if (handle[c].progress.done) data->tdl += handle[c].progress.total_to_download;
       }
-      if (!(data->flags & GB_NOBAR)) progressbar(data->tdl, data->ttdl);
+      if (!(data->flags & GB_NOBAR)) {
+         progressbar(data->tdl, data->ttdl, speed);
+         if (time(NULL)-start_time > 1) {
+            speed = data->tdl-last_tdl;
+            last_tdl = data->tdl;
+            start_time = time(NULL);
+            ERASE();
+         }
+      }
       data->tdl = 0; data->ttdl = 0;
    }
    ERASE();
@@ -2076,6 +2094,10 @@ static int targetperform(_USR_DATA *data)
       ++c;
    }
 
+
+   double speed = 0.0;
+   double last_tdl = 0;
+   time_t start_time = time(NULL);
    if (!(data->flags & GB_NOBAR)) showcursor(0);
    while ((ret = pndman_curl_process(0, 1000)) > 0 || count > 0) {
       /* check active transmissions */
@@ -2088,8 +2110,15 @@ static int targetperform(_USR_DATA *data)
       }
 
       /* show progressbar */
-      if (!(data->flags & GB_NOBAR))
-         progressbar(data->tdl<data->ttdl?data->tdl:data->ttdl, data->ttdl);
+      if (!(data->flags & GB_NOBAR)) {
+         progressbar(data->tdl<data->ttdl?data->tdl:data->ttdl, data->ttdl, speed);
+         if (time(NULL)-start_time > 1) {
+            speed = data->tdl-last_tdl;
+            last_tdl = data->tdl;
+            start_time = time(NULL);
+            ERASE();
+         }
+      }
       data->tdl = 0;
 
       /* check if we should start new handle */

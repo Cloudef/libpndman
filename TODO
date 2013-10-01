@@ -1,4 +1,3 @@
 change how remote repositories are saved (change every repository as seperate json file, instead stitched together)
 compress database json files
-show time and speed in milkyhelper
 check archived PNDs md5sums, if local md5 hits one of them, it's older than on repo
