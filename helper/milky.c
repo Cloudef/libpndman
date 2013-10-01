@@ -52,7 +52,7 @@ char _QUIET       = 0;
 unsigned int _QUEUE = 5;
 
 /* use this to clear line. */
-char _ERASE[120];
+char _ERASE[80];
 
 typedef enum _RETURN_STATUS
 {
@@ -1512,7 +1512,7 @@ static void progressbar(double downloaded, double total_to_download, double spee
    if (etas < 0) etas = 0;
    if (etam < 0) etam = 0;
 
-   pwdt = 40; /* width */
+   pwdt = 15; /* width */
    if (total_to_download <= downloaded) total_to_download = downloaded + 1;
    fraction = downloaded/total_to_download;
    dots     = round(fraction * pwdt);
