@@ -449,9 +449,9 @@ static pndman_handshake_packet* _pndman_api_handshake_packet(const char *key, co
       goto fail;
 
    IFDO(free, packet->username);
-   packet->username = strdup(username);
+   if (username) packet->username = strdup(username);
    IFDO(free, packet->key);
-   packet->key = strdup(key);
+   if (key) packet->key = strdup(key);
    return packet;
 
 fail:
