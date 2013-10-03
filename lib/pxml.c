@@ -1448,6 +1448,11 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
          IFDO(free, pnd->mount);
          pnd->mount = strdup(device->mount);
          pnd->repositoryptr = local;
+         pnd->modified_time = 0;
+
+         /* the md5 might not be correct anymore
+          * we don't fill it again, since it takes lots of time */
+         IFDO(free, pnd->md5);
 
          /* stat for modified time */
          if (!pnd->modified_time) {
@@ -1524,6 +1529,8 @@ PNDMANAPI int pndman_package_crawl_single_package(int full_crawl, pndman_package
       }
    }
 
+   /* fill md5 of single pnd crawl */
+   pndman_package_fill_md5(pnd);
    return RETURN_OK;
 
 fail:
