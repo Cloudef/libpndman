@@ -1229,8 +1229,8 @@ static void pndinfo(pndman_package *pnd, _USR_DATA *data, size_t longest_title)
    if (data->flags & A_INFO) {
       _printf("\2ID            \5: %s%s", pnd->commercial?"\1":"\2", pnd->id);
       _printf("\2Installed     \5: %s", pndinstalled(pnd, data)?"Yes":"No");
-      if ((data->flags & OP_QUERY)) {
-         _printf("\2Path          \5: %s", pnd->path);
+      if ((data->flags & OP_QUERY) && pnd->mount && pnd->path) {
+         _printf("\2Path          \5: %s/%s", pnd->mount, pnd->path);
       }
       _printf("\2Repository    \5: %s", pnd->repository?pnd->repository:"Foreign");
       _printf("\2Update        \5: %s", pnd->update?"Yes":"No");
