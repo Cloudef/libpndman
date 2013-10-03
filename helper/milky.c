@@ -1551,7 +1551,8 @@ static int pre_op_dialog(_USR_DATA *data)
             }
          }
       } else {
-         if ((data->flags & GB_NEEDED)    ||
+         if (((data->flags & GB_NEEDED)   &&
+              !t->pnd->update)            ||
              (!(data->flags & A_UPGRADE)  &&
               !(data->flags & OP_UPGRADE) &&
               !(data->flags & OP_REMOVE)  &&
@@ -1582,12 +1583,13 @@ static int pre_op_dialog(_USR_DATA *data)
       if (reinstall)
          if (!yesno(data, _PND_REINSTALL_Q, reinstall)) {
             for (t = data->tlist; t; t = tn) {
-               if (pndinstalled(t->pnd, data)  &&
-                  ((data->flags & GB_NEEDED)   ||
+               if ((pndinstalled(t->pnd, data) &&
+                   (data->flags & GB_NEEDED)   &&
+                   !t->pnd->update)            ||
                   (!(data->flags & A_UPGRADE)  &&
                    !(data->flags & OP_UPGRADE) &&
                    !(data->flags & OP_REMOVE)  &&
-                   !t->pnd->update))) {
+                   !t->pnd->update)) {
                   data->tlist = freetarget(t);
                   skipping = reinstall;
                }
