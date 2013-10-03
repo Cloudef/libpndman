@@ -189,13 +189,13 @@ static int _json_set_localization(pndman_package *pnd, json_t *object)
 
       /* add title */
       if ((t = _pndman_package_new_title(pnd))) {
-         t->lang = strdup(key);
+         if (key) t->lang = strdup(key);
          _json_set_string(&t->string, json_object_get(element, "title"));
       }
 
       /* add description */
       if ((t = _pndman_package_new_description(pnd))) {
-         t->lang = strdup(key);
+         if (key) t->lang = strdup(key);
          _json_set_string(&t->string, json_object_get(element, "description"));
       }
 
@@ -307,7 +307,7 @@ static int _pndman_json_process_packages(json_t *packages, pndman_repository *re
       /* update mount, if device given */
       if (device) {
          IFDO(free, pnd->mount);
-         pnd->mount = strdup(device->mount);
+         if (device->mount) pnd->mount = strdup(device->mount);
       }
 
       if (pnd->url) _strip_slash(pnd->url);
@@ -741,7 +741,7 @@ int _pndman_json_commit(pndman_repository *r, pndman_device *d, void *file)
    buf_append(f, "\"packages\":[\n"); /* packages */
    for (p = r->pnd; p; p = p->next) {
       /* this pnd doesn't belong to this device */
-      if (!r->prev && strcmp(p->mount, d->mount))
+      if (!r->prev && p->mount && d->mount && strcmp(p->mount, d->mount))
          continue;
 
       buf_appendf(f, "%s{\n", delim?",":""); delim = 1;

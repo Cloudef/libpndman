@@ -49,7 +49,7 @@ inline pndman_repository* _pndman_repository_get(const char *url, pndman_reposit
 {
    pndman_repository *r;
    r = _pndman_repository_first(list);
-   for(; r; r = r->next) if ((r->url && !strcmp(r->url, url)) || (!r->url && !url)) return r;
+   for(; r; r = r->next) if ((r->url && url && !strcmp(r->url, url)) || (!r->url && !url)) return r;
    return NULL;
 }
 
@@ -78,15 +78,17 @@ pndman_package* _pndman_repository_new_pnd_check(pndman_package *in_pnd,
 
    pr = NULL;
    for (pnd = repo->pnd; pnd; pnd = pnd->next) {
-      if (!strcmp(in_pnd->id, pnd->id)) {
+      if (in_pnd->id && pnd->id && !strcmp(in_pnd->id, pnd->id)) {
          /* if local repository, create instance */
          if (!repo->prev) {
             /* create instance here, path differs! */
-            if (!repo->prev && path && strcmp(path, pnd->path) && mount && strcmp(pnd->mount, mount)) { /* only local repo can have next installed */
+            if (!repo->prev &&
+                 path && pnd->path && strcmp(path, pnd->path) &&
+                 pnd->mount && mount && strcmp(pnd->mount, mount)) { /* only local repo can have next installed */
                if (!_pndman_vercmp(&pnd->version, &in_pnd->version)) {
                   /* new pnd is older, assing it to end */
                   for (pni = pnd; pni && pni->next_installed; pni = pni->next_installed)
-                     if (!strcmp(path, pni->path)) return pni; /* it's next installed */
+                     if (path && pni->path && !strcmp(path, pni->path)) return pni; /* it's next installed */
                   if (!(pni = pni->next_installed = _pndman_new_pnd()))
                      return NULL;
                   pni->next = pnd->next; /* assign parent's next to next */

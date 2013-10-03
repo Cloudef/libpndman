@@ -414,7 +414,7 @@ static void _pndman_sync_done(pndman_curl_code code, void *data, const char *inf
    if (code == PNDMAN_CURL_FAIL)
       _pndman_sync_handle_set_error(handle, info);
    else if (code == PNDMAN_CURL_DONE) {
-      if (strstr(chandle->url, "bzip=true")) {
+      if (chandle->url && strstr(chandle->url, "bzip=true")) {
          _pndman_bzip2_decompress(chandle);
       }
 
@@ -475,7 +475,7 @@ static int _pndman_sync_handle_perform(pndman_sync_handle *object)
    if (object->repository->updates && object->repository->timestamp && !(object->flags & PNDMAN_SYNC_FULL)) {
       snprintf(timestamp, sizeof(timestamp)-1, "%lu", object->repository->timestamp);
       url = str_replace(object->repository->updates, "%time%", timestamp);
-      if (strstr(object->repository->url, "bzip=true")) {
+      if (object->repository->url && strstr(object->repository->url, "bzip=true")) {
          size_t size = snprintf(NULL, 0, "%s&bzip=true", url)+1;
          char *nurl = malloc(size);
          if (nurl) {
@@ -484,7 +484,7 @@ static int _pndman_sync_handle_perform(pndman_sync_handle *object)
             url = nurl;
          }
       }
-   } else url = strdup(object->repository->url);
+   } else if (url) url = strdup(object->repository->url);
 
    /* url copy failed */
    if (!url)
@@ -533,7 +533,7 @@ static int _pndman_version_check(pndman_package *lp, pndman_package *rp)
    }
 
    /* check if we can check against modified_time */
-   if (lp->modified_time && !strcmp(lp->repository, rp->repository)) {
+   if (lp->modified_time && lp->repository && rp->repository && !strcmp(lp->repository, rp->repository)) {
       if (rp->modified_time > lp->modified_time) {
          if (lp->update) lp->update->update = NULL;
          lp->update = rp; rp->update = lp;
@@ -566,7 +566,7 @@ static int _pndman_check_updates(pndman_repository *list)
    for (pnd = list->pnd; pnd; pnd = pnd->next)
       for (r = list->next; r; r = r->next)
          for (p = r->pnd; p; p = p->next)
-            if (!strcmp(pnd->id, p->id))
+            if (pnd->id && p->id && !strcmp(pnd->id, p->id))
                updates += _pndman_version_check(pnd, p);
    return updates;
 }

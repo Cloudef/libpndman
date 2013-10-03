@@ -251,9 +251,9 @@ static pndman_device* _pndman_device_new_if_exist(pndman_device **device, const 
       d = _pndman_device_first(*device);
       for(; d; d = d->next)
 #ifdef _WIN32 /* windows is incasesensitive */
-         if (!_strupcmp(d->mount, check_existing)) {
+         if (d->mount && check_existing && !_strupcmp(d->mount, check_existing)) {
 #else
-         if (!strcmp(d->mount, check_existing)) {
+         if (d->mount && check_existing && !strcmp(d->mount, check_existing)) {
 #endif
             DEBFAIL(DEVICE_EXISTS, d->mount);
             return NULL;
@@ -422,7 +422,7 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
       return NULL;
 
    /* fill device struct */
-   if (strlen(path) > 3 && _strupcmp(szDrive, path)) {
+   if (path && strlen(path) > 3 && _strupcmp(szDrive, path)) {
       _pndman_device_set_mount(device, path);
    } else {
       _pndman_device_set_mount(device, szDrive);
@@ -556,6 +556,7 @@ char* _pndman_device_get_appdata(pndman_device *device)
    if (_pndman_device_check_pnd_tree(device) != RETURN_OK)
       return NULL;
 
+   if (!device->appdata) return NULL;
    return strdup(device->appdata);
 }
 

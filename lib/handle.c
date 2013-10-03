@@ -131,7 +131,9 @@ static int _conflict(char *id, char *path, pndman_device *device, pndman_reposit
    assert(id && path && local);
 
    for (pnd = local->pnd; pnd; pnd = pnd->next)
-      if (strcmp(id,pnd->id) && !strcmp(path, pnd->path) && !strcmp(device->mount, pnd->mount)) {
+      if (id && pnd->id && strcmp(id, pnd->id) &&
+          path && pnd->path && !strcmp(path, pnd->path) &&
+          device->mount && pnd->mount && !strcmp(device->mount, pnd->mount)) {
          DEBUG(PNDMAN_LEVEL_CRAP, "CONFLICT: %s - %s", pnd->id, pnd->path);
          return RETURN_TRUE;
       }
@@ -168,7 +170,7 @@ static int _pndman_package_handle_download(pndman_package_handle *object)
       if (!object->pnd->update || !object->pnd->update->path)
          goto object_wtf;
       for (d = _pndman_device_first(object->device);
-           d && strcmp(d->mount, object->pnd->update->mount);
+           d && (d->mount && object->pnd->update->mount && strcmp(d->mount, object->pnd->update->mount));
            d = d->next);
       if (!d) goto fail; /* can't find installed device */
       object->device = d; /* assign device, old pnd is installed on */
@@ -249,7 +251,7 @@ static char* _parse_filename_from_header(const char *haystack)
    /* zero terminate parsed filename */
    file[pos] = '\0';
 
-   if (!found)
+   if (!found || !strlen(file))
       goto fail;
 
    return strdup(file);
@@ -289,13 +291,13 @@ static int _pndman_package_handle_install(pndman_package_handle *object, pndman_
    DEBUG(PNDMAN_LEVEL_CRAP, "%s", handle->path);
 
    /* do check against remote */
-   if (md5 && strcmp(md5, object->pnd->md5)) {
+   if (md5 && object->pnd->md5 && strcmp(md5, object->pnd->md5)) {
       if (!(object->flags & PNDMAN_PACKAGE_FORCE))
          goto md5_fail;
       else DEBUG(2, HANDLE_MD5_DIFF);
    } NULLDO(free, md5);
 
-   if (object->pnd->update &&
+   if (object->pnd->update && object->pnd->update->path &&
       !(object->flags & PNDMAN_PACKAGE_INSTALL_DESKTOP) &&
       !(object->flags & PNDMAN_PACKAGE_INSTALL_MENU)    &&
       !(object->flags & PNDMAN_PACKAGE_INSTALL_APPS)) {
@@ -328,8 +330,8 @@ static int _pndman_package_handle_install(pndman_package_handle *object, pndman_
    oldp = NULL;
    if (object->pnd->update) oldp = object->pnd->update;
    for (pnd = local->pnd; pnd && !oldp; pnd = pnd->next) {
-      if (!strcmp(object->pnd->id, pnd->id) &&
-          !strcmp(object->device->mount, pnd->mount))
+      if (object->pnd->id && pnd->id && !strcmp(object->pnd->id, pnd->id) &&
+          object->device->mount && pnd->mount && !strcmp(object->device->mount, pnd->mount))
          oldp = pnd;
    }
 
@@ -389,7 +391,7 @@ static int _pndman_package_handle_install(pndman_package_handle *object, pndman_
       _pndman_backup(oldp, object->device);
    } else {
       /* remove old pnd if no backup specified and path differs */
-      if (oldp && strcmp(oldp->path, relative)) {
+      if (oldp && oldp->path && strcmp(oldp->path, relative)) {
          if ((tmp = _pndman_pnd_get_path(oldp))) {
             unlink(tmp);
             NULLDO(free, tmp);
@@ -497,7 +499,7 @@ void _pndman_package_handle_done(pndman_curl_code code, void *data, const char *
 
    if (code == PNDMAN_CURL_FAIL) {
       IFDO(free, handle->error);
-      handle->error = strdup(info);
+      if (info) handle->error = strdup(info);
    } else if (code == PNDMAN_CURL_DONE) {
       /* we success, but this might be a json error */
       if ((_pndman_json_client_api_return(chandle->file, &status) != RETURN_OK)) {
