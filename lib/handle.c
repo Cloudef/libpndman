@@ -304,9 +304,9 @@ static int _pndman_package_handle_install(pndman_package_handle *object, pndman_
          goto fail;
       dirname(relative);
    } else {
-      char *place = "/desktop";
-      if (object->flags & PNDMAN_PACKAGE_INSTALL_MENU) place = "/menu";
-      else if (object->flags & PNDMAN_PACKAGE_INSTALL_APPS) place = "/apps";
+      char *place = "desktop";
+      if (object->flags & PNDMAN_PACKAGE_INSTALL_MENU) place = "menu";
+      else if (object->flags & PNDMAN_PACKAGE_INSTALL_APPS) place = "apps";
 
       int size = snprintf(NULL, 0, "pandora/%s", place)+1;
       if (!(relative = malloc(size)))
