@@ -484,7 +484,7 @@ static int _pndman_sync_handle_perform(pndman_sync_handle *object)
             url = nurl;
          }
       }
-   } else if (url) url = strdup(object->repository->url);
+   } else if (object->repository->url) url = strdup(object->repository->url);
 
    /* url copy failed */
    if (!url)
