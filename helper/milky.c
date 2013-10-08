@@ -2092,11 +2092,11 @@ static int targetperform(_USR_DATA *data)
          if (pndman_package_handle_perform(&handle[c]) != RETURN_OK)
             handle[c].flags = 0;
          start[c] = 1;
+         ++count;
       }
       data->ttdl += t->pnd->size;
       ++c;
    }
-
 
    double speed = 0.0;
    double last_tdl = 0;
