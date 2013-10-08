@@ -1506,6 +1506,7 @@ static void progressbar(double downloaded, double total_to_download, double spee
    double fraction;
    double eta = 0.0;
 
+   if (speed < 0.0) speed = 0.0;
    if (speed > 0.0) eta = (total_to_download-downloaded)/speed;
    int etam = (int)eta/60;
    int etas = (int)eta%60;
@@ -1716,8 +1717,8 @@ static int syncrepos(pndman_repository *rs, _USR_DATA *data)
       }
       if (!(data->flags & GB_NOBAR)) {
          progressbar(data->tdl, data->ttdl, speed);
-         if (time(NULL)-start_time > 1) {
-            speed = data->tdl-last_tdl;
+         if (time(NULL)-start_time >= 1) {
+            if (data->tdl-last_tdl > 0.0) speed = data->tdl-last_tdl;
             last_tdl = data->tdl;
             start_time = time(NULL);
             ERASE();
@@ -2114,8 +2115,8 @@ static int targetperform(_USR_DATA *data)
       /* show progressbar */
       if (!(data->flags & GB_NOBAR)) {
          progressbar(data->tdl<data->ttdl?data->tdl:data->ttdl, data->ttdl, speed);
-         if (time(NULL)-start_time > 1) {
-            speed = data->tdl-last_tdl;
+         if (time(NULL)-start_time >= 1) {
+            if (data->tdl-last_tdl > 0.0) speed = data->tdl-last_tdl;
             last_tdl = data->tdl;
             start_time = time(NULL);
             ERASE();
