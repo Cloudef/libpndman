@@ -1273,7 +1273,6 @@ static int _pndman_crawl_dir(const char *path, const char *relative, pndman_pack
          free(relav);
          continue;
       }
-      if (ep->d_type != DT_REG) continue;               /* we only want regular files */
 #if 1 /* skip hidden . (dot) files? */
       if (ep->d_name[0] == '.') continue;
 #endif
