@@ -882,7 +882,7 @@ static int _nobar(char **argv, int argc, _USR_DATA *data)
 /* configuration wrapper for setting queue limit */
 static int _queue(char **argv, int argc, _USR_DATA *data)
 {
-   (void)argv, (void)argc;
+   (void)argv, (void)argc, (void)data;
    assert(data);
    if (!argc) return RETURN_FAIL;
    if ((_QUEUE = strtol(argv[0], (char **) NULL, 10)) <= 0)
@@ -893,7 +893,7 @@ static int _queue(char **argv, int argc, _USR_DATA *data)
 /* configuration wrapper for setting quiet level */
 static int _quiet(char **argv, int argc, _USR_DATA *data)
 {
-   (void)argv, (void)argc;
+   (void)argv, (void)argc, (void)data;
    assert(data);
    if (!argc) return RETURN_FAIL;
    _QUIET = strtol(argv[0], (char **) NULL, 10);
@@ -903,7 +903,7 @@ static int _quiet(char **argv, int argc, _USR_DATA *data)
 /* configuration wrapper for setting verbose level */
 static int _verbose(char **argv, int argc, _USR_DATA *data)
 {
-   (void)argv, (void)argc;
+   (void)argv, (void)argc, (void)data;
    assert(data);
    if (!argc) return RETURN_FAIL;
    _VERBOSE = strtol(argv[0], (char **) NULL, 10);
@@ -913,7 +913,7 @@ static int _verbose(char **argv, int argc, _USR_DATA *data)
 /* configuration wrapper for setting color */
 static int _color(char **argv, int argc, _USR_DATA *data)
 {
-   (void)argv, (void)argc;
+   (void)argv, (void)argc, (void)data;
    assert(data);
    if (!argc) return RETURN_FAIL;
    pndman_set_color(strtol(argv[0], (char **) NULL, 10));
@@ -923,7 +923,7 @@ static int _color(char **argv, int argc, _USR_DATA *data)
 /* configuration wrapper for logdl */
 static int _logdl(char **argv, int argc, _USR_DATA *data)
 {
-   (void)argv, (void)argc;
+   (void)argv, (void)argc, (void)data;
    assert(data);
    _LOG_DL = 1;
    return RETURN_OK;
