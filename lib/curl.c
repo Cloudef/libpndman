@@ -34,16 +34,18 @@ static void _pndman_curl_init_progress(pndman_curl_progress *progress)
 }
 
 /* \brief write to file */
-static size_t _pndman_curl_write_file(void *data, size_t size, size_t nmemb, pndman_curl_handle *handle)
+static size_t _pndman_curl_write_file(void *data, size_t size, size_t nmemb, void *out)
 {
+   pndman_curl_handle *handle = out;
    if (!handle || handle->free) return 0;
    return fwrite(data, size, nmemb, handle->file);
 }
 
 /* \brief write to header */
-static size_t _pndman_curl_write_header(void *data, size_t size, size_t nmemb, pndman_curl_handle *handle)
+static size_t _pndman_curl_write_header(char *data, size_t size, size_t nmemb, void *out)
 {
-   void *new;
+   void *buffer;
+   pndman_curl_handle *handle = out;
    pndman_curl_header *header;
 
    if (!handle || handle->free) return 0;
@@ -55,15 +57,15 @@ static size_t _pndman_curl_write_header(void *data, size_t size, size_t nmemb, p
 
    /* if we have more data than we can hold */
    if (header->pos + size * nmemb >= header->size - 1) {
-      if (!(new = realloc(header->data,
+      if (!(buffer = realloc(header->data,
                   header->size + PNDMAN_CURL_CHUNK))) {
-         if (!(new = malloc(header->size + PNDMAN_CURL_CHUNK)))
+         if (!(buffer = malloc(header->size + PNDMAN_CURL_CHUNK)))
                return 0;
-         memcpy(new, header->data, header->size);
+         memcpy(buffer, header->data, header->size);
       }
       memset(header->data+header->size, 0,
              header->size + PNDMAN_CURL_CHUNK);
-      header->data  = new;
+      header->data  = buffer;
       header->size += PNDMAN_CURL_CHUNK;
    }
 
@@ -74,11 +76,12 @@ static size_t _pndman_curl_write_header(void *data, size_t size, size_t nmemb, p
 }
 
 /* \brief progressbar */
-static int _pndman_curl_progress_func(pndman_curl_handle *handle,
+static int _pndman_curl_progress_func(void *userdata,
       double total_to_download, double download, double total_to_upload, double upload)
 {
    (void)total_to_upload;
    (void)upload;
+   pndman_curl_handle *handle = userdata;
    if (!handle || handle->free) return 1;
    handle->progress->download           = handle->resume + download;
    handle->progress->total_to_download  = handle->resume + total_to_download;
@@ -409,7 +412,7 @@ static int _pndman_curl_perform(unsigned long tv_sec, unsigned long tv_usec)
 
    /* update status of curl handles */
    while ((msg = curl_multi_info_read(_pndman_curlm, &msgs_left))) {
-      curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &handle);
+      curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, (char**)&handle);
       if (msg->msg == CURLMSG_DONE) { /* DONE */
          _pndman_curl_msg(msg->data.result, handle);
 
