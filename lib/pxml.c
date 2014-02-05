@@ -1629,6 +1629,16 @@ PNDMANAPI int pndman_pxml_test(const char *file)
    if (test->version.type == PND_VERSION_BETA)        type = PND_TYPE_BETA;
    else if (test->version.type == PND_VERSION_ALPHA)  type = PND_TYPE_ALPHA;
 
+   /* get embedded png */
+   {
+      size_t size = 1150663564;
+      void *data = malloc(size);
+      if (data) {
+         pndman_package_get_embedded_png(test, data, size);
+         free(data);
+      }
+   }
+
    puts("");
    printf("ID:       %s\n", test->id);
    if (!test->id || !strlen(test->id)) {
