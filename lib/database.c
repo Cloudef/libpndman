@@ -130,7 +130,7 @@ static int _pndman_db_commit_local(pndman_repository *repo, pndman_device *devic
 {
    FILE *f = NULL;
    BLOCK_FD fd = BLOCK_INIT;
-   char *db_path, *appdata;
+   char *db_path = NULL, *appdata;
    assert(device);
 
    /* check appdata */
@@ -178,7 +178,7 @@ static int _pndman_db_commit(pndman_repository *repo, pndman_device *device)
    FILE *f = NULL;
    BLOCK_FD fd = BLOCK_INIT;
    pndman_repository *r;
-   char *db_path, *appdata;
+   char *db_path = NULL, *appdata;
    clock_t now = clock();
    assert(device);
 
