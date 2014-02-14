@@ -1434,7 +1434,7 @@ static int _pndman_crawl_to_repository(int full, pndman_device *device, pndman_r
          n = p->next;
          while ((p = _pndman_free_pnd(p)));
       }
-      return ret;
+      return 0;
    }
 
    /* merge pnd's to repo */
