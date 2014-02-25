@@ -705,7 +705,7 @@ PNDMANAPI pndman_device* pndman_device_add(const char *path, pndman_device *devi
    return d;
 }
 
-/* \brief update space information of device*/
+/* \brief update space information of device */
 PNDMANAPI void pndman_device_update(pndman_device *device)
 {
    CHECKUSEV(device);

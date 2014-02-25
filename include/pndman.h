@@ -483,6 +483,10 @@ PNDMANAPI pndman_device* pndman_device_add(
 PNDMANAPI pndman_device* pndman_device_detect(
       pndman_device *device);
 
+/* \brief update space information of device */
+PNDMANAPI void pndman_device_update(
+      pndman_device *device);
+
 /* \brief free a device (and remove from list) */
 PNDMANAPI pndman_device* pndman_device_free(
       pndman_device *device);
