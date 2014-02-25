@@ -567,31 +567,12 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
 void _pndman_device_update(pndman_device *device)
 {
    char *path = device->mount;
-   if (!path) path = device->device;
    if (!path) return;
 
 #ifdef __linux__
-   FILE *mtab;
-   struct mntent *m;
-   struct mntent mnt;
    struct statfs fs;
-   char strings[4096];
 
-   mtab = setmntent(LINUX_MTAB, "r");
-   memset(strings, 0, 4096);
-   while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
-      if (mnt.mnt_dir != NULL) {
-         if (!strcmp(mnt.mnt_fsname, path) ||
-             !strcmp(mnt.mnt_dir,    path))
-             break;
-      }
-      m = NULL;
-   }
-   endmntent(mtab);
-
-   if (!m) return;
-
-   if (statfs(mnt.mnt_dir, &fs) != 0)
+   if (statfs(path, &fs) != 0)
       return;
 
    device->free      = fs.f_bfree  * fs.f_bsize;
