@@ -401,6 +401,11 @@ int main(int argc, char **argv)
             d->device, d->mount);
    puts("");
 
+   /* we can also update our device space
+    * information */
+   for (d = device; d; d = d->next)
+      pndman_device_update(d);
+
    /* lets free every device and
     * add back the /tmp device
     * as we do our things to it. */

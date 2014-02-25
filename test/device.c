@@ -23,6 +23,7 @@ int main(int argc, char **argv)
    puts("");
    device_count = 0;
    for (d = device; d; d = d->next) {
+      pndman_device_update(d);
       printf("%12s : %24s : %zu : %zu : %zu\n",
             d->device, d->mount, d->size, d->free, d->available);
       device_count++;
@@ -50,7 +51,7 @@ int main(int argc, char **argv)
             d->device, d->mount, d->size, d->free, d->available);
    puts("");
 
-   pndman_device_free_all(device);
+   if (device) pndman_device_free_all(device);
    free(cwd);
 
    puts("");

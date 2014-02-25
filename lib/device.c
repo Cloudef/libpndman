@@ -563,6 +563,60 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
    return first;
 }
 
+/* \brief update space information of device */
+void _pndman_device_update(pndman_device *device)
+{
+   char *path = device->mount;
+   if (!path) path = device->device;
+   if (!path) return;
+
+#ifdef __linux__
+   FILE *mtab;
+   struct mntent *m;
+   struct mntent mnt;
+   struct statfs fs;
+   char strings[4096];
+
+   mtab = setmntent(LINUX_MTAB, "r");
+   memset(strings, 0, 4096);
+   while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
+      if (mnt.mnt_dir != NULL) {
+         if (!strcmp(mnt.mnt_fsname, path) ||
+             !strcmp(mnt.mnt_dir,    path))
+             break;
+      }
+      m = NULL;
+   }
+   endmntent(mtab);
+
+   if (!m) return;
+
+   if (statfs(mnt.mnt_dir, &fs) != 0)
+      return;
+
+   device->free      = fs.f_bfree  * fs.f_bsize;
+   device->size      = fs.f_blocks * fs.f_bsize;
+   device->available = fs.f_bavail * fs.f_bsize;
+#elif _WIN32
+   char szName[PNDMAN_PATH];
+   char szDrive[3] = { ' ', ':', '\0' };
+   szDrive[0] = path[0];
+   ULARGE_INTEGER bytes_available, bytes_size, bytes_free;
+
+   memset(szName, 0, PNDMAN_PATH);
+   if (!QueryDosDevice(szDrive, szName, PNDMAN_PATH-1))
+      return;
+
+   if (!GetDiskFreeSpaceEx(szDrive,
+        &bytes_available, &bytes_size, &bytes_free))
+      return;
+
+   device->free      = bytes_free.QuadPart;
+   device->size      = bytes_size.QuadPart;
+   device->available = bytes_available.QuadPart;
+#endif
+}
+
 /* INTERNAL */
 
 /* \brief check's devices structure and returns appdata, free it*/
@@ -649,6 +703,13 @@ PNDMANAPI pndman_device* pndman_device_add(const char *path, pndman_device *devi
       }
    }
    return d;
+}
+
+/* \brief update space information of device*/
+PNDMANAPI void pndman_device_update(pndman_device *device)
+{
+   CHECKUSEV(device);
+   _pndman_device_update(device);
 }
 
 /* \brief free one device */
