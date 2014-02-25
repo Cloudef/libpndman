@@ -432,8 +432,10 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
    }
 
    if (!GetDiskFreeSpaceEx(szDrive,
-        &bytes_available, &bytes_size, &bytes_free))
+        &bytes_available, &bytes_size, &bytes_free)) {
+      DEBFAIL(ACCESS_FAIL, szDrive);
       return NULL;
+   }
 
    /* create new if needed */
    if (!_pndman_device_new_if_exist(&device, strlen(path)>3?path:szDrive))
@@ -572,8 +574,10 @@ void _pndman_device_update(pndman_device *device)
 #ifdef __linux__
    struct statfs fs;
 
-   if (statfs(path, &fs) != 0)
+   if (statfs(path, &fs) != 0) {
+      DEBFAIL(ACCESS_FAIL, path);
       return;
+   }
 
    device->free      = fs.f_bfree  * fs.f_bsize;
    device->size      = fs.f_blocks * fs.f_bsize;
@@ -585,12 +589,16 @@ void _pndman_device_update(pndman_device *device)
    ULARGE_INTEGER bytes_available, bytes_size, bytes_free;
 
    memset(szName, 0, PNDMAN_PATH);
-   if (!QueryDosDevice(szDrive, szName, PNDMAN_PATH-1))
+   if (!QueryDosDevice(szDrive, szName, PNDMAN_PATH-1)) {
+      DEBFAIL(DEVICE_ROOT_FAIL, szName);
       return;
+   }
 
    if (!GetDiskFreeSpaceEx(szDrive,
         &bytes_available, &bytes_size, &bytes_free))
+      DEBFAIL(ACCESS_FAIL, szDrive);
       return;
+   }
 
    device->free      = bytes_free.QuadPart;
    device->size      = bytes_size.QuadPart;
