@@ -502,7 +502,7 @@ void _pndman_package_handle_done(pndman_curl_code code, void *data, const char *
       if (info) handle->error = strdup(info);
    } else if (code == PNDMAN_CURL_DONE) {
       /* we success, but this might be a json error */
-      if ((_pndman_json_client_api_return(chandle->file, &status) != RETURN_OK)) {
+      if ((_pndman_json_client_api_return(chandle->file, &status) != RETURN_OK) && status.text) {
          code = PNDMAN_CURL_FAIL;
          IFDO(free, handle->error);
          if(status.text) handle->error = strdup(status.text);
