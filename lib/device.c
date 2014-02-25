@@ -58,7 +58,7 @@ static void _pndman_device_set_mount(pndman_device *device, const char *mount)
    IFDO(free, device->mount);
    if (mount) {
       device->mount = strdup(mount);
-      _strip_slash(device->mount);
+      if (strcmp(mount, "/")) _strip_slash(device->mount);
    }
 }
 
@@ -68,7 +68,7 @@ static void _pndman_device_set_device(pndman_device *device, const char *cdevice
    IFDO(free, device->device);
    if (cdevice) {
       device->device = strdup(cdevice);
-      _strip_slash(device->device);
+      if (strcmp(cdevice, "/")) _strip_slash(device->device);
    }
 }
 
