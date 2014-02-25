@@ -371,6 +371,8 @@ static int getcfgpath(char *path)
    strncat(path, "/",     PATH_MAX-1);
    strncat(path, CFG_DIR, PATH_MAX-1); /* $XDG_CONFIG_HOME/$CFG_DIR */
    return mkdirexist(path);
+#else
+   (void)path;
 #endif /* !_WIN32 */
    return RETURN_OK;
 }
@@ -2459,13 +2461,14 @@ static int setrepocredentials(_USR_DATA *data)
    _USR_TARGET *t;
    pndman_repository *r;
    unsigned int count = 0;
-   char s[LINE_MAX], *repository = NULL, *username, *key;
+   char *repository = NULL, *username, *key;
 
    /* arguments given */
    if (data->tlist)
       for (t = data->tlist; t; t = t->next) ++count;
 #ifndef _WIN32 /* POSIX only */
    else { /* read stdin */
+      char s[LINE_MAX];
       memset(s, 0, LINE_MAX);
       while (fdcheck(fileno(stdin)) && fgets(s, LINE_MAX-1, stdin))
       { addtarget(stripnl(s), &data->tlist); ++count; }

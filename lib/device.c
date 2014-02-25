@@ -405,13 +405,13 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
    device->size      = fs.f_blocks * fs.f_bsize;
    device->available = fs.f_bavail * fs.f_bsize;
 #elif _WIN32
-   char szName[PNDMAN_PATH];
+   char szName[1024];
    char szDrive[3] = { ' ', ':', '\0' };
    szDrive[0] = path[0];
    ULARGE_INTEGER bytes_available, bytes_size, bytes_free;
 
-   memset(szName, 0, PNDMAN_PATH);
-   if (!QueryDosDevice(szDrive, szName, PNDMAN_PATH-1)) {
+   memset(szName, 0, sizeof(szName));
+   if (!QueryDosDevice(szDrive, szName, sizeof(szName)-1)) {
       DEBFAIL(DEVICE_ROOT_FAIL, szName);
       return NULL;
    }
@@ -511,12 +511,12 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
    }
    endmntent(mtab);
 #elif _WIN32
-   char szTemp[512], szName[PNDMAN_PATH-1];
+   char szTemp[512], szName[1024];
    char szDrive[3] = { ' ', ':', '\0' };
-   char pandoradir[PNDMAN_PATH], *p;
+   char pandoradir[1024], *p;
    ULARGE_INTEGER bytes_free, bytes_available, bytes_size;
 
-   memset(szTemp, 0, 512); memset(pandoradir, 0, PNDMAN_PATH);
+   memset(szTemp, 0, 512); memset(pandoradir, 0, sizeof(pandoradir));
    if (!GetLogicalDriveStrings(511, szTemp))
       return NULL;
 
@@ -525,13 +525,13 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
    while (*p) {
       *szDrive = *p;
 
-      if (QueryDosDevice(szDrive, szName, PNDMAN_PATH-1)) {
+      if (QueryDosDevice(szDrive, szName, sizeof(szName)-1)) {
          /* check for read && write perms
           * test against both, / and /pandora,
           * this might be SD with rootfs install.
           * where only /pandora is owned by everyone. */
-         strncpy(pandoradir, szDrive, PNDMAN_PATH-1);
-         strncat(pandoradir, "/pandora", PNDMAN_PATH-1);
+         strncpy(pandoradir, szDrive, sizeof(pandoradir)-1);
+         strncat(pandoradir, "/pandora", sizeof(pandoradir)-1);
          if (access(pandoradir,  R_OK | W_OK) == -1 &&
              access(szDrive,     R_OK | W_OK) == -1)
          { while (*p++); continue; }
@@ -545,8 +545,8 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
 
          DEBUG(PNDMAN_LEVEL_CRAP, "DETECT: %s : %s", szDrive, szName);
 
-         strncpy(device->mount,  szDrive, PNDMAN_PATH-1);
-         strncpy(device->device, szName,  PNDMAN_PATH-1);
+         _pndman_device_set_mount(device, szDrive);
+         _pndman_device_set_device(device, szName);
          device->free      = bytes_free.QuadPart;
          device->size      = bytes_size.QuadPart;
          device->available = bytes_available.QuadPart;
@@ -583,19 +583,19 @@ void _pndman_device_update(pndman_device *device)
    device->size      = fs.f_blocks * fs.f_bsize;
    device->available = fs.f_bavail * fs.f_bsize;
 #elif _WIN32
-   char szName[PNDMAN_PATH];
+   char szName[1024];
    char szDrive[3] = { ' ', ':', '\0' };
    szDrive[0] = path[0];
    ULARGE_INTEGER bytes_available, bytes_size, bytes_free;
 
-   memset(szName, 0, PNDMAN_PATH);
-   if (!QueryDosDevice(szDrive, szName, PNDMAN_PATH-1)) {
+   memset(szName, 0, sizeof(szName));
+   if (!QueryDosDevice(szDrive, szName, sizeof(szName)-1)) {
       DEBFAIL(DEVICE_ROOT_FAIL, szName);
       return;
    }
 
    if (!GetDiskFreeSpaceEx(szDrive,
-        &bytes_available, &bytes_size, &bytes_free))
+        &bytes_available, &bytes_size, &bytes_free)) {
       DEBFAIL(ACCESS_FAIL, szDrive);
       return;
    }
