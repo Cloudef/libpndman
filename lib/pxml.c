@@ -1276,7 +1276,8 @@ static int _pndman_crawl_dir(const char *path, const char *relative, pndman_pack
 #if 1 /* skip hidden . (dot) files? */
       if (ep->d_name[0] == '.') continue;
 #endif
-      if (!_strupstr(ep->d_name, ".pnd")) continue;     /* we only want .pnd files */
+      if (strlen(ep->d_name) < 4 || _strupcmp(ep->d_name+strlen(ep->d_name)-4, ".pnd"))
+         continue; /* we only want .pnd files */
 
       /* create pnd */
       pnd = _pndman_new_pnd();
