@@ -374,8 +374,17 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
    if (!m)
       return _pndman_device_add_absolute(path, device);
 
+   char *pandoradir;
+   int size = snprintf(NULL, 0, "%s/pandora", mnt.mnt_dir)+1;
+   if (!(pandoradir = malloc(size))) {
+      DEBFAIL(OUT_OF_MEMORY);
+      return NULL;
+   }
+   sprintf(pandoradir, "%s/pandora", mnt.mnt_dir);
+
    /* check for read && write permissions */
-   if (access(mnt.mnt_dir, R_OK | W_OK) != 0) {
+   if (access(mnt.mnt_dir, R_OK | W_OK) != 0 &&
+       access(pandoradir, R_OK | W_OK) != 0) {
       DEBFAIL(ACCESS_FAIL, mnt.mnt_dir);
       return NULL;
    }
@@ -407,8 +416,17 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
       return NULL;
    }
 
+   char *pandoradir;
+   int size = snprintf(NULL, 0, "%s/pandora", path)+1;
+   if (!(pandoradir = malloc(size))) {
+      DEBFAIL(OUT_OF_MEMORY);
+      return NULL;
+   }
+   sprintf(pandoradir, "%s/pandora", path);
+
    /* check for read && write perms */
-   if (access(path, R_OK | W_OK) == -1) {
+   if (access(path, R_OK | W_OK) != 0 &&
+       access(pandoradir, R_OK | W_OK) != 0) {
       DEBFAIL(ACCESS_FAIL, path);
       return NULL;
    }
