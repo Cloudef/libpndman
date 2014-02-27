@@ -35,6 +35,8 @@
 #  endif
 #endif
 
+#include "<stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -203,7 +205,7 @@ typedef struct pndman_package
    char *md5;
    char *url;
    char *vendor;
-   size_t size;
+   uint64_t size;
    time_t modified_time;
    time_t local_modified_time;
    int rating;
@@ -252,7 +254,7 @@ typedef struct pndman_device
 {
    char *mount;
    char *device;
-   size_t size, free, available;
+   uint64_t size, free, available;
    char *appdata;
    struct pndman_device *next, *prev;
 } pndman_device;
