@@ -119,8 +119,8 @@ typedef struct pndman_curl_handle
    void *curl;
    void *file;
    void *header_list;
-   size_t resume;
-   size_t retry;
+   uint64_t resume;
+   int retry;
    time_t if_modified_since;
    pndman_curl_callback callback;
    pndman_curl_progress *progress;
