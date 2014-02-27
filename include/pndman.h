@@ -31,11 +31,11 @@
 #  include <limits.h> /* for PATH_MAX */
 #  define LINE_MAX 2048
 #  ifdef _UNICODE
-#     error "Suck it unicde.."
+#     error "Suck it unicode.."
 #  endif
 #endif
 
-#include "<stdint.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
