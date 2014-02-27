@@ -337,9 +337,9 @@ static pndman_device* _pndman_device_add_absolute(const char *path, pndman_devic
    /* fill device struct */
    _pndman_device_set_mount(device, path);
    _pndman_device_set_device(device, path);
-   device->free      = fs.f_bfree  * fs.f_bsize;
-   device->size      = fs.f_blocks * fs.f_bsize;
-   device->available = fs.f_bavail * fs.f_bsize;
+   device->free      = (uint64_t)fs.f_bfree  * (uint64_t)fs.f_bsize;
+   device->size      = (uint64_t)fs.f_blocks * (uint64_t)fs.f_bsize;
+   device->available = (uint64_t)fs.f_bavail * (uint64_t)fs.f_bsize;
 
    return device;
 }
@@ -401,9 +401,9 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
    /* fill device struct */
    _pndman_device_set_mount(device, mnt.mnt_dir);
    _pndman_device_set_device(device, mnt.mnt_fsname);
-   device->free      = fs.f_bfree  * fs.f_bsize;
-   device->size      = fs.f_blocks * fs.f_bsize;
-   device->available = fs.f_bavail * fs.f_bsize;
+   device->free      = (uint64_t)fs.f_bfree  * (uint64_t)fs.f_bsize;
+   device->size      = (uint64_t)fs.f_blocks * (uint64_t)fs.f_bsize;
+   device->available = (uint64_t)fs.f_bavail * (uint64_t)fs.f_bsize;
 #elif _WIN32
    char szName[1024];
    char szDrive[3] = { ' ', ':', '\0' };
@@ -502,9 +502,9 @@ static pndman_device* _pndman_device_detect(pndman_device *device)
             DEBUG(PNDMAN_LEVEL_CRAP, "DETECT: %s", mnt.mnt_dir);
             _pndman_device_set_mount(device, mnt.mnt_dir);
             _pndman_device_set_device(device, mnt.mnt_fsname);
-            device->free      = fs.f_bfree  * fs.f_bsize;
-            device->size      = fs.f_blocks * fs.f_bsize;
-            device->available = fs.f_bavail * fs.f_bsize;
+            device->free      = (uint64_t)fs.f_bfree  * (uint64_t)fs.f_bsize;
+            device->size      = (uint64_t)fs.f_blocks * (uint64_t)fs.f_bsize;
+            device->available = (uint64_t)fs.f_bavail * (uint64_t)fs.f_bsize;
          }
       }
       m = NULL;
@@ -579,9 +579,9 @@ void _pndman_device_update(pndman_device *device)
       return;
    }
 
-   device->free      = fs.f_bfree  * fs.f_bsize;
-   device->size      = fs.f_blocks * fs.f_bsize;
-   device->available = fs.f_bavail * fs.f_bsize;
+   device->free      = (uint64_t)fs.f_bfree  * (uint64_t)fs.f_bsize;
+   device->size      = (uint64_t)fs.f_blocks * (uint64_t)fs.f_bsize;
+   device->available = (uint64_t)fs.f_bavail * (uint64_t)fs.f_bsize;
 #elif _WIN32
    char szName[1024];
    char szDrive[3] = { ' ', ':', '\0' };
