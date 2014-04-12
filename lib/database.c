@@ -20,15 +20,20 @@
 static char *str_replace(const char *s, const char *old, const char *new)
 {
    size_t slen = strlen(s)+1;
-   char *cout=0, *p=0, *tmp=NULL; cout=malloc(slen); p=cout;
+   char *tcout, *cout=0, *p=0, *tmp=NULL; cout=malloc(slen); p=cout;
    if (!p) return 0;
    while (*s)
       if (!strncmp(s, old, strlen(old))) {
-         p  -= (intptr_t)cout;
-         cout= realloc(cout, slen += strlen(new)-strlen(old) );
+         p -= (intptr_t)cout;
+         tcout= realloc(cout, slen += strlen(new)-strlen(old));
+         if (!tcout) {
+            IFDO(free, cout);
+            return NULL;
+         }
+         cout = tcout;
          tmp = strcpy(p=cout+(intptr_t)p, new);
-         p  += strlen(tmp);
-         s  += strlen(old);
+         p += strlen(tmp);
+         s += strlen(old);
       } else *p++=*s++;
    *p=0;
    return cout;

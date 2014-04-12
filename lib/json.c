@@ -429,9 +429,9 @@ int _pndman_json_comment_pull(void *user_data,
    if (json_is_array(versions)) {
       while ((varray = json_array_get(versions, v++))) {
          memset(&version, 0, sizeof(pndman_version));
-         _json_set_version(&version, json_object_get(varray,"version"));
          comments = json_object_get(varray, "comments");
          if (!json_is_array(comments)) continue; c = 0;
+         _json_set_version(&version, json_object_get(varray, "version"));
          while ((carray = json_array_get(comments, c++))) {
             json_fast_number(json_object_get(carray, "date"), date, time_t);
             json_fast_string(json_object_get(carray, "username"), username);

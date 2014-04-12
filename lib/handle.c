@@ -356,7 +356,7 @@ static int _pndman_package_handle_install(pndman_package_handle *object, pndman_
       if (!(tmp2 = malloc(size2))) goto fail;
       sprintf(tmp2, "%s/%s", object->device->mount, tmp);
 
-      while (_file_exist(tmp2) && strcmp(relative, oldp?oldp->path:"/dev/null")) {
+      while (_file_exist(tmp2) && strcmp(relative, (oldp && oldp->path ? oldp->path : "/dev/null"))) {
          uniqueid++;
 
          size2 = snprintf(NULL, 0, "%s_%d.pnd", prefix,uniqueid)+1;

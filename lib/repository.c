@@ -96,7 +96,9 @@ pndman_package* _pndman_repository_new_pnd_check(pndman_package *in_pnd,
                } else {
                   /* new pnd is newer, assign it to first */
                   if (!(pni = _pndman_new_pnd())) return NULL;
-                  pr->next = pni; pni->next_installed = pnd; /* assign nexts */
+                  if (pr) pr->next = pni;
+                  else repo->pnd = pni;
+                  pni->next_installed = pnd; /* assign nexts */
                   pni->next = pnd->next;
                   DEBUG(PNDMAN_LEVEL_CRAP, "Newer : %s", path);
                }

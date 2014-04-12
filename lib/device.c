@@ -113,7 +113,9 @@ static void _pndman_remove_tmp_files(pndman_device *device)
 
 #ifndef _WIN32
    dp = opendir(tmp);
-   if (!dp) return;
+   if (!dp)
+      goto fail;
+
    while ((ep = readdir(dp))) {
       if (strstr(ep->d_name, ".tmp")) {
          char *tmp2;
@@ -127,7 +129,7 @@ static void _pndman_remove_tmp_files(pndman_device *device)
    closedir(dp);
 #else
    if ((hFind = FindFirstFile(tmp, &dp)) == INVALID_HANDLE_VALUE)
-      return;
+      goto fail;
 
    do {
       char *tmp2;
@@ -357,8 +359,11 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
    struct mntent mnt;
    struct statfs fs;
    char strings[4096];
+   char *pandoradir = NULL;
 
-   if (!path) return NULL;
+   if (!path)
+      goto fail;
+
    mtab = setmntent(LINUX_MTAB, "r");
    memset(strings, 0, 4096);
    while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
@@ -374,11 +379,10 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
    if (!m)
       return _pndman_device_add_absolute(path, device);
 
-   char *pandoradir;
    int size = snprintf(NULL, 0, "%s/pandora", mnt.mnt_dir)+1;
    if (!(pandoradir = malloc(size))) {
       DEBFAIL(OUT_OF_MEMORY);
-      return NULL;
+      goto fail;
    }
    sprintf(pandoradir, "%s/pandora", mnt.mnt_dir);
 
@@ -386,17 +390,17 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
    if (access(mnt.mnt_dir, R_OK | W_OK) != 0 &&
        access(pandoradir, R_OK | W_OK) != 0) {
       DEBFAIL(ACCESS_FAIL, mnt.mnt_dir);
-      return NULL;
+      goto fail;
    }
 
    if (statfs(mnt.mnt_dir, &fs) != 0) {
       DEBFAIL(ACCESS_FAIL, mnt.mnt_dir);
-      return NULL;
+      goto fail;
    }
 
    /* create new if needed */
    if (!_pndman_device_new_if_exist(&device, mnt.mnt_dir))
-      return NULL;
+      goto fail;
 
    /* fill device struct */
    _pndman_device_set_mount(device, mnt.mnt_dir);
@@ -413,14 +417,14 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
    memset(szName, 0, sizeof(szName));
    if (!QueryDosDevice(szDrive, szName, sizeof(szName)-1)) {
       DEBFAIL(DEVICE_ROOT_FAIL, szName);
-      return NULL;
+      goto fail;
    }
 
    char *pandoradir;
    int size = snprintf(NULL, 0, "%s/pandora", path)+1;
    if (!(pandoradir = malloc(size))) {
       DEBFAIL(OUT_OF_MEMORY);
-      return NULL;
+      goto fail;
    }
    sprintf(pandoradir, "%s/pandora", path);
 
@@ -428,18 +432,18 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
    if (access(path, R_OK | W_OK) != 0 &&
        access(pandoradir, R_OK | W_OK) != 0) {
       DEBFAIL(ACCESS_FAIL, path);
-      return NULL;
+      goto fail;
    }
 
    if (!GetDiskFreeSpaceEx(szDrive,
         &bytes_available, &bytes_size, &bytes_free)) {
       DEBFAIL(ACCESS_FAIL, szDrive);
-      return NULL;
+      goto fail;
    }
 
    /* create new if needed */
    if (!_pndman_device_new_if_exist(&device, strlen(path)>3?path:szDrive))
-      return NULL;
+      goto fail;
 
    /* fill device struct */
    if (path && strlen(path) > 3 && _strupcmp(szDrive, path)) {
@@ -454,7 +458,12 @@ static pndman_device* _pndman_device_add(const char *path, pndman_device *device
    device->available = bytes_available.QuadPart;
 #endif
 
+   free(pandoradir);
    return device;
+
+fail:
+   IFDO(free, pandoradir);
+   return NULL;
 }
 
 /* \brief Detect devices and fill them automatically. */

@@ -352,6 +352,7 @@ static int getcfgpath(char *path)
 {
 /* just dump to cwd on win32 */
 #if !defined(_WIN32)
+   char tmp[PATH_MAX];
    const char* xdg_home;
    struct passwd *pw;
    if (!(xdg_home = getenv("XDG_CONFIG_HOME"))) {
@@ -361,15 +362,14 @@ static int getcfgpath(char *path)
       }
       strncpy(path, xdg_home, PATH_MAX-1);      /* $HOME */
       stripslash(path);                         /* make sure no leading slash */
-      strncat(path, "/.config", PATH_MAX-1);    /* $HOME/.config */
-      if (mkdirexist(path) != RETURN_OK)        /* mkdir if needed */
+      snprintf(tmp, PATH_MAX - 1, "%s/.config", path);
+      if (mkdirexist(tmp) != RETURN_OK)        /* mkdir if needed */
          return RETURN_FAIL;
    } else {
-      strncpy(path, xdg_home, PATH_MAX-1);  /* $XDG_CONFIG_HOME */
-      stripslash(path);                     /* make sure no leading slash */
+      strncpy(tmp, xdg_home, PATH_MAX-1);  /* $XDG_CONFIG_HOME */
+      stripslash(tmp);                     /* make sure no leading slash */
    }
-   strncat(path, "/",     PATH_MAX-1);
-   strncat(path, CFG_DIR, PATH_MAX-1); /* $XDG_CONFIG_HOME/$CFG_DIR */
+   snprintf(path, PATH_MAX - 1, "%s/%s", tmp, CFG_DIR);
    return mkdirexist(path);
 #else
    (void)path;
@@ -979,7 +979,7 @@ static int readconfig_arg(const char *key, _CONFIG_FUNC func, _USR_DATA *data, c
    /* reset args */
    for (i = 0; i != _CONFIG_MAX_VAR; ++i) {
       if (!(argv[i] = malloc(_CONFIG_ARG_LEN))) {
-         for (; i > 0; --i) free(argv[i]);
+         for (i = (i > 0 ? i - 1 : 0); i > 0; --i) free(argv[i]);
          return RETURN_FAIL;
       }
       memset(argv[i], 0, _CONFIG_ARG_LEN);
@@ -1085,7 +1085,7 @@ static int readconfig(const char *path, _USR_DATA *data)
 static int getconfigpath(char *path)
 {
    if (getcfgpath(path) != RETURN_OK) return RETURN_FAIL;               /* $XDG_CONFIG_HOME */
-   strncat(path, strlen(path)?"/"CONFIG_FILE:CONFIG_FILE, PATH_MAX-1);  /* $XDG_CONFIG_HOME/$CONFIG_FILE */
+   strncat(path, (strlen(path)?"/"CONFIG_FILE:CONFIG_FILE), PATH_MAX - strlen(path) - 1);  /* $XDG_CONFIG_HOME/$CONFIG_FILE */
    return RETURN_OK;
 }
 
@@ -1790,7 +1790,7 @@ static int searchpnd(pndman_repository *r, _USR_DATA *data, size_t longest_title
    assert(r && data);
 
    /* lame search for now */
-   if (!data->tlist)
+   if (!data->tlist) {
       for (p = r->pnd; p; p = p->next) {
          if ((data->flags & A_UPGRADE) && !p->update)
             continue;
@@ -1803,7 +1803,7 @@ static int searchpnd(pndman_repository *r, _USR_DATA *data, size_t longest_title
          if (p->next) NEWLINE();
          donl = 1;
       }
-   else
+   } else {
       for (t = data->tlist; t; t = t->next)
          for (p = r->pnd; p; p = p->next) {
             if ((data->flags & A_UPGRADE) && !p->update)
@@ -1814,6 +1814,7 @@ static int searchpnd(pndman_repository *r, _USR_DATA *data, size_t longest_title
                donl = 1;
             }
          }
+   }
 
    /* formatting */
    if (!(data->flags & A_INFO) && donl) NEWLINE();
@@ -1980,19 +1981,19 @@ static int _rmdir_(const char *dir)
       if (!strcmp(ep->d_name, ".") || !strcmp(ep->d_name, "..")) continue;
       if (ep->d_type == DT_DIR) {
          strncpy(tmp, dir, PATH_MAX-1);
-         strncat(tmp, "/", PATH_MAX-1);
-         strncat(tmp, ep->d_name, PATH_MAX-1);
+         strncat(tmp, "/", PATH_MAX - strlen(tmp) - 1);
+         strncat(tmp, ep->d_name, PATH_MAX - strlen(tmp) - 1);
          _rmdir_(tmp);
       }
       strncpy(tmp, dir, PATH_MAX-1);
-      strncat(tmp, "/", PATH_MAX-1);
-      strncat(tmp, ep->d_name, PATH_MAX-1);
+      strncat(tmp, "/", PATH_MAX - strlen(tmp) - 1);
+      strncat(tmp, ep->d_name, PATH_MAX - strlen(tmp) - 1);
       unlink(tmp);
    }
    closedir(dp);
 #else
    strncpy(tmp, dir,  PATH_MAX-1);
-   strncat(tmp, "/*", PATH_MAX-1);
+   strncat(tmp, "/*", PATH_MAX - strlen(tmp) - 1);
 
    if ((hFind = FindFirstFile(tmp, &dp)) == INVALID_HANDLE_VALUE)
       return 1;
@@ -2001,13 +2002,13 @@ static int _rmdir_(const char *dir)
       if (!strcmp(dp.cFileName, ".") || !strcmp(dp.cFileName, "..")) continue;
       if (dp.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY) {
          strncpy(tmp, dir, PATH_MAX-1);
-         strncat(tmp, "/", PATH_MAX-1);
-         strncat(tmp, dp.cFileName, PATH_MAX-1);
+         strncat(tmp, "/", PATH_MAX - strlen(tmp) - 1);
+         strncat(tmp, dp.cFileName, PATH_MAX - strlen(tmp) - 1);
          _rmdir_(tmp);
       }
       strncpy(tmp, dir, PATH_MAX-1);
-      strncat(tmp, "/", PATH_MAX-1);
-      strncat(tmp, dp.cFileName, PATH_MAX-1);
+      strncat(tmp, "/", PATH_MAX - strlen(tmp) - 1);
+      strncat(tmp, dp.cFileName, PATH_MAX - strlen(tmp) - 1);
       unlink(tmp);
    } while (FindNextFile(hFind, &dp));
    FindClose(hFind);
@@ -2034,13 +2035,14 @@ static void removeappdata(pndman_package *pnd, _USR_DATA *data)
          break;
       }
 
+   /* can not find */
+   if (!dev)
+      return;
+
    /* remove appdata */
    for (a = pnd->app; a; a = a->next) {
       if (!a->appdata) continue;
-      memset(path, 0, PATH_MAX);
-      strncpy(path, dev->mount, PATH_MAX-1);
-      strncat(path, "/pandora/appdata/", PATH_MAX-1);
-      strncat(path, a->appdata, PATH_MAX-1);
+      snprintf(path, PATH_MAX - 1, "%s/pandora/appdata/%s", dev->mount, a->appdata);
       if ((ret = _rmdir_(path)) == 0) _printf(_REMOVED_APPDATA, path);
       else if (ret == -1)             _printf(_APPDATA_FAIL, path);
    }
@@ -2081,6 +2083,8 @@ static int targetperform(_USR_DATA *data)
 
    data->ttdl = 0; data->tdl = 0;
    for (t = data->tlist; t; t = t->next) ++c;
+   if (!c) return RETURN_OK;
+
    pndman_package_handle handle[c]; t = data->tlist; char start[c];
    for (c = 0; t; t = t->next) {
       pndman_package_handle_init(t->pnd->id?t->pnd->id:"notitle", &handle[c]);
@@ -2090,7 +2094,7 @@ static int targetperform(_USR_DATA *data)
       handle[c].device     = ((data->flags & OP_UPGRADE) || (data->flags & A_UPGRADE))?data->dlist:data->root;
       handle[c].flags      = handleflagsfromflags(t->pnd, data->flags);
       start[c]             = 0;
-      if (c<_QUEUE) {
+      if (c < _QUEUE) {
          if (pndman_package_handle_perform(&handle[c]) != RETURN_OK)
             handle[c].flags = 0;
          start[c] = 1;
@@ -2106,12 +2110,11 @@ static int targetperform(_USR_DATA *data)
    if (!(data->flags & GB_NOBAR)) showcursor(0);
    while ((ret = pndman_curl_process(0, 1000)) > 0 || count > 0) {
       /* check active transmissions */
-      for (c = 0, count = 0, t = data->tlist; t; t = t->next) {
-         if (!handle[c].flags) { ++c; continue; }              /* failed perform */
+      for (c = 0, count = 0, t = data->tlist; t; t = t->next, ++c) {
+         if (!handle[c].flags) continue; /* failed perform */
          if (handle[c].progress.done == 2) handle[c].progress.done = 0; /* clear our hack */
-         if (!handle[c].progress.done && start[c]) ++count;    /* active transmissions */
+         if (!handle[c].progress.done && start[c]) ++count; /* active transmissions */
          if (handle[c].progress.done && start[c]) data->tdl += handle[c].pnd->size;
-         ++c;
       }
 
       /* show progressbar */
@@ -2127,15 +2130,14 @@ static int targetperform(_USR_DATA *data)
       data->tdl = 0;
 
       /* check if we should start new handle */
-      for (c = 0, t = data->tlist; count < _QUEUE && t; t = t->next) {
-         if (!handle[c].flags) { ++c; continue; }  /* failed perform */
+      for (c = 0, t = data->tlist; count < _QUEUE && t; t = t->next, ++c) {
+         if (!handle[c].flags) continue; /* failed perform */
          if (!start[c]) { /* ready to start new download */
             if (pndman_package_handle_perform(&handle[c]) != RETURN_OK)
                handle[c].flags = 0;
             start[c] = 1;
             ++count;
          }
-         ++c;
       }
    }
    ERASE();
@@ -2322,8 +2324,8 @@ static void handlecorrupt(pndman_package *p, pndman_package *rp,
 static int crawlprocess(_USR_DATA *data)
 {
    pndman_device *d;
-   pndman_package *p, *pp, *pm;
-   pndman_repository *r, *rs, *rm;
+   pndman_package *p, *pp, *pm = NULL;
+   pndman_repository *r, *rs, *rm = NULL;
    int f = 0, ret = 0, state = 0;
 
    /* set operation flag if user wants to
@@ -2420,15 +2422,13 @@ static int cleanprocess(_USR_DATA *data)
    memset(tmp, 0, PATH_MAX);
    for (d = data->dlist; d; d = d->next)
       if (d->appdata) {
-         strncpy(tmp, d->appdata, PATH_MAX-1);
          _printf(_CLEANING_DB, tmp);
-         strncat(tmp, "/local.db", PATH_MAX-1);
+         snprintf(tmp, PATH_MAX - 1, "%s/local.db", d->appdata);
          if ((f = fopen(tmp,"r"))) {
             fclose(f);
             unlink(tmp);
          }
-         strncpy(tmp, d->appdata, PATH_MAX-1);
-         strncat(tmp, "/repo.db", PATH_MAX-1);
+         snprintf(tmp, PATH_MAX - 1, "%s/repo.db", d->appdata);
          if ((f = fopen(tmp,"r"))) {
             fclose(f);
             unlink(tmp);

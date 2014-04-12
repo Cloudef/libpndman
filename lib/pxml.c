@@ -1576,7 +1576,7 @@ fail:
 PNDMANAPI int pndman_pxml_test(const char *file)
 {
    char *PXML, *PNG;
-   char *type, *x11; size_t size = 0;
+   char *type, *x11 = NULL; size_t size = 0;
    FILE *f;
    pndman_package       *test;
    pndman_application   *app;

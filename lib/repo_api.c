@@ -648,13 +648,14 @@ static void _pndman_api_handshake_perform(pndman_api_request *request)
 
    DEBUG(PNDMAN_LEVEL_CRAP, "%s", nonce);
    sprintf(buffer, "%s%s%s", nonce, cnonce, handshake->key);
-   free(nonce);
+   NULLDO(free, nonce);
+
    if (!(hash = _pndman_md5_buf(buffer, strlen(buffer))))
       goto hash_fail;
 
    request->type = PNDMAN_API_HANDSHAKE;
    snprintf(buffer, sizeof(buffer)-1, "stage=2&cnonce=%s&user=%s&hash=%s", cnonce, handshake->username, hash);
-   free(hash);
+   NULLDO(free, hash);
 
    /* callback should be _pndman_api_handshake_cb */
    _pndman_curl_handle_set_post(handle, buffer);
@@ -667,6 +668,7 @@ hash_fail:
    DEBFAIL(API_HASH_FAIL);
 fail:
    IFDO(free, hash);
+   IFDO(free, nonce);
    request->callback("_pndman_api_handshake_perform failed", request);
 }
 
