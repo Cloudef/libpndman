@@ -22,37 +22,56 @@ static PNDMAN_DEBUG_HOOK_FUNC _PNDMAN_DEBUG_HOOK = NULL;
 /* \brief strstr strings in uppercase */
 char* _strupstr(const char *hay, const char *needle)
 {
-   size_t i, r, p, len, len2;
-   p = 0; r = 0;
-   if (!_strupcmp(hay, needle)) return (char*)hay;
-   if ((len = strlen(hay)) < (len2 = strlen(needle))) return NULL;
-   for (i = 0; i != len; ++i) {
-      if (p == len2) return (char*)&hay[r]; /* THIS IS IT! */
+   size_t i, r = 0, p = 0, len, len2;
+
+   if ((len = strlen(hay)) < (len2 = strlen(needle)))
+      return NULL;
+
+   if (!_strnupcmp(hay, needle, len2))
+      return (char*)hay;
+
+   for (i = 0; i < len; ++i) {
+      if (p == len2)
+         return (char*)hay + r;
+
       if (toupper(hay[i]) == toupper(needle[p++])) {
-         if (!r) r = i; /* could this be.. */
-      } else { if (r) i = r; r = 0; p = 0; } /* ..nope, damn it! */
+         if (!r)
+            r = i;
+      } else {
+         if (r)
+            i = r;
+         r = p = 0;
+      }
    }
-   if (p == len2) return (char*)&hay[r]; /* THIS IS IT! */
-   return NULL;
+
+   return (p == len2 ? (char*)hay + r : NULL);
 }
 
-/* \brief strcmp strings in uppercase, NOTE: returns 0 on found else 1 (so you don't mess up with strcmp) */
+/* \brief strcmp strings in uppercase */
 int _strupcmp(const char *hay, const char *needle)
 {
-   size_t i, len;
-   if ((len = strlen(hay)) != strlen(needle)) return RETURN_TRUE;
-   for (i = 0; i != len; ++i)
-      if (toupper(hay[i]) != toupper(needle[i])) return RETURN_TRUE;
-   return RETURN_FALSE;
+   size_t len, len2;
+
+   if ((len = strlen(hay)) != (len2 = strlen(needle)))
+      return hay[len] - needle[len2];
+
+   return _strnupcmp(hay, needle, len);
 }
 
-/* \brief strncmp strings in uppercase, NOTE: returns 0 on found else 1 (so you don't mess up with strcmp) */
+/* \brief strncmp strings in uppercase */
 int _strnupcmp(const char *hay, const char *needle, size_t len)
 {
-   size_t i;
-   for (i = 0; i != len; ++i)
-      if (toupper(hay[i]) != toupper(needle[i])) return RETURN_TRUE;
-   return RETURN_FALSE;
+   size_t i = 0;
+   unsigned char a = 0, b = 0;
+
+   const unsigned char *p1 = (const unsigned char*)hay;
+   const unsigned char *p2 = (const unsigned char*)needle;
+
+   for (i = 0; len > 0; --len, ++i)
+      if ((a = toupper(*p1++)) != (b = toupper(*p2++)))
+         return a - b;
+
+   return a - b;
 }
 
 /* \brief return temporary file */
