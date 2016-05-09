@@ -160,6 +160,7 @@ void _pndman_debug_hook(const char *file, int line, const char *function, int ve
 /* curl */
 pndman_curl_handle* _pndman_curl_handle_new(void *data, pndman_curl_progress *progress, pndman_curl_callback callback, const char *path);
 void _pndman_curl_handle_free(pndman_curl_handle *handle);
+void _pndman_curl_handle_reset(pndman_curl_handle *handle);
 int  _pndman_curl_handle_perform(pndman_curl_handle *handle);
 void _pndman_curl_handle_set_post(pndman_curl_handle *handle, const char *post);
 void _pndman_curl_handle_set_url(pndman_curl_handle *handle, const char *url);

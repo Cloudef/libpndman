@@ -180,6 +180,18 @@ void _pndman_curl_handle_set_post(pndman_curl_handle *handle, const char *post)
    if (post) handle->post = strdup(post);
 }
 
+void _pndman_curl_handle_reset(pndman_curl_handle *handle)
+{
+   assert(handle);
+   curl_multi_remove_handle(_pndman_curlm, handle->curl);
+   curl_easy_reset(handle->curl);
+
+   if (handle->file) {
+      fclose(handle->file);
+      handle->file = NULL;
+   }
+}
+
 /* \brief perform curl operation */
 int _pndman_curl_handle_perform(pndman_curl_handle *handle)
 {
@@ -196,12 +208,8 @@ int _pndman_curl_handle_perform(pndman_curl_handle *handle)
 
    /* reopen handle if needed */
    if (handle->file) {
-      curl_multi_remove_handle(_pndman_curlm, handle->curl);
-      curl_easy_reset(handle->curl);
-      fclose(handle->file);
-      handle->file = NULL;
+      _pndman_curl_handle_reset(handle);
       _pndman_curl_header_free(&handle->header);
-      memset(&handle->header, 0, sizeof(pndman_curl_header));
       DEBUG(PNDMAN_LEVEL_CRAP, "CURL REOPEN");
    }
 
@@ -351,6 +359,7 @@ static void _pndman_curl_msg(int result, pndman_curl_handle *handle)
       handle->retry  = 0;
       fflush(handle->file);
       handle->callback(PNDMAN_CURL_DONE, handle->data, NULL, handle);
+      _pndman_curl_handle_reset(handle);
    }
 }
 

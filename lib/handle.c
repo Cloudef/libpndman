@@ -271,6 +271,8 @@ static int _pndman_package_handle_install(pndman_package_handle *object, pndman_
    assert(object && local);
 
    handle = (pndman_curl_handle*)object->data;
+   _pndman_curl_handle_reset(handle);
+
    if (!object->device)
       goto handle_no_dev;
    if (!object->pnd)
